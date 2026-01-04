@@ -7,6 +7,7 @@ import com.android.git.model.DashboardState
 import com.android.git.model.GitFile
 import com.android.git.model.StashItem
 import kotlinx.coroutines.Dispatchers
+import org.eclipse.jgit.transport.RemoteRefUpdate
 import kotlinx.coroutines.withContext
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.ResetCommand
@@ -298,9 +299,43 @@ class GitManager(private val rootDir: File) {
     suspend fun push(token: String, force: Boolean = false): String = withContext(Dispatchers.IO) {
         runGitOperation {
             val cmd = git?.push()?.setForce(force)
-            if (token.isNotEmpty()) cmd?.setCredentialsProvider(authManager.getCredentialsProvider(token))
-            cmd?.call()
-            if (force) "Force Pushed!" else "Pushed!"
+            if (token.isNotEmpty()) {
+                cmd?.setCredentialsProvider(authManager.getCredentialsProvider(token))
+            }
+            
+            val pushResults = cmd?.call()
+            var resultMessage = ""
+            var hasError = false
+
+            pushResults?.forEach { result ->
+                result.remoteUpdates.forEach { update ->
+                    when (update.status) {
+                        RemoteRefUpdate.Status.OK -> resultMessage += "Success: ${update.srcRef} -> ${update.remoteName}\n"
+                        RemoteRefUpdate.Status.UP_TO_DATE -> resultMessage += "Up to date.\n"
+                        
+                        RemoteRefUpdate.Status.REJECTED_NONFASTFORWARD -> {
+                            hasError = true
+                            resultMessage += "Rejected: Non-fast-forward (Pull first!)\n"
+                        }
+                        
+                        RemoteRefUpdate.Status.REJECTED_NODELETE -> {
+                            hasError = true
+                            resultMessage += "Rejected: No Delete.\n"
+                        }
+                        RemoteRefUpdate.Status.REJECTED_REMOTE_CHANGED -> {
+                             hasError = true
+                             resultMessage += "Rejected: Remote Changed.\n"
+                        }
+                        RemoteRefUpdate.Status.REJECTED_OTHER_REASON -> {
+                            hasError = true
+                            resultMessage += "Rejected: ${update.message}\n"
+                        }
+                        else -> resultMessage += "Status: ${update.status}\n"
+                    }
+                }
+            }
+
+            if (resultMessage.isEmpty()) "Push executed (No updates)." else resultMessage.trim()
         }
     }
 

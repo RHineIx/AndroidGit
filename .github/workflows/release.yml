@@ -1,0 +1,55 @@
+name: Manual Build & Release APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g. 1.2.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build, Tag and Publish APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+
+      - name: Grant execute permission to gradlew
+        run: chmod +x ./gradlew
+
+      - name: Create Git tag
+        run: |
+          TAG="v${{ inputs.version }}"
+          git tag "$TAG"
+          git push origin "$TAG"
+
+      - name: Build Release APK (with ABI splits)
+        run: ./gradlew assembleRelease
+
+      - name: Verify APK outputs
+        run: ls -R app/build/outputs/apk
+
+      - name: Create GitHub Release and upload APKs
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          name: Release v${{ inputs.version }}
+          files: |
+            app/build/outputs/apk/release/*.apk
