@@ -32,3 +32,15 @@ sealed class DashboardState {
     data class Error(val message: String) : DashboardState()
     object NotInitialized : DashboardState()
 }
+
+// ---Branch Models ---
+enum class BranchType {
+    LOCAL, REMOTE
+}
+
+data class BranchModel(
+    val name: String,
+    val fullPath: String,
+    val type: BranchType,
+    val isCurrent: Boolean
+)

@@ -8,25 +8,34 @@ import android.os.Environment
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.android.git.data.GitManager
+import com.android.git.data.PreferencesManager
+import com.android.git.model.DashboardState
 import com.android.git.ui.screens.*
 import com.android.git.ui.theme.AndroidGitTheme
 import com.android.git.utils.FileUtils
+import kotlinx.coroutines.launch
 import java.io.File
 
-enum class AppScreen {
-    SELECTION, DASHBOARD, CHANGES_LIST, SYNC, LOG, CLONE, IGNORE_EDITOR
+enum class AppScreen(val order: Int) {
+    SELECTION(0),
+    CLONE(1),
+    DASHBOARD(2),
+    CHANGES_LIST(3),
+    SETTINGS(3),
+    LOG(3),
+    IGNORE_EDITOR(3),
+    BRANCH_MANAGER(3) // <--- Add This
 }
 
 class MainActivity : ComponentActivity() {
@@ -38,116 +47,139 @@ class MainActivity : ComponentActivity() {
                 var selectedRepoFile by remember { mutableStateOf<File?>(null) }
                 
                 var currentScreen by remember { mutableStateOf(AppScreen.SELECTION) }
+                
+                var activeGitManager by remember { mutableStateOf<GitManager?>(null) }
+                var dashboardState by remember { mutableStateOf<DashboardState>(DashboardState.Loading) }
+                
+                val scope = rememberCoroutineScope()
+                val context = this
+                val prefs = remember { PreferencesManager(context) }
+
+                fun openProject(file: File) {
+                    selectedRepoFile = file
+                    activeGitManager = GitManager(file)
+                    dashboardState = DashboardState.Loading
+                    prefs.addRecentProject(file.absolutePath)
+                    currentScreen = AppScreen.DASHBOARD
+                    
+                    scope.launch {
+                        if (activeGitManager!!.isGitRepo()) {
+                            activeGitManager!!.configureUser(prefs.getUserName(), prefs.getUserEmail())
+                            activeGitManager!!.openRepo()
+                            dashboardState = activeGitManager!!.getDashboardStats()
+                        } else {
+                            dashboardState = DashboardState.NotInitialized
+                        }
+                    }
+                }
+
+                fun closeProject() {
+                    selectedRepoFile = null
+                    activeGitManager = null
+                    dashboardState = DashboardState.Loading
+                    currentScreen = AppScreen.SELECTION
+                }
+
+                LaunchedEffect(Unit) {
+                    if (hasPermission && prefs.isAutoOpenEnabled()) {
+                        val lastPath = prefs.getLastProjectPath()
+                        if (lastPath != null) {
+                            val file = File(lastPath)
+                            if (file.exists()) openProject(file)
+                        }
+                    }
+                }
 
                 val lifecycleOwner = LocalLifecycleOwner.current
                 DisposableEffect(lifecycleOwner) {
                     val observer = LifecycleEventObserver { _, event ->
                         if (event == Lifecycle.Event.ON_RESUME) {
                             hasPermission = checkPermission()
+                            if (currentScreen == AppScreen.DASHBOARD && activeGitManager != null) {
+                                scope.launch {
+                                    if (activeGitManager!!.isGitRepo()) {
+                                        dashboardState = activeGitManager!!.getDashboardStats()
+                                    }
+                                }
+                            }
                         }
                     }
                     lifecycleOwner.lifecycle.addObserver(observer)
-                    onDispose {
-                        lifecycleOwner.lifecycle.removeObserver(observer)
-                    }
+                    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
                 }
 
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     if (!hasPermission) {
                         PermissionScreen { requestPermission() }
                     } else {
-                        when (currentScreen) {
-                            AppScreen.SELECTION -> {
-                                RepoSelectionScreen(
-                                    onRepoSelected = { uri ->
-                                        val file = FileUtils.getFileFromUri(this, uri)
-                                        if (file != null) {
-                                            selectedRepoFile = file
-                                            currentScreen = AppScreen.DASHBOARD
-                                        }
-                                    },
-                                    onCloneRequest = {
-                                        currentScreen = AppScreen.CLONE
-                                    }
-                                )
-                            }
-                            AppScreen.CLONE -> {
-                                CloneScreen(
-                                    onBack = {
-                                        currentScreen = AppScreen.SELECTION
-                                    },
-                                    onCloneSuccess = { newRepoDir ->
-                                        selectedRepoFile = newRepoDir
-                                        currentScreen = AppScreen.DASHBOARD
-                                    }
-                                )
-                            }
-                            AppScreen.DASHBOARD -> {
-                                if (selectedRepoFile != null) {
-                                    DashboardScreen(
-                                        repoFile = selectedRepoFile!!,
-                                        onViewChanges = {
-                                            currentScreen = AppScreen.CHANGES_LIST
-                                        },
-                                        onSync = {
-                                            currentScreen = AppScreen.SYNC
-                                        },
-                                        onViewLog = {
-                                            currentScreen = AppScreen.LOG
-                                        },
-                                        onIgnoreEditor = {
-                                            currentScreen = AppScreen.IGNORE_EDITOR
-                                        },
-                                        onCloseProject = {
-                                            selectedRepoFile = null
-                                            currentScreen = AppScreen.SELECTION
-                                        }
-                                    )
+                        AnimatedContent(
+                            targetState = currentScreen,
+                            transitionSpec = {
+                                if (targetState.order > initialState.order) {
+                                    slideInHorizontally(animationSpec = tween(300)) { width -> width } + fadeIn() togetherWith
+                                    slideOutHorizontally(animationSpec = tween(300)) { width -> -width } + fadeOut()
                                 } else {
-                                    currentScreen = AppScreen.SELECTION
+                                    slideInHorizontally(animationSpec = tween(300)) { width -> -width } + fadeIn() togetherWith
+                                    slideOutHorizontally(animationSpec = tween(300)) { width -> width } + fadeOut()
                                 }
-                            }
-                            AppScreen.CHANGES_LIST -> {
-                                if (selectedRepoFile != null) {
-                                    ChangesScreen(
-                                        repoFile = selectedRepoFile!!,
-                                        onBack = {
-                                            currentScreen = AppScreen.DASHBOARD
-                                        }
+                            },
+                            label = "ScreenTransition"
+                        ) { targetScreen ->
+                            when (targetScreen) {
+                                AppScreen.SELECTION -> {
+                                    RepoSelectionScreen(
+                                        onRepoSelected = { uri ->
+                                            val file = FileUtils.getFileFromUri(context, uri)
+                                            if (file != null) openProject(file)
+                                        },
+                                        onCloneRequest = { currentScreen = AppScreen.CLONE }
                                     )
                                 }
-                            }
-                            AppScreen.SYNC -> {
-                                if (selectedRepoFile != null) {
-                                    SyncScreen(
-                                        repoFile = selectedRepoFile!!,
-                                        onBack = {
-                                            currentScreen = AppScreen.DASHBOARD
-                                        }
+                                AppScreen.CLONE -> {
+                                    CloneScreen(
+                                        onBack = { currentScreen = AppScreen.SELECTION },
+                                        onCloneSuccess = { newRepoDir -> openProject(newRepoDir) }
                                     )
                                 }
-                            }
-                            AppScreen.LOG -> {
-                                if (selectedRepoFile != null) {
-                                    LogScreen(
-                                        repoFile = selectedRepoFile!!,
-                                        onBack = {
-                                            currentScreen = AppScreen.DASHBOARD
-                                        }
-                                    )
+                                AppScreen.DASHBOARD -> {
+                                    if (selectedRepoFile != null && activeGitManager != null) {
+                                        DashboardScreen(
+                                            repoFile = selectedRepoFile!!,
+                                            gitManager = activeGitManager!!,
+                                            dashboardState = dashboardState,
+                                            onRefresh = { scope.launch { dashboardState = activeGitManager!!.getDashboardStats() } },
+                                            onViewChanges = { currentScreen = AppScreen.CHANGES_LIST },
+                                            onSettings = { currentScreen = AppScreen.SETTINGS },
+                                            onViewLog = { currentScreen = AppScreen.LOG },
+                                            onManageBranches = { currentScreen = AppScreen.BRANCH_MANAGER }, // <--- Link
+                                            onIgnoreEditor = { currentScreen = AppScreen.IGNORE_EDITOR },
+                                            onCloseProject = { closeProject() }
+                                        )
+                                    } else LaunchedEffect(Unit) { currentScreen = AppScreen.SELECTION }
                                 }
-                            }
-                            AppScreen.IGNORE_EDITOR -> {
-                                if (selectedRepoFile != null) {
-                                    IgnoreEditorScreen(
-                                        repoFile = selectedRepoFile!!,
-                                        onBack = {
-                                            currentScreen = AppScreen.DASHBOARD
-                                        }
-                                    )
+                                AppScreen.BRANCH_MANAGER -> { // <--- Route
+                                    if (selectedRepoFile != null) {
+                                        BranchManagerScreen(
+                                            repoFile = selectedRepoFile!!,
+                                            onBack = { 
+                                                scope.launch { if(activeGitManager != null) dashboardState = activeGitManager!!.getDashboardStats() }
+                                                currentScreen = AppScreen.DASHBOARD 
+                                            }
+                                        )
+                                    }
+                                }
+                                // ... (Changes, Settings, Log, IgnoreEditor are same as before) ...
+                                AppScreen.CHANGES_LIST -> {
+                                    if (selectedRepoFile != null) ChangesScreen(repoFile = selectedRepoFile!!, onBack = { scope.launch { if(activeGitManager != null) dashboardState = activeGitManager!!.getDashboardStats() }; currentScreen = AppScreen.DASHBOARD })
+                                }
+                                AppScreen.SETTINGS -> {
+                                    if (selectedRepoFile != null) SettingsScreen(repoFile = selectedRepoFile!!, onBack = { currentScreen = AppScreen.DASHBOARD })
+                                }
+                                AppScreen.LOG -> {
+                                    if (selectedRepoFile != null) LogScreen(repoFile = selectedRepoFile!!, onBack = { currentScreen = AppScreen.DASHBOARD })
+                                }
+                                AppScreen.IGNORE_EDITOR -> {
+                                    if (selectedRepoFile != null) IgnoreEditorScreen(repoFile = selectedRepoFile!!, onBack = { currentScreen = AppScreen.DASHBOARD })
                                 }
                             }
                         }
@@ -157,13 +189,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun checkPermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            Environment.isExternalStorageManager()
-        } else {
-            true
-        }
-    }
+    private fun checkPermission(): Boolean = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) Environment.isExternalStorageManager() else true
 
     private fun requestPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -176,26 +202,6 @@ class MainActivity : ComponentActivity() {
                 val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
                 startActivity(intent)
             }
-        }
-    }
-}
-
-@Composable
-fun PermissionScreen(onRequest: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Required Permission", style = MaterialTheme.typography.headlineMedium)
-        Spacer(Modifier.height(16.dp))
-        Text(
-            "To manage Git repositories (and read .git folders), this app needs full file access.",
-            style = MaterialTheme.typography.bodyMedium
-        )
-        Spacer(Modifier.height(32.dp))
-        Button(onClick = onRequest) {
-            Text("Grant Permission")
         }
     }
 }

@@ -6,11 +6,16 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,14 +27,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.android.git.data.PreferencesManager
+import java.io.File
 
 @Composable
 fun RepoSelectionScreen(
     onRepoSelected: (Uri) -> Unit,
-    onCloneRequest: () -> Unit // New callback
+    onCloneRequest: () -> Unit
 ) {
     val context = LocalContext.current
+    val prefsManager = remember { PreferencesManager(context) }
     
+    // State for recent list to allow UI updates on delete
+    var recentProjects by remember { mutableStateOf(prefsManager.getRecentProjects()) }
+
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()
     ) { uri: Uri? ->
@@ -46,12 +57,14 @@ fun RepoSelectionScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        // Logo / Icon
         Box(
             modifier = Modifier
-                .size(120.dp)
+                .size(100.dp)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
                 .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape),
@@ -60,12 +73,12 @@ fun RepoSelectionScreen(
             Icon(
                 imageVector = Icons.Rounded.FolderOpen,
                 contentDescription = "Repo Icon",
-                modifier = Modifier.size(64.dp),
+                modifier = Modifier.size(50.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
         }
         
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         
         Text(
             text = "Select Repository",
@@ -74,42 +87,91 @@ fun RepoSelectionScreen(
             fontWeight = FontWeight.Bold
         )
         
-        Text(
-            text = "Choose a local folder or clone a new project from URL.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 16.dp, bottom = 40.dp)
-        )
+        Spacer(modifier = Modifier.height(32.dp))
 
-        // 1. Browse Local
+        // Actions
         Button(
             onClick = { launcher.launch(null) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-            elevation = ButtonDefaults.buttonElevation(8.dp)
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape = RoundedCornerShape(16.dp)
         ) {
-            Icon(Icons.Rounded.FolderOpen, contentDescription = null)
+            Icon(Icons.Rounded.FolderOpen, null)
             Spacer(modifier = Modifier.width(12.dp))
-            Text(text = "Browse Folder", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text("Browse Local Folder", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 2. Clone Remote
         OutlinedButton(
             onClick = onCloneRequest,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
+            modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Icon(Icons.Default.CloudDownload, contentDescription = null)
+            Icon(Icons.Default.CloudDownload, null)
             Spacer(modifier = Modifier.width(12.dp))
-            Text(text = "Clone from URL", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text("Clone from URL", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        }
+
+        Spacer(modifier = Modifier.height(40.dp))
+
+        // Recent Projects Section
+        if (recentProjects.isNotEmpty()) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.History, null, tint = MaterialTheme.colorScheme.secondary)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "Recent Repositories",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth().weight(1f)
+            ) {
+                items(recentProjects) { path ->
+                    val file = File(path)
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                if (file.exists()) {
+                                    onRepoSelected(Uri.fromFile(file))
+                                }
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = file.name,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = file.absolutePath,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1
+                                )
+                            }
+                            IconButton(onClick = { 
+                                prefsManager.removeRecentProject(path)
+                                recentProjects = prefsManager.getRecentProjects()
+                            }) {
+                                Icon(Icons.Default.Clear, "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
