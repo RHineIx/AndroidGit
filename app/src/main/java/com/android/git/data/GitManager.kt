@@ -258,6 +258,31 @@ class GitManager(private val rootDir: File) {
         }
     }
 
+    // NEW: Revert a specific commit (Create a new commit that undoes changes)
+    suspend fun revertCommit(hash: String): String = withContext(Dispatchers.IO) {
+        runGitOperation {
+            val repo = git?.repository
+            val objId = repo?.resolve(hash) ?: throw Exception("Commit not found")
+            val result = git?.revert()?.include(objId)?.call()
+            if (result != null) "Revert successful! New commit created." else "Revert failed."
+        }
+    }
+
+    // NEW: Cherry-Pick a specific commit (Apply changes from another branch/commit to current)
+    suspend fun cherryPickCommit(hash: String): String = withContext(Dispatchers.IO) {
+        runGitOperation {
+            val repo = git?.repository
+            val objId = repo?.resolve(hash) ?: throw Exception("Commit not found")
+            val result = git?.cherryPick()?.include(objId)?.call()
+            
+            if (result?.status == org.eclipse.jgit.api.CherryPickResult.CherryPickStatus.OK) {
+                "Cherry-pick successful!"
+            } else {
+                "Cherry-pick failed: ${result?.status}"
+            }
+        }
+    }
+    
     // --- Remote & Sync ---
     suspend fun hasRemote(): Boolean = withContext(Dispatchers.IO) {
         if (git == null) openRepo()
