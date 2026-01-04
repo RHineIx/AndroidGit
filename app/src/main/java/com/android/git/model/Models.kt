@@ -15,7 +15,8 @@ data class CommitItem(
     val message: String,
     val author: String,
     val date: Date,
-    val hash: String
+    val hash: String,
+    val isPushed: Boolean
 )
 
 data class StashItem(

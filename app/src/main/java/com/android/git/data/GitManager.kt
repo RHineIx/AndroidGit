@@ -24,6 +24,8 @@ class GitManager(private val rootDir: File) {
 
     fun isGitRepo(): Boolean = File(rootDir, ".git").exists()
 
+    // --- Core Operations ---
+
     suspend fun initRepo(): String = withContext(Dispatchers.IO) {
         runGitOperation {
             Git.init().setDirectory(rootDir).call()
@@ -57,6 +59,7 @@ class GitManager(private val rootDir: File) {
          try { git = Git.open(rootDir) } catch(_: Exception) {}
     }
 
+    // --- Delegated Branch Operations ---
     suspend fun getRichBranches(): List<BranchModel> = withContext(Dispatchers.IO) {
         ensureOpen()
         branchManager?.getRichBranches() ?: emptyList()
@@ -86,6 +89,7 @@ class GitManager(private val rootDir: File) {
         runGitOperation { branchManager?.renameBranch(name) ?: "Error" }
     }
     
+    // --- Delegated Stash Operations ---
     suspend fun stashChanges(msg: String): String = withContext(Dispatchers.IO) {
         runGitOperation { stashManager?.stashChanges(msg) ?: "Error" }
     }
@@ -103,6 +107,8 @@ class GitManager(private val rootDir: File) {
         stashManager?.getStashList() ?: emptyList()
     }
     
+    // --- Dashboard & Status ---
+
     suspend fun getDashboardStats(): DashboardState = withContext(Dispatchers.IO) {
         try {
             ensureOpen()
@@ -169,6 +175,8 @@ class GitManager(private val rootDir: File) {
         }
     }
 
+    // --- Commit & Remote ---
+
     suspend fun addToStage(files: List<GitFile>) = withContext(Dispatchers.IO) {
         ensureOpen()
         val addCommand = git?.add()
@@ -208,13 +216,39 @@ class GitManager(private val rootDir: File) {
         }
     }
     
+    // UPDATED: Now checks for push status
     suspend fun getCommits(): List<CommitItem> = withContext(Dispatchers.IO) {
         try {
             ensureOpen()
-            val logs = git?.log()?.call()
+            val repo = git?.repository
+            val logs = git?.log()?.call() ?: return@withContext emptyList()
+            
+            // Logic to determine pushed status
+            val branch = repo?.branch
+            val remoteRef = if (branch != null) repo.resolve("refs/remotes/origin/$branch") else null
+            var isSynced = false
+            
             val commits = mutableListOf<CommitItem>()
-            logs?.forEach { rev ->
-                commits.add(CommitItem(rev.fullMessage.trim(), rev.authorIdent.name ?: "Unknown", rev.authorIdent.`when`, rev.name.substring(0, 7)))
+            
+            logs.forEach { rev ->
+                val hash = rev.name
+                
+                // Once we hit the remote hash, everything from here downwards (older) is pushed
+                if (!isSynced && remoteRef != null && (rev.id == remoteRef)) {
+                    isSynced = true
+                }
+                
+                // If remoteRef is null (no remote branch), all are unpushed (isPushed = false)
+                // If we found sync point, it's pushed. If not yet found, it's unpushed.
+                val isPushed = isSynced
+                
+                commits.add(CommitItem(
+                    message = rev.fullMessage.trim(),
+                    author = rev.authorIdent.name ?: "Unknown",
+                    date = rev.authorIdent.`when`,
+                    hash = hash.substring(0, 7),
+                    isPushed = isPushed
+                ))
             }
             commits
         } catch (e: Exception) { emptyList() }
@@ -235,6 +269,8 @@ class GitManager(private val rootDir: File) {
             "Checked out $hash"
         }
     }
+
+    // --- Remote (HTTPS Only) ---
 
     suspend fun hasRemote(): Boolean = withContext(Dispatchers.IO) {
         ensureOpen()

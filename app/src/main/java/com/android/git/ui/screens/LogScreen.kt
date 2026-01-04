@@ -18,6 +18,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CallMerge
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.CloudQueue
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
@@ -60,11 +62,9 @@ fun LogScreen(
     var commits by remember { mutableStateOf<List<CommitItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     
-    // UI Feedback
     var statusMessage by remember { mutableStateOf("") }
     var statusType by remember { mutableStateOf(SnackbarType.INFO) }
 
-    // Bottom Sheet State
     var selectedCommit by remember { mutableStateOf<CommitItem?>(null) }
     val sheetState = rememberModalBottomSheetState()
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -81,7 +81,6 @@ fun LogScreen(
 
     LaunchedEffect(repoFile) { loadCommits() }
 
-    // Helper to copy text
     fun copyToClipboard(text: String) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("Commit Hash", text)
@@ -137,7 +136,6 @@ fun LogScreen(
                 }
             }
 
-            // Enhanced Toast (Snackbar)
             Box(modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)) {
                 AppSnackbar(
                     message = statusMessage,
@@ -148,7 +146,6 @@ fun LogScreen(
         }
     }
 
-    // --- Advanced Commit Actions Sheet ---
     if (showBottomSheet && selectedCommit != null) {
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
@@ -160,8 +157,18 @@ fun LogScreen(
 
             Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
                 
-                // Header: Hash & Copy
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Status Badge in Sheet
+                    if (!commit.isPushed) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            shape = RoundedCornerShape(4.dp),
+                            modifier = Modifier.padding(end = 8.dp)
+                        ) {
+                            Text("UNPUSHED", modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                        }
+                    }
+
                     Surface(
                         color = MaterialTheme.colorScheme.secondaryContainer,
                         shape = RoundedCornerShape(8.dp)
@@ -182,7 +189,6 @@ fun LogScreen(
                 
                 Spacer(Modifier.height(16.dp))
                 
-                // Message
                 Text(
                     text = commit.message,
                     style = MaterialTheme.typography.titleLarge,
@@ -191,7 +197,6 @@ fun LogScreen(
                 
                 Spacer(Modifier.height(8.dp))
                 
-                // Author & Date
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Person, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.width(4.dp))
@@ -205,7 +210,6 @@ fun LogScreen(
                 Text("Actions", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.height(16.dp))
 
-                // Actions Grid
                 ActionItem(
                     icon = Icons.Default.Visibility,
                     label = "Checkout (View)",
@@ -320,21 +324,66 @@ fun ActionItem(
 fun CommitCard(commit: CommitItem, onClick: () -> Unit) {
     val dateFormat = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
     
+    // Different background color for Unpushed commits to make them stand out slightly
+    val containerColor = if (commit.isPushed) 
+        MaterialTheme.colorScheme.surfaceContainerHigh 
+    else 
+        MaterialTheme.colorScheme.surfaceContainerHighest
+
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
         modifier = Modifier.fillMaxWidth().clickable { onClick() }
     ) {
-        Row(modifier = Modifier.padding(16.dp)) {
-            // Timeline line visual could go here, for now simple layout
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
+            
+            // Indicator Icon
+            if (commit.isPushed) {
+                Icon(Icons.Default.CloudQueue, null, tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), modifier = Modifier.size(24.dp))
+            } else {
+                Icon(Icons.Default.CloudOff, null, tint = Color(0xFFE65100), modifier = Modifier.size(24.dp)) // Orange/Amber for unpushed
+            }
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
             Column {
+                // Header Row (Hash + Tag)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (!commit.isPushed) {
+                        Surface(
+                            color = Color(0xFFFFCC80),
+                            shape = RoundedCornerShape(4.dp),
+                            modifier = Modifier.padding(end = 8.dp)
+                        ) {
+                            Text(
+                                text = "Unpushed", 
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp), 
+                                style = MaterialTheme.typography.labelSmall, 
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFBF360C)
+                            )
+                        }
+                    }
+                    Text(
+                        text = commit.message,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Spacer(Modifier.height(4.dp))
+                
                 Text(
-                    text = commit.message,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    text = if(commit.message.contains("\n")) commit.message.substringAfter("\n").trim() else "",
+                    style = MaterialTheme.typography.bodySmall,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(Modifier.height(8.dp))
+                
+                if (commit.message.contains("\n")) Spacer(Modifier.height(8.dp))
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Person, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.secondary)
                     Spacer(Modifier.width(4.dp))
