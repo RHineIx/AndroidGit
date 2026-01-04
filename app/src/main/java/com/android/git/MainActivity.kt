@@ -11,11 +11,15 @@ import androidx.activity.compose.setContent
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.android.git.data.GitManager
@@ -35,7 +39,8 @@ enum class AppScreen(val order: Int) {
     SETTINGS(3),
     LOG(3),
     IGNORE_EDITOR(3),
-    BRANCH_MANAGER(3) // <--- Add This
+    BRANCH_MANAGER(3),
+    STASH(3)
 }
 
 class MainActivity : ComponentActivity() {
@@ -151,13 +156,19 @@ class MainActivity : ComponentActivity() {
                                             onViewChanges = { currentScreen = AppScreen.CHANGES_LIST },
                                             onSettings = { currentScreen = AppScreen.SETTINGS },
                                             onViewLog = { currentScreen = AppScreen.LOG },
-                                            onManageBranches = { currentScreen = AppScreen.BRANCH_MANAGER }, // <--- Link
+                                            onManageBranches = { currentScreen = AppScreen.BRANCH_MANAGER },
+                                            onOpenStash = { currentScreen = AppScreen.STASH },
                                             onIgnoreEditor = { currentScreen = AppScreen.IGNORE_EDITOR },
                                             onCloseProject = { closeProject() }
                                         )
                                     } else LaunchedEffect(Unit) { currentScreen = AppScreen.SELECTION }
                                 }
-                                AppScreen.BRANCH_MANAGER -> { // <--- Route
+                                AppScreen.STASH -> {
+                                    if (selectedRepoFile != null) {
+                                        StashScreen(repoFile = selectedRepoFile!!, onBack = { currentScreen = AppScreen.DASHBOARD })
+                                    }
+                                }
+                                AppScreen.BRANCH_MANAGER -> {
                                     if (selectedRepoFile != null) {
                                         BranchManagerScreen(
                                             repoFile = selectedRepoFile!!,
@@ -168,7 +179,6 @@ class MainActivity : ComponentActivity() {
                                         )
                                     }
                                 }
-                                // ... (Changes, Settings, Log, IgnoreEditor are same as before) ...
                                 AppScreen.CHANGES_LIST -> {
                                     if (selectedRepoFile != null) ChangesScreen(repoFile = selectedRepoFile!!, onBack = { scope.launch { if(activeGitManager != null) dashboardState = activeGitManager!!.getDashboardStats() }; currentScreen = AppScreen.DASHBOARD })
                                 }

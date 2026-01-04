@@ -1,5 +1,8 @@
 package com.android.git.ui.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -10,6 +13,7 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.android.git.data.GitManager
 import com.android.git.data.PreferencesManager
 import com.android.git.ui.components.AppSnackbar
+import com.android.git.ui.components.SnackbarType
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -35,18 +40,22 @@ fun SettingsScreen(
     val gitManager = remember { GitManager(repoFile) }
     val scope = rememberCoroutineScope()
 
-    // Git Config State
     var userName by remember { mutableStateOf(prefs.getUserName()) }
     var userEmail by remember { mutableStateOf(prefs.getUserEmail()) }
     var token by remember { mutableStateOf(prefs.getToken()) }
     var remoteUrl by remember { mutableStateOf("") }
-    
-    // App Config State
     var autoOpen by remember { mutableStateOf(prefs.isAutoOpenEnabled()) }
 
     var statusMessage by remember { mutableStateOf("") }
+    var statusType by remember { mutableStateOf(SnackbarType.INFO) }
 
     BackHandler(enabled = true) { onBack() }
+
+    LaunchedEffect(Unit) {
+        if (gitManager.hasRemote()) {
+            remoteUrl = "Remote Linked"
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -80,7 +89,7 @@ fun SettingsScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Auto-open last project", fontWeight = FontWeight.Bold)
                             Text(
-                                "Automatically open the last used repository when the app starts.",
+                                "Automatically reopen the last used repository on app launch.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -95,11 +104,11 @@ fun SettingsScreen(
                     }
                 }
 
-                // --- SECTION 2: Repository Configuration (Consolidated) ---
+                // --- SECTION 2: Repository Configuration ---
                 SettingsSection(title = "Repository Configuration") {
-                    Text("Identity (User Info)", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.height(8.dp))
                     
+                    Text("Identity (Required)", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = userName, onValueChange = { userName = it },
                         label = { Text("User Name") },
@@ -118,7 +127,7 @@ fun SettingsScreen(
                     Divider()
                     Spacer(Modifier.height(16.dp))
 
-                    Text("Authentication (Token)", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Text("Authentication (HTTPS Token)", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = token, onValueChange = { token = it },
@@ -136,9 +145,9 @@ fun SettingsScreen(
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = remoteUrl, onValueChange = { remoteUrl = it },
-                        label = { Text("Set/Update Remote URL") },
-                        leadingIcon = { Icon(Icons.Default.Link, null) },
+                        label = { Text("Remote URL") },
                         placeholder = { Text("https://github.com/user/repo.git") },
+                        leadingIcon = { Icon(Icons.Default.Link, null) },
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -147,29 +156,32 @@ fun SettingsScreen(
                     Button(
                         onClick = {
                             scope.launch {
-                                // Save Prefs
                                 prefs.saveGitIdentity(userName, userEmail)
                                 if (token.isNotEmpty()) prefs.saveToken(token) else prefs.clearToken()
                                 
-                                // Apply to Repo
                                 gitManager.configureUser(userName, userEmail)
-                                if (remoteUrl.isNotEmpty()) {
+                                if (remoteUrl.isNotEmpty() && remoteUrl.startsWith("http")) {
                                     gitManager.addRemote(remoteUrl)
                                 }
-                                statusMessage = "Configuration Saved Successfully!"
+                                statusMessage = "Configuration Saved!"
+                                statusType = SnackbarType.SUCCESS
                             }
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Save All Configurations")
+                        Icon(Icons.Default.Save, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Save Configuration")
                     }
                 }
-                
-                Spacer(Modifier.height(32.dp))
             }
 
-            Box(modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)) {
-                AppSnackbar(message = statusMessage, onDismiss = { statusMessage = "" })
+            Box(modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)) {
+                AppSnackbar(
+                    message = statusMessage,
+                    type = statusType,
+                    onDismiss = { statusMessage = "" }
+                )
             }
         }
     }

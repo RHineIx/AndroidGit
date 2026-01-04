@@ -1,32 +1,33 @@
 package com.android.git.data
 
 import com.android.git.model.BranchModel
-import com.android.git.model.BranchType
 import com.android.git.model.ChangeType
 import com.android.git.model.CommitItem
 import com.android.git.model.DashboardState
 import com.android.git.model.GitFile
+import com.android.git.model.StashItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.eclipse.jgit.api.CreateBranchCommand
 import org.eclipse.jgit.api.Git
-import org.eclipse.jgit.api.ListBranchCommand
 import org.eclipse.jgit.api.ResetCommand
-import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
 import java.io.File
 
 class GitManager(private val rootDir: File) {
 
     private var git: Git? = null
+    
+    private var branchManager: GitBranchManager? = null
+    private var stashManager: GitStashManager? = null
+    
+    val authManager = GitAuthManager(rootDir.parentFile ?: rootDir) 
 
     fun isGitRepo(): Boolean = File(rootDir, ".git").exists()
 
-    // --- Init & Open ---
     suspend fun initRepo(): String = withContext(Dispatchers.IO) {
         runGitOperation {
             Git.init().setDirectory(rootDir).call()
-            git = Git.open(rootDir)
+            openRepo()
             "Repository initialized successfully!"
         }
     }
@@ -35,6 +36,8 @@ class GitManager(private val rootDir: File) {
         runGitOperation {
             if (isGitRepo()) {
                 git = Git.open(rootDir)
+                branchManager = GitBranchManager(git!!)
+                stashManager = GitStashManager(git!!)
                 "Repository opened successfully!"
             } else {
                 throw Exception("Not a Git repository.")
@@ -43,17 +46,66 @@ class GitManager(private val rootDir: File) {
     }
 
     fun configureUser(name: String, email: String) {
-        if (git == null && isGitRepo()) git = Git.open(rootDir)
+        if (git == null && isGitRepo()) runBlockingOpen()
         val config = git?.repository?.config
         if (name.isNotEmpty()) config?.setString("user", null, "name", name)
         if (email.isNotEmpty()) config?.setString("user", null, "email", email)
         config?.save()
     }
+    
+    private fun runBlockingOpen() {
+         try { git = Git.open(rootDir) } catch(_: Exception) {}
+    }
 
-    // --- Dashboard ---
+    suspend fun getRichBranches(): List<BranchModel> = withContext(Dispatchers.IO) {
+        ensureOpen()
+        branchManager?.getRichBranches() ?: emptyList()
+    }
+
+    suspend fun checkoutBranch(name: String): String = withContext(Dispatchers.IO) {
+        runGitOperation { branchManager?.checkoutBranch(name) ?: "Error" }
+    }
+
+    suspend fun createBranch(name: String): String = withContext(Dispatchers.IO) {
+        runGitOperation { branchManager?.createBranch(name) ?: "Error" }
+    }
+
+    suspend fun deleteBranch(name: String): String = withContext(Dispatchers.IO) {
+        runGitOperation { branchManager?.deleteBranch(name) ?: "Error" }
+    }
+    
+    suspend fun mergeBranch(name: String): String = withContext(Dispatchers.IO) {
+        runGitOperation { branchManager?.mergeBranch(name) ?: "Error" }
+    }
+    
+    suspend fun rebaseBranch(name: String): String = withContext(Dispatchers.IO) {
+        runGitOperation { branchManager?.rebaseBranch(name) ?: "Error" }
+    }
+    
+    suspend fun renameBranch(name: String): String = withContext(Dispatchers.IO) {
+        runGitOperation { branchManager?.renameBranch(name) ?: "Error" }
+    }
+    
+    suspend fun stashChanges(msg: String): String = withContext(Dispatchers.IO) {
+        runGitOperation { stashManager?.stashChanges(msg) ?: "Error" }
+    }
+    
+    suspend fun applyStash(index: Int, drop: Boolean): String = withContext(Dispatchers.IO) {
+        runGitOperation { stashManager?.applyStash(index, drop) ?: "Error" }
+    }
+
+    suspend fun dropStash(index: Int): String = withContext(Dispatchers.IO) {
+        runGitOperation { stashManager?.dropStash(index) ?: "Error" }
+    }
+
+    suspend fun getStashList(): List<StashItem> = withContext(Dispatchers.IO) {
+        ensureOpen()
+        stashManager?.getStashList() ?: emptyList()
+    }
+    
     suspend fun getDashboardStats(): DashboardState = withContext(Dispatchers.IO) {
         try {
-            if (git == null) openRepo()
+            ensureOpen()
             val repo = git?.repository
             val branch = repo?.branch ?: "Unknown"
             val status = git?.status()?.call()
@@ -65,10 +117,10 @@ class GitManager(private val rootDir: File) {
                     val localHead = repo?.resolve("HEAD")
                     val remoteHead = repo?.resolve("refs/remotes/origin/$branch")
                     if (localHead != null) {
-                         if (remoteHead != null) {
-                            unpushedCount = git?.log()?.addRange(remoteHead, localHead)?.call()?.count() ?: 0
+                         unpushedCount = if (remoteHead != null) {
+                            git?.log()?.addRange(remoteHead, localHead)?.call()?.count() ?: 0
                          } else {
-                            unpushedCount = git?.log()?.call()?.count() ?: 0
+                            git?.log()?.call()?.count() ?: 0
                          }
                     }
                 } catch (_: Exception) { }
@@ -82,7 +134,7 @@ class GitManager(private val rootDir: File) {
     suspend fun getChangedFiles(): List<GitFile> = withContext(Dispatchers.IO) {
         val list = mutableListOf<GitFile>()
         try {
-            if (git == null) openRepo()
+            ensureOpen()
             val status = git?.status()?.call() ?: return@withContext emptyList()
             status.added.forEach { list.add(GitFile(it, ChangeType.ADDED)) }
             status.modified.forEach { list.add(GitFile(it, ChangeType.MODIFIED)) }
@@ -90,12 +142,35 @@ class GitManager(private val rootDir: File) {
             status.untracked.forEach { list.add(GitFile(it, ChangeType.UNTRACKED)) }
             status.missing.forEach { list.add(GitFile(it, ChangeType.DELETED)) }
             status.removed.forEach { list.add(GitFile(it, ChangeType.DELETED)) }
+            status.conflicting.forEach { list.add(GitFile(it, ChangeType.MODIFIED)) }
+            
             list.sortedBy { it.path }
         } catch (e: Exception) { emptyList() }
     }
+    
+    suspend fun getLastCommitMessage(): String = withContext(Dispatchers.IO) {
+        try {
+            ensureOpen()
+            git?.log()?.setMaxCount(1)?.call()?.firstOrNull()?.fullMessage ?: ""
+        } catch (e: Exception) { "" }
+    }
+
+    suspend fun readGitIgnore(): String = withContext(Dispatchers.IO) {
+        val f = File(rootDir, ".gitignore")
+        if (f.exists()) f.readText() else ""
+    }
+
+    suspend fun saveGitIgnore(content: String): String = withContext(Dispatchers.IO) {
+        try {
+            File(rootDir, ".gitignore").writeText(content)
+            "Saved .gitignore"
+        } catch (e: Exception) {
+            "Error saving .gitignore: ${e.message}"
+        }
+    }
 
     suspend fun addToStage(files: List<GitFile>) = withContext(Dispatchers.IO) {
-        if (git == null) openRepo()
+        ensureOpen()
         val addCommand = git?.add()
         val rmCommand = git?.rm()
         var hasAdds = false; var hasRms = false
@@ -116,10 +191,26 @@ class GitManager(private val rootDir: File) {
             if (amend) "Commit amended!" else "Committed!"
         }
     }
+    
+    suspend fun revertCommit(hash: String): String = withContext(Dispatchers.IO) {
+        runGitOperation {
+            val objId = git?.repository?.resolve(hash) ?: throw Exception("Commit not found")
+            git?.revert()?.include(objId)?.call()
+            "Reverted commit"
+        }
+    }
 
+    suspend fun cherryPickCommit(hash: String): String = withContext(Dispatchers.IO) {
+        runGitOperation {
+            val objId = git?.repository?.resolve(hash) ?: throw Exception("Commit not found")
+            val res = git?.cherryPick()?.include(objId)?.call()
+            if (res?.status == org.eclipse.jgit.api.CherryPickResult.CherryPickStatus.OK) "Cherry-picked!" else "Failed: ${res?.status}"
+        }
+    }
+    
     suspend fun getCommits(): List<CommitItem> = withContext(Dispatchers.IO) {
         try {
-            if (git == null) openRepo()
+            ensureOpen()
             val logs = git?.log()?.call()
             val commits = mutableListOf<CommitItem>()
             logs?.forEach { rev ->
@@ -129,24 +220,15 @@ class GitManager(private val rootDir: File) {
         } catch (e: Exception) { emptyList() }
     }
     
-    suspend fun getLastCommitMessage(): String = withContext(Dispatchers.IO) {
-        try {
-            if (git == null) openRepo()
-            git?.log()?.setMaxCount(1)?.call()?.firstOrNull()?.fullMessage ?: ""
-        } catch (e: Exception) { "" }
-    }
-
-    // --- Reset & Checkout ---
     suspend fun resetToCommit(hash: String, hard: Boolean): String = withContext(Dispatchers.IO) {
         runGitOperation {
-            val repo = git?.repository
-            val objId = repo?.resolve(hash) ?: throw Exception("Commit not found")
+            val objId = git?.repository?.resolve(hash) ?: throw Exception("Not found")
             val mode = if (hard) ResetCommand.ResetType.HARD else ResetCommand.ResetType.MIXED
             git?.reset()?.setMode(mode)?.setRef(objId.name)?.call()
-            if (hard) "Reset HARD to $hash" else "Reset MIXED to $hash"
+            if (hard) "Reset HARD" else "Reset MIXED"
         }
     }
-
+    
     suspend fun checkoutCommit(hash: String): String = withContext(Dispatchers.IO) {
         runGitOperation {
             git?.checkout()?.setName(hash)?.call()
@@ -154,138 +236,8 @@ class GitManager(private val rootDir: File) {
         }
     }
 
-    // --- Advanced Branching Operations ---
-
-    suspend fun getRichBranches(): List<BranchModel> = withContext(Dispatchers.IO) {
-        val list = mutableListOf<BranchModel>()
-        try {
-            if (git == null) openRepo()
-            val currentBranch = git?.repository?.fullBranch
-            val refs = git?.branchList()?.setListMode(ListBranchCommand.ListMode.ALL)?.call()
-            
-            refs?.forEach { ref ->
-                val name = ref.name
-                val shortName = Repository.shortenRefName(name)
-                val type = if (name.startsWith("refs/remotes/")) BranchType.REMOTE else BranchType.LOCAL
-                val isCurrent = (name == currentBranch)
-                list.add(BranchModel(shortName, name, type, isCurrent))
-            }
-            list.sortedWith(compareBy({ !it.isCurrent }, { it.type }, { it.name }))
-        } catch (e: Exception) { emptyList() }
-    }
-
-    suspend fun deleteBranch(branchName: String): String = withContext(Dispatchers.IO) {
-        runGitOperation {
-            val current = git?.repository?.branch
-            if (current == branchName) throw Exception("Cannot delete active branch!")
-            git?.branchDelete()?.setBranchNames(branchName)?.setForce(true)?.call()
-            "Deleted branch $branchName"
-        }
-    }
-
-    suspend fun checkoutBranch(branchName: String): String = withContext(Dispatchers.IO) {
-        runGitOperation {
-            if (git?.repository?.resolve("HEAD") == null) throw Exception("Repo empty. Commit first.")
-            
-            val isLocal = git?.branchList()?.call()?.any { it.name.endsWith(branchName) } == true
-            if (isLocal) {
-                git?.checkout()?.setName(branchName)?.call()
-            } else {
-                val remoteRefs = git?.branchList()?.setListMode(ListBranchCommand.ListMode.REMOTE)?.call()
-                val remoteRef = remoteRefs?.find { it.name.endsWith("/$branchName") }
-                if (remoteRef != null) {
-                    git?.checkout()?.setCreateBranch(true)?.setName(branchName)
-                        ?.setStartPoint("origin/$branchName")?.setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK)?.call()
-                } else {
-                    git?.checkout()?.setCreateBranch(true)?.setName(branchName)?.call()
-                }
-            }
-            "Switched to $branchName"
-        }
-    }
-    
-    suspend fun createBranch(branchName: String): String = withContext(Dispatchers.IO) {
-        runGitOperation {
-            if (git?.repository?.resolve("HEAD") == null) throw Exception("Repo empty. Commit first.")
-            git?.branchCreate()?.setName(branchName)?.call()
-            "Created branch $branchName"
-        }
-    }
-
-    // NEW: Merge
-    suspend fun mergeBranch(branchName: String): String = withContext(Dispatchers.IO) {
-        runGitOperation {
-            val repo = git?.repository
-            val ref = repo?.findRef(branchName) ?: throw Exception("Branch not found")
-            val result = git?.merge()?.include(ref)?.call()
-            if (result?.mergeStatus?.isSuccessful == true) "Merged $branchName successfully"
-            else "Merge failed: ${result?.mergeStatus}"
-        }
-    }
-
-    // NEW: Rebase
-    suspend fun rebaseBranch(branchName: String): String = withContext(Dispatchers.IO) {
-        runGitOperation {
-            // Usually requires clean working tree
-            val status = git?.status()?.call()
-            if (status?.hasUncommittedChanges() == true) throw Exception("Please commit changes before rebasing.")
-            
-            val repo = git?.repository
-            val ref = repo?.findRef(branchName) ?: throw Exception("Branch not found")
-            
-            // FIX: Pass ref.objectId instead of ref
-            val result = git?.rebase()?.setUpstream(ref.objectId)?.call()
-            
-            if (result?.status?.isSuccessful == true) "Rebased onto $branchName"
-            else "Rebase failed: ${result?.status}"
-        }
-    }
-
-    // NEW: Rename
-    suspend fun renameBranch(newName: String): String = withContext(Dispatchers.IO) {
-        runGitOperation {
-            git?.branchRename()?.setNewName(newName)?.call()
-            "Renamed to $newName"
-        }
-    }
-
-    // NEW: Fetch All (Update Remotes)
-    suspend fun fetchAll(token: String): String = withContext(Dispatchers.IO) {
-        runGitOperation {
-            val creds = UsernamePasswordCredentialsProvider(token, "")
-            git?.fetch()?.setCredentialsProvider(creds)?.setCheckFetchedObjects(true)?.call()
-            "Fetched all remote updates"
-        }
-    }
-
-    // NEW: Revert a specific commit (Create a new commit that undoes changes)
-    suspend fun revertCommit(hash: String): String = withContext(Dispatchers.IO) {
-        runGitOperation {
-            val repo = git?.repository
-            val objId = repo?.resolve(hash) ?: throw Exception("Commit not found")
-            val result = git?.revert()?.include(objId)?.call()
-            if (result != null) "Revert successful! New commit created." else "Revert failed."
-        }
-    }
-
-    // NEW: Cherry-Pick a specific commit (Apply changes from another branch/commit to current)
-    suspend fun cherryPickCommit(hash: String): String = withContext(Dispatchers.IO) {
-        runGitOperation {
-            val repo = git?.repository
-            val objId = repo?.resolve(hash) ?: throw Exception("Commit not found")
-            val result = git?.cherryPick()?.include(objId)?.call()
-            
-            if (result?.status == org.eclipse.jgit.api.CherryPickResult.CherryPickStatus.OK) {
-                "Cherry-pick successful!"
-            } else {
-                "Cherry-pick failed: ${result?.status}"
-            }
-        }
-    }
-    
-    // --- Remote & Sync ---
     suspend fun hasRemote(): Boolean = withContext(Dispatchers.IO) {
-        if (git == null) openRepo()
+        ensureOpen()
         !git?.repository?.config?.getString("remote", "origin", "url").isNullOrEmpty()
     }
 
@@ -299,29 +251,41 @@ class GitManager(private val rootDir: File) {
         }
     }
 
+    suspend fun fetchAll(token: String): String = withContext(Dispatchers.IO) {
+        runGitOperation {
+            val cmd = git?.fetch()?.setCheckFetchedObjects(true)
+            if (token.isNotEmpty()) cmd?.setCredentialsProvider(authManager.getCredentialsProvider(token))
+            cmd?.call()
+            "Fetched all"
+        }
+    }
+
     suspend fun push(token: String, force: Boolean = false): String = withContext(Dispatchers.IO) {
         runGitOperation {
-            val creds = UsernamePasswordCredentialsProvider(token, "")
-            git?.push()?.setCredentialsProvider(creds)?.setForce(force)?.call()
-            if (force) "Force Pushed!" else "Pushed successfully!"
+            val cmd = git?.push()?.setForce(force)
+            if (token.isNotEmpty()) cmd?.setCredentialsProvider(authManager.getCredentialsProvider(token))
+            cmd?.call()
+            if (force) "Force Pushed!" else "Pushed!"
         }
     }
 
     suspend fun pull(token: String): String = withContext(Dispatchers.IO) {
         runGitOperation {
-            val creds = UsernamePasswordCredentialsProvider(token, "")
-            git?.pull()?.setCredentialsProvider(creds)?.call()
-            "Pulled successfully!"
+            val cmd = git?.pull()
+            if (token.isNotEmpty()) cmd?.setCredentialsProvider(authManager.getCredentialsProvider(token))
+            cmd?.call()
+            "Pulled!"
         }
     }
 
     suspend fun linkAndRepair(token: String): String = withContext(Dispatchers.IO) {
         runGitOperation {
-            val creds = UsernamePasswordCredentialsProvider(token, "")
-            git?.fetch()?.setCredentialsProvider(creds)?.call()
+            val cmd = git?.fetch()
+            if (token.isNotEmpty()) cmd?.setCredentialsProvider(authManager.getCredentialsProvider(token))
+            cmd?.call()
             
-            val remotes = git?.branchList()?.setListMode(ListBranchCommand.ListMode.REMOTE)?.call()
-            val mainBranch = remotes?.find { it.name.contains("main") } ?: remotes?.find { it.name.contains("master") } ?: throw Exception("No remote main/master branch.")
+            val remotes = git?.branchList()?.setListMode(org.eclipse.jgit.api.ListBranchCommand.ListMode.REMOTE)?.call()
+            val mainBranch = remotes?.find { it.name.contains("main") } ?: remotes?.find { it.name.contains("master") } ?: throw Exception("No remote main found")
             val name = mainBranch.name.substringAfterLast("/")
             
             git?.branchCreate()?.setName(name)?.setStartPoint(mainBranch.name)?.setForce(true)?.call()
@@ -330,50 +294,39 @@ class GitManager(private val rootDir: File) {
             "Repaired & Linked to $name"
         }
     }
-
-    // --- .gitignore ---
-    suspend fun readGitIgnore(): String = withContext(Dispatchers.IO) {
-        val f = File(rootDir, ".gitignore")
-        if (f.exists()) f.readText() else ""
-    }
-
-    suspend fun saveGitIgnore(content: String): String = withContext(Dispatchers.IO) {
-        File(rootDir, ".gitignore").writeText(content)
-        "Saved .gitignore"
-    }
-
-    // --- Helpers ---
-    suspend fun getBranches(): List<String> = withContext(Dispatchers.IO) {
-        try {
-            if (git == null) openRepo()
-            val refs = git?.branchList()?.setListMode(ListBranchCommand.ListMode.ALL)?.call()
-            refs?.map { it.name.substringAfter("refs/heads/").substringAfter("refs/remotes/origin/") }?.distinct()?.sorted() ?: emptyList()
-        } catch (e: Exception) { emptyList() }
-    }
-
-    suspend fun getUnpushedCommits(): List<CommitItem> = withContext(Dispatchers.IO) {
-        emptyList() 
+    
+    private fun ensureOpen() {
+        if (git == null) {
+            if (isGitRepo()) {
+                 git = Git.open(rootDir)
+                 branchManager = GitBranchManager(git!!)
+                 stashManager = GitStashManager(git!!)
+            }
+        }
     }
 
     private inline fun runGitOperation(block: () -> String): String {
         return try {
-            if (git == null) {
-                if (isGitRepo()) git = Git.open(rootDir)
-                else return "Error: Not a Git repository"
-            }
+            ensureOpen()
+            if (git == null) return "Error: Not a Git repo"
             block()
         } catch (e: Exception) { e.message ?: "Unknown Error" }
     }
-
+    
+    suspend fun getBranches(): List<String> = withContext(Dispatchers.IO) {
+        ensureOpen()
+        branchManager?.getRichBranches()?.map { it.name } ?: emptyList()
+    }
+    
     companion object {
         suspend fun cloneRepo(url: String, parentDir: File, folderName: String, token: String): Pair<File?, String> = withContext(Dispatchers.IO) {
             val destDir = File(parentDir, folderName)
-            if (destDir.exists() && destDir.listFiles()?.isNotEmpty() == true) return@withContext Pair(null, "Error: Folder exists & not empty.")
+            if (destDir.exists() && destDir.listFiles()?.isNotEmpty() == true) return@withContext Pair(null, "Error: Folder exists.")
             try {
                 val cmd = Git.cloneRepository().setURI(url).setDirectory(destDir)
                 if (token.isNotEmpty()) cmd.setCredentialsProvider(UsernamePasswordCredentialsProvider(token, ""))
                 cmd.call()
-                Pair(destDir, "Cloned successfully!")
+                Pair(destDir, "Cloned!")
             } catch (e: Exception) {
                 if (destDir.exists()) destDir.deleteRecursively()
                 Pair(null, "Clone failed: ${e.message}")
