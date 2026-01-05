@@ -11,15 +11,11 @@ import androidx.activity.compose.setContent
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.android.git.data.GitManager
@@ -34,13 +30,16 @@ import java.io.File
 enum class AppScreen(val order: Int) {
     SELECTION(0),
     CLONE(1),
+    GENERAL_SETTINGS(1),
     DASHBOARD(2),
     CHANGES_LIST(3),
-    SETTINGS(3),
+    REPO_SETTINGS(3),
     LOG(3),
     IGNORE_EDITOR(3),
     BRANCH_MANAGER(3),
-    STASH(3)
+    STASH(3),
+    MERGE_CONFLICTS(3), // New
+    CONFLICT_RESOLVER(4) // New
 }
 
 class MainActivity : ComponentActivity() {
@@ -52,6 +51,9 @@ class MainActivity : ComponentActivity() {
                 var selectedRepoFile by remember { mutableStateOf<File?>(null) }
                 
                 var currentScreen by remember { mutableStateOf(AppScreen.SELECTION) }
+                
+                // For passing data to Conflict Resolver
+                var selectedConflictFile by remember { mutableStateOf("") }
                 
                 var activeGitManager by remember { mutableStateOf<GitManager?>(null) }
                 var dashboardState by remember { mutableStateOf<DashboardState>(DashboardState.Loading) }
@@ -137,8 +139,12 @@ class MainActivity : ComponentActivity() {
                                             val file = FileUtils.getFileFromUri(context, uri)
                                             if (file != null) openProject(file)
                                         },
-                                        onCloneRequest = { currentScreen = AppScreen.CLONE }
+                                        onCloneRequest = { currentScreen = AppScreen.CLONE },
+                                        onGeneralSettingsClick = { currentScreen = AppScreen.GENERAL_SETTINGS }
                                     )
+                                }
+                                AppScreen.GENERAL_SETTINGS -> {
+                                    GeneralSettingsScreen(onBack = { currentScreen = AppScreen.SELECTION })
                                 }
                                 AppScreen.CLONE -> {
                                     CloneScreen(
@@ -154,14 +160,18 @@ class MainActivity : ComponentActivity() {
                                             dashboardState = dashboardState,
                                             onRefresh = { scope.launch { dashboardState = activeGitManager!!.getDashboardStats() } },
                                             onViewChanges = { currentScreen = AppScreen.CHANGES_LIST },
-                                            onSettings = { currentScreen = AppScreen.SETTINGS },
+                                            onSettings = { currentScreen = AppScreen.REPO_SETTINGS },
                                             onViewLog = { currentScreen = AppScreen.LOG },
                                             onManageBranches = { currentScreen = AppScreen.BRANCH_MANAGER },
                                             onOpenStash = { currentScreen = AppScreen.STASH },
                                             onIgnoreEditor = { currentScreen = AppScreen.IGNORE_EDITOR },
                                             onCloseProject = { closeProject() }
+                                            // You'll need to update DashboardScreen later to add a button to open MERGE_CONFLICTS
                                         )
                                     } else LaunchedEffect(Unit) { currentScreen = AppScreen.SELECTION }
+                                }
+                                AppScreen.REPO_SETTINGS -> {
+                                    if (selectedRepoFile != null) RepoSettingsScreen(repoFile = selectedRepoFile!!, onBack = { currentScreen = AppScreen.DASHBOARD })
                                 }
                                 AppScreen.STASH -> {
                                     if (selectedRepoFile != null) {
@@ -182,14 +192,32 @@ class MainActivity : ComponentActivity() {
                                 AppScreen.CHANGES_LIST -> {
                                     if (selectedRepoFile != null) ChangesScreen(repoFile = selectedRepoFile!!, onBack = { scope.launch { if(activeGitManager != null) dashboardState = activeGitManager!!.getDashboardStats() }; currentScreen = AppScreen.DASHBOARD })
                                 }
-                                AppScreen.SETTINGS -> {
-                                    if (selectedRepoFile != null) SettingsScreen(repoFile = selectedRepoFile!!, onBack = { currentScreen = AppScreen.DASHBOARD })
-                                }
                                 AppScreen.LOG -> {
                                     if (selectedRepoFile != null) LogScreen(repoFile = selectedRepoFile!!, onBack = { currentScreen = AppScreen.DASHBOARD })
                                 }
                                 AppScreen.IGNORE_EDITOR -> {
                                     if (selectedRepoFile != null) IgnoreEditorScreen(repoFile = selectedRepoFile!!, onBack = { currentScreen = AppScreen.DASHBOARD })
+                                }
+                                AppScreen.MERGE_CONFLICTS -> {
+                                    if (selectedRepoFile != null) {
+                                        MergeConflictScreen(
+                                            repoFile = selectedRepoFile!!,
+                                            onBack = { currentScreen = AppScreen.DASHBOARD },
+                                            onResolveFile = { path ->
+                                                selectedConflictFile = path
+                                                currentScreen = AppScreen.CONFLICT_RESOLVER
+                                            }
+                                        )
+                                    }
+                                }
+                                AppScreen.CONFLICT_RESOLVER -> {
+                                    if (selectedRepoFile != null && selectedConflictFile.isNotEmpty()) {
+                                        ConflictResolverScreen(
+                                            repoFile = selectedRepoFile!!,
+                                            filePath = selectedConflictFile,
+                                            onBack = { currentScreen = AppScreen.MERGE_CONFLICTS }
+                                        )
+                                    }
                                 }
                             }
                         }
