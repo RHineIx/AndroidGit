@@ -2,6 +2,7 @@ package com.android.git.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,20 +14,22 @@ import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.git.data.GitManager
@@ -49,7 +52,6 @@ fun DashboardScreen(
     onManageBranches: () -> Unit,
     onOpenStash: () -> Unit,
     onIgnoreEditor: () -> Unit,
-    onOpenMergeConflicts: () -> Unit,
     onCloseProject: () -> Unit
 ) {
     val context = LocalContext.current
@@ -62,12 +64,16 @@ fun DashboardScreen(
     var showExitDialog by remember { mutableStateOf(false) }
     var showForcePushDialog by remember { mutableStateOf(false) }
     
+    // Menu State
+    var showMenu by remember { mutableStateOf(false) }
+    
     var isForcePushChecked by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
 
     BackHandler(enabled = true) { showExitDialog = true }
 
+    // --- Dialogs ---
     if (showExitDialog) {
         AlertDialog(
             onDismissRequest = { showExitDialog = false },
@@ -116,6 +122,7 @@ fun DashboardScreen(
                 .background(MaterialTheme.colorScheme.background)
                 .padding(16.dp)
         ) {
+            // --- HEADER ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -125,7 +132,47 @@ fun DashboardScreen(
                     Text(repoFile.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Text(repoFile.absolutePath, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                IconButton(onClick = onSettings) { Icon(Icons.Default.Settings, "Settings") }
+                Row {
+                    IconButton(onClick = onSettings) { Icon(Icons.Default.Settings, "Settings") }
+                    
+                    // --- Standard Material 3 Menu (Fixed) ---
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, "More Options")
+                        }
+                        
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false },
+                            offset = DpOffset(0.dp, 8.dp),
+                            // Fix: Apply styling via Modifier instead of direct params
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(12.dp))
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(12.dp))
+                        ) {
+                            // Optional Header
+                            Text(
+                                text = "Tools",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                            )
+                            
+                            DropdownMenuItem(
+                                text = { Text("Stash Shelf") },
+                                leadingIcon = { Icon(Icons.Default.Archive, null) },
+                                onClick = { showMenu = false; onOpenStash() }
+                            )
+                            
+                            DropdownMenuItem(
+                                text = { Text("Edit .gitignore") },
+                                leadingIcon = { Icon(Icons.Default.Code, null) },
+                                onClick = { showMenu = false; onIgnoreEditor() }
+                            )
+                        }
+                    }
+                }
             }
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -143,32 +190,6 @@ fun DashboardScreen(
                 }
                 is DashboardState.Success -> {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        
-                        if (dashboardState.conflictCount > 0) {
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                                modifier = Modifier.fillMaxWidth().clickable { onOpenMergeConflicts() }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(16.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.onErrorContainer)
-                                    Spacer(Modifier.width(12.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text("Merge Conflicts Detected!", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
-                                        Text("${dashboardState.conflictCount} files need resolution.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
-                                    }
-                                    Button(
-                                        onClick = onOpenMergeConflicts,
-                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                                    ) {
-                                        Text("Resolve")
-                                    }
-                                }
-                            }
-                        }
-
                         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer), modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(12.dp)) {
                                 Text("Quick Actions", fontWeight = FontWeight.Bold)
@@ -179,18 +200,7 @@ fun DashboardScreen(
                                             scope.launch {
                                                 val token = prefsManager.getToken()
                                                 if (token.isEmpty()) { statusMessage = "Set Token!"; statusType = SnackbarType.ERROR }
-                                                else { 
-                                                    isLoading = true
-                                                    val res = gitManager.pull(token)
-                                                    statusMessage = res
-                                                    if (res.contains("CONFLICTS")) {
-                                                        statusType = SnackbarType.ERROR
-                                                    } else {
-                                                        statusType = SnackbarType.SUCCESS
-                                                    }
-                                                    isLoading = false
-                                                    onRefresh() 
-                                                }
+                                                else { isLoading = true; statusMessage = gitManager.pull(token); isLoading = false; onRefresh() }
                                             }
                                         },
                                         modifier = Modifier.weight(1f),
@@ -222,22 +232,12 @@ fun DashboardScreen(
                         }
                         
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            DashboardCard(
-                                title = "Branch",
-                                value = dashboardState.branch,
-                                icon = Icons.Default.CallSplit,
-                                color = Color(0xFF1F6FEB),
-                                modifier = Modifier.weight(1f),
-                                onClick = onManageBranches
-                            )
-                            DashboardCard(
-                                title = "Changes",
-                                value = "${dashboardState.changes} Files",
-                                icon = Icons.Default.Refresh,
-                                color = Color(0xFF238636),
-                                modifier = Modifier.weight(1f),
-                                onClick = onViewChanges
-                            )
+                            Card(modifier = Modifier.weight(1f).clickable { onManageBranches() }, colors = CardDefaults.cardColors(containerColor = Color(0xFF1F6FEB).copy(alpha = 0.2f))) {
+                                Column(Modifier.padding(16.dp)) { Icon(Icons.Default.CallSplit, null, tint = Color(0xFF1F6FEB)); Text("Branch", fontSize = 12.sp); Text(dashboardState.branch, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 1) }
+                            }
+                            Card(modifier = Modifier.weight(1f).clickable { onViewChanges() }, colors = CardDefaults.cardColors(containerColor = Color(0xFF238636).copy(alpha = 0.2f))) {
+                                Column(Modifier.padding(16.dp)) { Icon(Icons.Default.Refresh, null, tint = Color(0xFF238636)); Text("Changes", fontSize = 12.sp); Text("${dashboardState.changes} Files", fontWeight = FontWeight.Bold, fontSize = 18.sp) }
+                            }
                         }
                         
                         Card(modifier = Modifier.fillMaxWidth().clickable { onViewLog() }, colors = CardDefaults.cardColors(containerColor = Color(0xFF8957E5).copy(alpha = 0.2f))) {
@@ -249,31 +249,6 @@ fun DashboardScreen(
                                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Upload, null, tint = MaterialTheme.colorScheme.onSecondaryContainer); Spacer(Modifier.width(12.dp)); Text("${dashboardState.unpushedCount} Unpushed Commits", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer) }
                             }
                         }
-
-                        Spacer(Modifier.height(8.dp))
-                        Text("Repository Tools", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                        
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            ToolCard(
-                                title = "Stash Shelf",
-                                icon = Icons.Default.Archive,
-                                modifier = Modifier.weight(1f),
-                                onClick = onOpenStash
-                            )
-                            ToolCard(
-                                title = ".gitignore",
-                                icon = Icons.Default.Code,
-                                modifier = Modifier.weight(1f),
-                                onClick = onIgnoreEditor
-                            )
-                        }
-                        
-                        ToolCard(
-                            title = "Conflict Manager",
-                            icon = Icons.Default.WarningAmber,
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = onOpenMergeConflicts
-                        )
                     }
                 }
                 is DashboardState.Error -> Text("Error: ${dashboardState.message}", color = MaterialTheme.colorScheme.error)
@@ -282,49 +257,4 @@ fun DashboardScreen(
         Box(Modifier.fillMaxSize().padding(bottom = 32.dp), contentAlignment = Alignment.BottomCenter) { AppSnackbar(statusMessage, statusType) { statusMessage = "" } }
     }
 }
-
-@Composable
-fun DashboardCard(
-    title: String,
-    value: String,
-    icon: ImageVector,
-    color: Color,
-    modifier: Modifier,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = modifier.clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.2f))
-    ) {
-        Column(Modifier.padding(16.dp)) {
-            Icon(icon, null, tint = color)
-            Spacer(Modifier.height(4.dp))
-            Text(title, fontSize = 12.sp)
-            Text(value, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 1)
-        }
-    }
-}
-
-@Composable
-fun ToolCard(
-    title: String,
-    icon: ImageVector,
-    modifier: Modifier,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = modifier.clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.width(12.dp))
-            Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-        }
-    }
-}
-
 fun Modifier.scale(scale: Float): Modifier = this.then(Modifier.graphicsLayer(scaleX = scale, scaleY = scale))

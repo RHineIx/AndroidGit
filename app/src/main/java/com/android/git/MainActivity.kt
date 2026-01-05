@@ -30,16 +30,14 @@ import java.io.File
 enum class AppScreen(val order: Int) {
     SELECTION(0),
     CLONE(1),
-    GENERAL_SETTINGS(1),
+    GENERAL_SETTINGS(1), // New screen
     DASHBOARD(2),
     CHANGES_LIST(3),
-    REPO_SETTINGS(3),
+    REPO_SETTINGS(3),    // Renamed from SETTINGS
     LOG(3),
     IGNORE_EDITOR(3),
     BRANCH_MANAGER(3),
-    STASH(3),
-    MERGE_CONFLICTS(3),
-    CONFLICT_RESOLVER(4)
+    STASH(3)
 }
 
 class MainActivity : ComponentActivity() {
@@ -51,7 +49,6 @@ class MainActivity : ComponentActivity() {
                 var selectedRepoFile by remember { mutableStateOf<File?>(null) }
                 
                 var currentScreen by remember { mutableStateOf(AppScreen.SELECTION) }
-                var selectedConflictFile by remember { mutableStateOf("") }
                 
                 var activeGitManager by remember { mutableStateOf<GitManager?>(null) }
                 var dashboardState by remember { mutableStateOf<DashboardState>(DashboardState.Loading) }
@@ -163,7 +160,6 @@ class MainActivity : ComponentActivity() {
                                             onManageBranches = { currentScreen = AppScreen.BRANCH_MANAGER },
                                             onOpenStash = { currentScreen = AppScreen.STASH },
                                             onIgnoreEditor = { currentScreen = AppScreen.IGNORE_EDITOR },
-                                            onOpenMergeConflicts = { currentScreen = AppScreen.MERGE_CONFLICTS },
                                             onCloseProject = { closeProject() }
                                         )
                                     } else LaunchedEffect(Unit) { currentScreen = AppScreen.SELECTION }
@@ -195,27 +191,6 @@ class MainActivity : ComponentActivity() {
                                 }
                                 AppScreen.IGNORE_EDITOR -> {
                                     if (selectedRepoFile != null) IgnoreEditorScreen(repoFile = selectedRepoFile!!, onBack = { currentScreen = AppScreen.DASHBOARD })
-                                }
-                                AppScreen.MERGE_CONFLICTS -> {
-                                    if (selectedRepoFile != null) {
-                                        MergeConflictScreen(
-                                            repoFile = selectedRepoFile!!,
-                                            onBack = { currentScreen = AppScreen.DASHBOARD },
-                                            onResolveFile = { path ->
-                                                selectedConflictFile = path
-                                                currentScreen = AppScreen.CONFLICT_RESOLVER
-                                            }
-                                        )
-                                    }
-                                }
-                                AppScreen.CONFLICT_RESOLVER -> {
-                                    if (selectedRepoFile != null && selectedConflictFile.isNotEmpty()) {
-                                        ConflictResolverScreen(
-                                            repoFile = selectedRepoFile!!,
-                                            filePath = selectedConflictFile,
-                                            onBack = { currentScreen = AppScreen.MERGE_CONFLICTS }
-                                        )
-                                    }
                                 }
                             }
                         }

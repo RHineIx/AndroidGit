@@ -7,10 +7,10 @@ import com.android.git.model.DashboardState
 import com.android.git.model.GitFile
 import com.android.git.model.StashItem
 import kotlinx.coroutines.Dispatchers
+import org.eclipse.jgit.transport.RemoteRefUpdate
 import kotlinx.coroutines.withContext
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.ResetCommand
-import org.eclipse.jgit.transport.RemoteRefUpdate
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
 import java.io.File
 
@@ -116,16 +116,7 @@ class GitManager(private val rootDir: File) {
             val repo = git?.repository
             val branch = repo?.branch ?: "Unknown"
             val status = git?.status()?.call()
-            
-            // Calculate conflicts explicitly
-            val conflictCount = status?.conflicting?.size ?: 0
-            
-            // Note: 'conflicting' is also usually included in 'modified', so we might want to subtract it or just count raw changes
-            val changedCount = (status?.untracked?.size ?: 0) + 
-                               (status?.modified?.size ?: 0) + 
-                               (status?.added?.size ?: 0) + 
-                               (status?.missing?.size ?: 0) + 
-                               (status?.removed?.size ?: 0)
+            val changedCount = (status?.untracked?.size ?: 0) + (status?.modified?.size ?: 0) + (status?.added?.size ?: 0) + (status?.missing?.size ?: 0) + (status?.removed?.size ?: 0)
             
             var unpushedCount = 0
             if (hasRemote()) {
@@ -141,48 +132,10 @@ class GitManager(private val rootDir: File) {
                     }
                 } catch (_: Exception) { }
             }
-            // Pass conflictCount to state
-            DashboardState.Success(branch, changedCount, unpushedCount, conflictCount)
+            DashboardState.Success(branch, changedCount, unpushedCount)
         } catch (e: Exception) {
             DashboardState.Error(e.message ?: "Unknown Error")
         }
-    }
-    
-    // --- Conflict Management ---
-    
-    suspend fun getConflictingFiles(): List<String> = withContext(Dispatchers.IO) {
-        ensureOpen()
-        val status = git?.status()?.call()
-        status?.conflicting?.toList() ?: emptyList()
-    }
-
-    suspend fun resolveUsingOurs(filePath: String): String = withContext(Dispatchers.IO) {
-        runGitOperation {
-            git?.checkout()?.addPath(filePath)?.setStage(org.eclipse.jgit.api.CheckoutCommand.Stage.OURS)?.call()
-            git?.add()?.addFilepattern(filePath)?.call()
-            "Resolved using OURS: $filePath"
-        }
-    }
-
-    suspend fun resolveUsingTheirs(filePath: String): String = withContext(Dispatchers.IO) {
-        runGitOperation {
-            git?.checkout()?.addPath(filePath)?.setStage(org.eclipse.jgit.api.CheckoutCommand.Stage.THEIRS)?.call()
-            git?.add()?.addFilepattern(filePath)?.call()
-            "Resolved using THEIRS: $filePath"
-        }
-    }
-
-    suspend fun markResolved(filePath: String): String = withContext(Dispatchers.IO) {
-        runGitOperation {
-            git?.add()?.addFilepattern(filePath)?.call()
-            "Marked as resolved: $filePath"
-        }
-    }
-    
-    suspend fun readFileContent(filePath: String): String = withContext(Dispatchers.IO) {
-        try {
-            File(rootDir, filePath).readText()
-        } catch (e: Exception) { "Error reading file." }
     }
 
     suspend fun getChangedFiles(): List<GitFile> = withContext(Dispatchers.IO) {
@@ -318,6 +271,7 @@ class GitManager(private val rootDir: File) {
         !git?.repository?.config?.getString("remote", "origin", "url").isNullOrEmpty()
     }
     
+    // NEW: Get Actual URL
     suspend fun getRemoteUrl(): String = withContext(Dispatchers.IO) {
         ensureOpen()
         git?.repository?.config?.getString("remote", "origin", "url") ?: ""
@@ -358,10 +312,12 @@ class GitManager(private val rootDir: File) {
                     when (update.status) {
                         RemoteRefUpdate.Status.OK -> resultMessage += "Success: ${update.srcRef} -> ${update.remoteName}\n"
                         RemoteRefUpdate.Status.UP_TO_DATE -> resultMessage += "Up to date.\n"
+                        
                         RemoteRefUpdate.Status.REJECTED_NONFASTFORWARD -> {
                             hasError = true
                             resultMessage += "Rejected: Non-fast-forward (Pull first!)\n"
                         }
+                        
                         RemoteRefUpdate.Status.REJECTED_NODELETE -> {
                             hasError = true
                             resultMessage += "Rejected: No Delete.\n"
@@ -387,12 +343,8 @@ class GitManager(private val rootDir: File) {
         runGitOperation {
             val cmd = git?.pull()
             if (token.isNotEmpty()) cmd?.setCredentialsProvider(authManager.getCredentialsProvider(token))
-            val res = cmd?.call()
-            if (res?.mergeResult?.mergeStatus == org.eclipse.jgit.api.MergeResult.MergeStatus.CONFLICTING) {
-                "CONFLICTS DETECTED! Use Conflict Manager."
-            } else {
-                "Pulled successfully!"
-            }
+            cmd?.call()
+            "Pulled!"
         }
     }
 

@@ -30,8 +30,7 @@ sealed class DashboardState {
     data class Success(
         val branch: String, 
         val changes: Int, 
-        val unpushedCount: Int,
-        val conflictCount: Int // New Field
+        val unpushedCount: Int
     ) : DashboardState()
     data class Error(val message: String) : DashboardState()
     object NotInitialized : DashboardState()
