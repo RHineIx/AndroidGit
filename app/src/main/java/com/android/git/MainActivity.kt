@@ -38,8 +38,8 @@ enum class AppScreen(val order: Int) {
     IGNORE_EDITOR(3),
     BRANCH_MANAGER(3),
     STASH(3),
-    MERGE_CONFLICTS(3), // New
-    CONFLICT_RESOLVER(4) // New
+    MERGE_CONFLICTS(3),
+    CONFLICT_RESOLVER(4)
 }
 
 class MainActivity : ComponentActivity() {
@@ -51,8 +51,6 @@ class MainActivity : ComponentActivity() {
                 var selectedRepoFile by remember { mutableStateOf<File?>(null) }
                 
                 var currentScreen by remember { mutableStateOf(AppScreen.SELECTION) }
-                
-                // For passing data to Conflict Resolver
                 var selectedConflictFile by remember { mutableStateOf("") }
                 
                 var activeGitManager by remember { mutableStateOf<GitManager?>(null) }
@@ -165,8 +163,8 @@ class MainActivity : ComponentActivity() {
                                             onManageBranches = { currentScreen = AppScreen.BRANCH_MANAGER },
                                             onOpenStash = { currentScreen = AppScreen.STASH },
                                             onIgnoreEditor = { currentScreen = AppScreen.IGNORE_EDITOR },
+                                            onOpenMergeConflicts = { currentScreen = AppScreen.MERGE_CONFLICTS },
                                             onCloseProject = { closeProject() }
-                                            // You'll need to update DashboardScreen later to add a button to open MERGE_CONFLICTS
                                         )
                                     } else LaunchedEffect(Unit) { currentScreen = AppScreen.SELECTION }
                                 }

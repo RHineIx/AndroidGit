@@ -116,7 +116,16 @@ class GitManager(private val rootDir: File) {
             val repo = git?.repository
             val branch = repo?.branch ?: "Unknown"
             val status = git?.status()?.call()
-            val changedCount = (status?.untracked?.size ?: 0) + (status?.modified?.size ?: 0) + (status?.added?.size ?: 0) + (status?.missing?.size ?: 0) + (status?.removed?.size ?: 0) + (status?.conflicting?.size ?: 0)
+            
+            // Calculate conflicts explicitly
+            val conflictCount = status?.conflicting?.size ?: 0
+            
+            // Note: 'conflicting' is also usually included in 'modified', so we might want to subtract it or just count raw changes
+            val changedCount = (status?.untracked?.size ?: 0) + 
+                               (status?.modified?.size ?: 0) + 
+                               (status?.added?.size ?: 0) + 
+                               (status?.missing?.size ?: 0) + 
+                               (status?.removed?.size ?: 0)
             
             var unpushedCount = 0
             if (hasRemote()) {
@@ -132,13 +141,14 @@ class GitManager(private val rootDir: File) {
                     }
                 } catch (_: Exception) { }
             }
-            DashboardState.Success(branch, changedCount, unpushedCount)
+            // Pass conflictCount to state
+            DashboardState.Success(branch, changedCount, unpushedCount, conflictCount)
         } catch (e: Exception) {
             DashboardState.Error(e.message ?: "Unknown Error")
         }
     }
     
-    // --- Conflict Management (NEW) ---
+    // --- Conflict Management ---
     
     suspend fun getConflictingFiles(): List<String> = withContext(Dispatchers.IO) {
         ensureOpen()
@@ -146,25 +156,22 @@ class GitManager(private val rootDir: File) {
         status?.conflicting?.toList() ?: emptyList()
     }
 
-    // Resolve by choosing "Ours" (Current Branch)
     suspend fun resolveUsingOurs(filePath: String): String = withContext(Dispatchers.IO) {
         runGitOperation {
             git?.checkout()?.addPath(filePath)?.setStage(org.eclipse.jgit.api.CheckoutCommand.Stage.OURS)?.call()
-            git?.add()?.addFilepattern(filePath)?.call() // Mark as resolved
+            git?.add()?.addFilepattern(filePath)?.call()
             "Resolved using OURS: $filePath"
         }
     }
 
-    // Resolve by choosing "Theirs" (Incoming Branch)
     suspend fun resolveUsingTheirs(filePath: String): String = withContext(Dispatchers.IO) {
         runGitOperation {
             git?.checkout()?.addPath(filePath)?.setStage(org.eclipse.jgit.api.CheckoutCommand.Stage.THEIRS)?.call()
-            git?.add()?.addFilepattern(filePath)?.call() // Mark as resolved
+            git?.add()?.addFilepattern(filePath)?.call()
             "Resolved using THEIRS: $filePath"
         }
     }
 
-    // Mark manually resolved (if user edited file manually)
     suspend fun markResolved(filePath: String): String = withContext(Dispatchers.IO) {
         runGitOperation {
             git?.add()?.addFilepattern(filePath)?.call()
@@ -172,7 +179,6 @@ class GitManager(private val rootDir: File) {
         }
     }
     
-    // Read file content for preview (basic)
     suspend fun readFileContent(filePath: String): String = withContext(Dispatchers.IO) {
         try {
             File(rootDir, filePath).readText()
@@ -190,7 +196,7 @@ class GitManager(private val rootDir: File) {
             status.untracked.forEach { list.add(GitFile(it, ChangeType.UNTRACKED)) }
             status.missing.forEach { list.add(GitFile(it, ChangeType.DELETED)) }
             status.removed.forEach { list.add(GitFile(it, ChangeType.DELETED)) }
-            status.conflicting.forEach { list.add(GitFile(it, ChangeType.MODIFIED)) } // Treat conflict as modified in general list
+            status.conflicting.forEach { list.add(GitFile(it, ChangeType.MODIFIED)) }
             
             list.sortedBy { it.path }
         } catch (e: Exception) { emptyList() }
