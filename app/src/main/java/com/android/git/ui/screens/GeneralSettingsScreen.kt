@@ -2,7 +2,9 @@ package com.android.git.ui.screens
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -13,7 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +23,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.android.git.R
 import com.android.git.data.PreferencesManager
@@ -53,44 +55,96 @@ fun GeneralSettingsScreen(
     ) { padding ->
         Column(
             modifier = Modifier
-                .padding(padding)
+                .padding(top = padding.calculateTopPadding())
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // --- SECTION 1: App Preferences ---
-            SettingsSection(title = "App Preferences") {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Auto-open last project", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
-                        Text(
-                            "Reopen repository on launch.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                SettingsSection(title = "App Preferences") {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Auto-open last project", 
+                                fontWeight = FontWeight.SemiBold, 
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                "Reopen repository on launch.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = autoOpen,
+                            onCheckedChange = { 
+                                autoOpen = it
+                                prefs.setAutoOpenEnabled(it)
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.background,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary
+                            )
                         )
                     }
-                    Switch(
-                        checked = autoOpen,
-                        onCheckedChange = { 
-                            autoOpen = it
-                            prefs.setAutoOpenEnabled(it)
-                        },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.background,
-                            checkedTrackColor = MaterialTheme.colorScheme.primary
-                        )
-                    )
                 }
+
+                DeveloperSection(context)
+                
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // --- SECTION 2: Developer Info ---
-            DeveloperSection(context)
+            AppVersionFooter(
+                context = context,
+                bottomPadding = padding.calculateBottomPadding()
+            )
         }
+    }
+}
+
+@Composable
+fun AppVersionFooter(context: Context, bottomPadding: androidx.compose.ui.unit.Dp) {
+    val packageInfo = remember {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
+            } else {
+                context.packageManager.getPackageInfo(context.packageName, 0)
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    val versionName = packageInfo?.versionName ?: "Unknown"
+    val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        packageInfo?.longVersionCode ?: 0
+    } else {
+        packageInfo?.versionCode ?: 0
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = bottomPadding)
+            .padding(bottom = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Version $versionName ($versionCode)",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            textAlign = TextAlign.Center
+        )
     }
 }
 
@@ -114,7 +168,7 @@ fun DeveloperSection(context: Context) {
             )
             
             Spacer(Modifier.height(12.dp))
-            
+             
             Surface(
                 modifier = Modifier.size(80.dp),
                 shape = CircleShape,

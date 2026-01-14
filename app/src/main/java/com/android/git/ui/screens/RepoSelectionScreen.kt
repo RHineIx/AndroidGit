@@ -13,12 +13,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Android
-import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.History
@@ -35,9 +34,11 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.android.git.R
 import com.android.git.data.PreferencesManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -49,7 +50,7 @@ import java.io.File
 fun RepoSelectionScreen(
     onRepoSelected: (Uri) -> Unit,
     onCloneRequest: () -> Unit,
-    onGeneralSettingsClick: () -> Unit // Callback added
+    onGeneralSettingsClick: () -> Unit
 ) {
     val context = LocalContext.current
     val prefs = remember { PreferencesManager(context) }
@@ -79,8 +80,14 @@ fun RepoSelectionScreen(
             CenterAlignedTopAppBar(
                 title = { 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Terminal, null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(8.dp))
+                        Icon(
+                            painter = painterResource(id = R.drawable.icon),
+                            contentDescription = null,
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(38.dp)
+                        )
+                        
+                        Spacer(Modifier.width(4.dp))
                         Text("AndroidGit", fontWeight = FontWeight.Bold)
                     }
                 },
@@ -381,6 +388,3 @@ fun ProjectIcon(projectDir: File, isMissing: Boolean) {
         }
     }
 }
-
-val androidx.compose.material.icons.Icons.Filled.Download: ImageVector
-    get() = androidx.compose.material.icons.Icons.Filled.CloudDownload

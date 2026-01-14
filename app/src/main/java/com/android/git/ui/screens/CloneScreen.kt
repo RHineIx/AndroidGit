@@ -1,8 +1,6 @@
 package com.android.git.ui.screens
 
-import android.os.Environment
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -22,29 +20,30 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.android.git.data.GitManager
 import com.android.git.data.PreferencesManager
-import kotlinx.coroutines.launch
+import com.android.git.ui.viewmodel.MainViewModel
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CloneScreen(
+    viewModel: MainViewModel, // Inject ViewModel instead of direct logic
     onBack: () -> Unit,
     onCloneSuccess: (File) -> Unit
 ) {
     val context = LocalContext.current
     val prefsManager = remember { PreferencesManager(context) }
-    val scope = rememberCoroutineScope()
     
-    // Form State
+    // Local Form State
     var repoUrl by remember { mutableStateOf("") }
     var folderName by remember { mutableStateOf("") }
     var token by remember { mutableStateOf(prefsManager.getToken()) }
     var saveToken by remember { mutableStateOf(token.isNotEmpty()) }
     
-    var isLoading by remember { mutableStateOf(false) }
-    var statusMessage by remember { mutableStateOf("") }
+    // Observables from ViewModel
+    val isLoading = viewModel.isLoading
+    val statusMessage = viewModel.statusMessage
+    val statusType = viewModel.statusType
 
     // Auto-fill folder name from URL
     LaunchedEffect(repoUrl) {
@@ -55,6 +54,7 @@ fun CloneScreen(
     }
 
     BackHandler(enabled = !isLoading) {
+        viewModel.clearStatus()
         onBack()
     }
 
@@ -156,25 +156,11 @@ fun CloneScreen(
             // Clone Button
             Button(
                 onClick = {
-                    scope.launch {
-                        if (saveToken && token.isNotEmpty()) prefsManager.saveToken(token)
-                        
-                        isLoading = true
-                        statusMessage = "Cloning..."
-                        
-                        // Default Clone Path: Root of Internal Storage
-                        val parentDir = Environment.getExternalStorageDirectory()
-                        
-                        val result = GitManager.cloneRepo(repoUrl, parentDir, folderName, token)
-                        
-                        if (result.first != null) {
-                            statusMessage = "Success!"
-                            onCloneSuccess(result.first!!)
-                        } else {
-                            statusMessage = result.second
-                            isLoading = false
-                        }
+                    if (saveToken && token.isNotEmpty()) {
+                        prefsManager.saveToken(token)
                     }
+                    // Delegate to ViewModel
+                    viewModel.cloneRepository(repoUrl, folderName, token, onCloneSuccess)
                 },
                 enabled = repoUrl.isNotEmpty() && folderName.isNotEmpty() && !isLoading,
                 modifier = Modifier.fillMaxWidth().height(56.dp)
@@ -194,7 +180,7 @@ fun CloneScreen(
                 Spacer(Modifier.height(24.dp))
                 Text(
                     text = statusMessage,
-                    color = if (statusMessage.contains("Success")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    color = if (statusType == com.android.git.ui.components.SnackbarType.ERROR) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
             }

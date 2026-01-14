@@ -3,9 +3,7 @@ package com.android.git.ui.screens
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,10 +15,10 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,61 +27,55 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.android.git.data.GitManager
 import com.android.git.model.ChangeType
 import com.android.git.model.GitFile
-import kotlinx.coroutines.launch
-import java.io.File
+import com.android.git.ui.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChangesScreen(
-    repoFile: File,
-    onBack: () -> Unit
+    viewModel: MainViewModel,
+    onBack: () -> Unit,
+    onViewDiff: (String) -> Unit // NEW Callback
 ) {
-    val gitManager = remember { GitManager(repoFile) }
-    val scope = rememberCoroutineScope()
-    
-    var files by remember { mutableStateOf<List<GitFile>>(emptyList()) }
+    // Observing ViewModel State
+    val files = viewModel.changedFiles
+    val isLoading = viewModel.isLoading
+    val statusMessage = viewModel.statusMessage
+
+    // Local UI State
     var selectedFiles by remember { mutableStateOf<Set<String>>(emptySet()) }
     var commitMessage by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(true) }
-    var statusMessage by remember { mutableStateOf("") }
-    
-    // Amend Logic
     var isAmend by remember { mutableStateOf(false) }
 
-    // Selection Logic
+    // Selection Logic Helpers
     var showFilterMenu by remember { mutableStateOf(false) }
     var showExtensionDialog by remember { mutableStateOf(false) }
 
-    BackHandler(enabled = true) {
-        onBack()
-    }
+    BackHandler(enabled = !isLoading) { onBack() }
 
-    fun loadFiles() {
-        scope.launch {
-            isLoading = true
-            files = gitManager.getChangedFiles()
-            // Auto select all initially, but if refreshing, maybe keep selection? 
-            // For now reset to all for convenience
+    // Initial Load & Auto-Select
+    LaunchedEffect(Unit) {
+        viewModel.loadChangedFiles()
+    }
+    
+    // Auto-select all files when loaded first time
+    LaunchedEffect(files) {
+        if (selectedFiles.isEmpty() && files.isNotEmpty()) {
             selectedFiles = files.map { it.path }.toSet()
-            isLoading = false
         }
     }
 
-    LaunchedEffect(repoFile) {
-        loadFiles()
-    }
-
-    // Amend Toggle Logic
+    // Amend Logic: Load last message
     LaunchedEffect(isAmend) {
         if (isAmend) {
-            val lastMsg = gitManager.getLastCommitMessage()
-            if (lastMsg.isNotEmpty()) commitMessage = lastMsg
+            viewModel.getLastCommitMessage { msg ->
+                if (msg.isNotEmpty()) commitMessage = msg
+            }
         }
     }
 
+    // Filter Dialog
     if (showExtensionDialog) {
         val extensions = files.map { it.path.substringAfterLast('.', "") }.filter { it.isNotEmpty() }.distinct()
         
@@ -126,7 +118,7 @@ fun ChangesScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = onBack, enabled = !isLoading) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -172,9 +164,7 @@ fun ChangesScreen(
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         },
         bottomBar = {
@@ -190,7 +180,7 @@ fun ChangesScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(bottom = 8.dp)
                 ) {
-                    Checkbox(checked = isAmend, onCheckedChange = { isAmend = it })
+                    Checkbox(checked = isAmend, onCheckedChange = { isAmend = it }, enabled = !isLoading)
                     Text("Amend last commit")
                 }
 
@@ -199,33 +189,33 @@ fun ChangesScreen(
                     onValueChange = { commitMessage = it },
                     label = { Text(if(isAmend) "Amend Message" else "Commit Message") },
                     modifier = Modifier.fillMaxWidth(),
-                    maxLines = 3
+                    maxLines = 3,
+                    enabled = !isLoading
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = {
-                        scope.launch {
-                            isLoading = true
-                            val filesToStage = files.filter { selectedFiles.contains(it.path) }
-                            gitManager.addToStage(filesToStage)
-                            val result = gitManager.commit(commitMessage, isAmend)
-                            statusMessage = result
-                            commitMessage = ""
-                            isAmend = false
-                            loadFiles()
-                        }
+                        viewModel.commitChanges(commitMessage, isAmend, selectedFiles)
+                        commitMessage = ""
+                        isAmend = false
                     },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = (selectedFiles.isNotEmpty() || isAmend) && commitMessage.isNotBlank() && !isLoading
                 ) {
-                    Icon(Icons.Default.Check, null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (isAmend) "Amend Commit" else "Commit Changes")
+                    if (isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Committing...")
+                    } else {
+                        Icon(Icons.Default.Check, null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(if (isAmend) "Amend Commit" else "Commit Changes")
+                    }
                 }
             }
         }
     ) { padding ->
-        if (isLoading) {
+        if (isLoading && files.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
@@ -248,12 +238,10 @@ fun ChangesScreen(
                             file = file,
                             isSelected = isSelected,
                             onToggle = {
-                                selectedFiles = if (isSelected) {
-                                    selectedFiles - file.path
-                                } else {
-                                    selectedFiles + file.path
-                                }
-                            }
+                                selectedFiles = if (isSelected) selectedFiles - file.path else selectedFiles + file.path
+                            },
+                            // NEW: Pass click to view diff
+                            onViewDiff = { onViewDiff(file.path) }
                         )
                     }
                 }
@@ -279,7 +267,8 @@ fun ChangesScreen(
 fun FileChangeItem(
     file: GitFile,
     isSelected: Boolean,
-    onToggle: () -> Unit
+    onToggle: () -> Unit,
+    onViewDiff: () -> Unit // NEW Callback
 ) {
     Card(
         colors = CardDefaults.cardColors(
@@ -288,7 +277,7 @@ fun FileChangeItem(
         ),
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onToggle() }
+            .clickable { onToggle() } // Main click selects/deselects
             .animateContentSize()
     ) {
         Row(
@@ -306,7 +295,7 @@ fun FileChangeItem(
             
             Spacer(modifier = Modifier.width(12.dp))
             
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = file.path,
                     style = MaterialTheme.typography.bodyMedium,
@@ -317,6 +306,15 @@ fun FileChangeItem(
                     text = getFriendlyStatusName(file.type),
                     style = MaterialTheme.typography.labelSmall,
                     color = getStatusColor(file.type)
+                )
+            }
+
+            // NEW: View Diff Button
+            IconButton(onClick = onViewDiff) {
+                Icon(
+                    imageVector = Icons.Default.Visibility,
+                    contentDescription = "View Diff",
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -342,7 +340,7 @@ fun StatusIcon(type: ChangeType) {
         ChangeType.UNTRACKED -> Icons.Default.Add
         ChangeType.MISSING -> Icons.Default.Delete
     }
-    
+
     val color = getStatusColor(type)
 
     Surface(

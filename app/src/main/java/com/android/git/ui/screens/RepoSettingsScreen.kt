@@ -19,7 +19,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -32,17 +31,15 @@ import com.android.git.data.PreferencesManager
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.components.SnackbarType
 import kotlinx.coroutines.launch
-import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RepoSettingsScreen(
-    repoFile: File,
+    gitManager: GitManager, // Passed from ViewModel
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val prefs = remember { PreferencesManager(context) }
-    val gitManager = remember { GitManager(repoFile) }
     val scope = rememberCoroutineScope()
 
     // Config State
@@ -59,7 +56,7 @@ fun RepoSettingsScreen(
 
     BackHandler(enabled = true) { onBack() }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(gitManager) {
         val currentUrl = gitManager.getRemoteUrl()
         if (currentUrl.isNotEmpty()) {
             remoteUrl = currentUrl

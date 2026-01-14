@@ -7,11 +7,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
@@ -19,16 +16,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.git.data.GitManager
 import kotlinx.coroutines.launch
-import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConflictResolverScreen(
-    repoFile: File,
+    gitManager: GitManager, // Passed from ViewModel
     filePath: String,
     onBack: () -> Unit // Returns to list
 ) {
-    val gitManager = remember { GitManager(repoFile) }
     val scope = rememberCoroutineScope()
     
     var fileContent by remember { mutableStateOf("Loading preview...") }
@@ -59,7 +54,7 @@ fun ConflictResolverScreen(
         },
         bottomBar = {
             Column(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
-                Divider()
+                HorizontalDivider()
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -101,7 +96,7 @@ fun ConflictResolverScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    "Review the file below. Choose 'Keep Ours' (Current Branch) or 'Take Theirs' (Incoming).",
+                    "Review the file below.\nChoose 'Keep Ours' (Current Branch) or 'Take Theirs' (Incoming).",
                     modifier = Modifier.padding(16.dp),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSecondaryContainer

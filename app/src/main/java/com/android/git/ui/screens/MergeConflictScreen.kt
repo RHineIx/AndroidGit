@@ -1,6 +1,7 @@
 package com.android.git.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,16 +20,14 @@ import com.android.git.data.GitManager
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.components.SnackbarType
 import kotlinx.coroutines.launch
-import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MergeConflictScreen(
-    repoFile: File,
+    gitManager: GitManager, // Passed from ViewModel
     onBack: () -> Unit,
     onResolveFile: (String) -> Unit // Navigate to detail resolver
 ) {
-    val gitManager = remember { GitManager(repoFile) }
     val scope = rememberCoroutineScope()
 
     var conflicts by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -37,7 +36,7 @@ fun MergeConflictScreen(
     
     BackHandler(enabled = true) { onBack() }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(gitManager) {
         scope.launch {
             isLoading = true
             conflicts = gitManager.getConflictingFiles()
@@ -112,7 +111,7 @@ fun ConflictItem(filePath: String, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
         shape = RoundedCornerShape(8.dp)
     ) {
         Row(

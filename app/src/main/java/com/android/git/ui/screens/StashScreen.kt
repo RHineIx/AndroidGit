@@ -1,7 +1,6 @@
 package com.android.git.ui.screens
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,7 +10,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,15 +23,13 @@ import com.android.git.model.StashItem
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.components.SnackbarType
 import kotlinx.coroutines.launch
-import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StashScreen(
-    repoFile: File,
+    gitManager: GitManager, // Passed from ViewModel
     onBack: () -> Unit
 ) {
-    val gitManager = remember { GitManager(repoFile) }
     val scope = rememberCoroutineScope()
 
     var stashes by remember { mutableStateOf<List<StashItem>>(emptyList()) }
@@ -58,7 +54,7 @@ fun StashScreen(
         }
     }
 
-    LaunchedEffect(repoFile) { loadStashes() }
+    LaunchedEffect(gitManager) { loadStashes() }
 
     if (showCreateDialog) {
         AlertDialog(
@@ -165,7 +161,7 @@ fun StashScreen(
                                     }
                                 }
                             )
-                            Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         }
                     }
                 }

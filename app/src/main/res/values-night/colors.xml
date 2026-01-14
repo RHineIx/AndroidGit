@@ -10,5 +10,5 @@
 
     <color name="android_green">#FF43C674</color>
     
-    <color name="icon_adaptive">#FF000000</color>
+    <color name="icon_adaptive">#FFFFFFFF</color>
 </resources>

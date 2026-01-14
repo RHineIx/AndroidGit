@@ -2,7 +2,6 @@ package com.android.git.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,7 +12,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CallMerge
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Computer
@@ -26,35 +24,27 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.android.git.data.GitManager
-import com.android.git.data.PreferencesManager
 import com.android.git.model.BranchModel
 import com.android.git.model.BranchType
 import com.android.git.ui.components.AppSnackbar
-import kotlinx.coroutines.launch
-import java.io.File
+import com.android.git.ui.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun BranchManagerScreen(
-    repoFile: File,
+    viewModel: MainViewModel, // Injected ViewModel
     onBack: () -> Unit
 ) {
-    val context = LocalContext.current
-    val gitManager = remember { GitManager(repoFile) }
-    val prefsManager = remember { PreferencesManager(context) }
-    val scope = rememberCoroutineScope()
+    // Observing ViewModel State
+    val branches = viewModel.branchList
+    val isLoading = viewModel.isLoading
+    val statusMessage = viewModel.statusMessage
+    val statusType = viewModel.statusType
 
-    var branches by remember { mutableStateOf<List<BranchModel>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var statusMessage by remember { mutableStateOf("") }
-
-    // UI States
+    // Local UI State
     var selectedTab by remember { mutableStateOf(0) } // 0 = Local, 1 = Remote
     var searchQuery by remember { mutableStateOf("") }
     
@@ -62,23 +52,14 @@ fun BranchManagerScreen(
     var showCreateDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var newBranchName by remember { mutableStateOf("") }
-    
-    // Action State
     var branchToRename by remember { mutableStateOf<BranchModel?>(null) }
 
-    BackHandler(enabled = true) { onBack() }
-
-    fun loadBranches() {
-        scope.launch {
-            isLoading = true
-            branches = gitManager.getRichBranches()
-            isLoading = false
-        }
+    // Initial Load
+    LaunchedEffect(Unit) {
+        viewModel.loadBranches()
     }
 
-    LaunchedEffect(repoFile) {
-        loadBranches()
-    }
+    BackHandler(enabled = !isLoading) { onBack() }
 
     // --- Dialogs ---
     if (showCreateDialog) {
@@ -97,13 +78,9 @@ fun BranchManagerScreen(
             confirmButton = {
                 Button(onClick = {
                     if (newBranchName.isNotEmpty()) {
-                        scope.launch {
-                            statusMessage = gitManager.createBranch(newBranchName)
-                            gitManager.checkoutBranch(newBranchName)
-                            showCreateDialog = false
-                            newBranchName = ""
-                            loadBranches()
-                        }
+                        viewModel.createBranch(newBranchName)
+                        showCreateDialog = false
+                        newBranchName = ""
                     }
                 }) { Text("Create") }
             },
@@ -131,13 +108,10 @@ fun BranchManagerScreen(
             confirmButton = {
                 Button(onClick = {
                     if (newBranchName.isNotEmpty()) {
-                        scope.launch {
-                            statusMessage = gitManager.renameBranch(newBranchName)
-                            showRenameDialog = false
-                            branchToRename = null
-                            newBranchName = ""
-                            loadBranches()
-                        }
+                        viewModel.renameBranch(newBranchName)
+                        showRenameDialog = false
+                        branchToRename = null
+                        newBranchName = ""
                     }
                 }) { Text("Rename") }
             },
@@ -150,22 +124,13 @@ fun BranchManagerScreen(
             TopAppBar(
                 title = { Text("Manage Branches") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+                    IconButton(onClick = onBack, enabled = !isLoading) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
                 },
                 actions = {
-                    IconButton(onClick = { 
-                        scope.launch {
-                            val token = prefsManager.getToken()
-                            if(token.isNotEmpty()) {
-                                isLoading = true
-                                statusMessage = gitManager.fetchAll(token)
-                                loadBranches()
-                                isLoading = false
-                            } else {
-                                statusMessage = "Set Token in Settings first!"
-                            }
-                        }
-                    }) {
+                    IconButton(
+                        onClick = { viewModel.fetchAll() },
+                        enabled = !isLoading
+                    ) {
                         Icon(Icons.Default.CloudDownload, "Fetch All")
                     }
                 },
@@ -173,7 +138,7 @@ fun BranchManagerScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showCreateDialog = true }) {
+            FloatingActionButton(onClick = { showCreateDialog = true }, containerColor = MaterialTheme.colorScheme.primary) {
                 Icon(Icons.Default.Add, contentDescription = "New Branch")
             }
         }
@@ -233,30 +198,10 @@ fun BranchManagerScreen(
                                 branch = branch,
                                 onAction = { action ->
                                     when (action) {
-                                        BranchAction.CHECKOUT -> {
-                                            scope.launch {
-                                                statusMessage = gitManager.checkoutBranch(branch.name)
-                                                loadBranches()
-                                            }
-                                        }
-                                        BranchAction.DELETE -> {
-                                            scope.launch {
-                                                statusMessage = gitManager.deleteBranch(branch.name)
-                                                loadBranches()
-                                            }
-                                        }
-                                        BranchAction.MERGE -> {
-                                            scope.launch {
-                                                statusMessage = gitManager.mergeBranch(branch.fullPath)
-                                                loadBranches() // Refresh if changed
-                                            }
-                                        }
-                                        BranchAction.REBASE -> {
-                                            scope.launch {
-                                                statusMessage = gitManager.rebaseBranch(branch.fullPath)
-                                                loadBranches()
-                                            }
-                                        }
+                                        BranchAction.CHECKOUT -> viewModel.checkoutBranch(branch.name)
+                                        BranchAction.DELETE -> viewModel.deleteBranch(branch.name)
+                                        BranchAction.MERGE -> viewModel.mergeBranch(branch.fullPath)
+                                        BranchAction.REBASE -> viewModel.rebaseBranch(branch.fullPath)
                                         BranchAction.RENAME -> {
                                             branchToRename = branch
                                             showRenameDialog = true
@@ -271,7 +216,7 @@ fun BranchManagerScreen(
                 
                 // Snackbar Area
                 Box(modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)) {
-                    AppSnackbar(message = statusMessage, onDismiss = { statusMessage = "" })
+                    AppSnackbar(message = statusMessage, type = statusType, onDismiss = { viewModel.clearStatus() })
                 }
             }
         }
@@ -291,11 +236,10 @@ fun BranchItemRich(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { showMenu = true } // Open menu on click
+            .clickable { showMenu = true }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Icon
         Icon(
             imageVector = if (isRemote) Icons.Default.Cloud else Icons.Default.Computer,
             contentDescription = null,
@@ -320,7 +264,6 @@ fun BranchItemRich(
             }
         }
 
-        // Context Menu Indicator
         IconButton(onClick = { showMenu = true }) {
             Icon(Icons.Default.MoreVert, "Actions", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -330,7 +273,6 @@ fun BranchItemRich(
             expanded = showMenu,
             onDismissRequest = { showMenu = false }
         ) {
-            // Header
             DropdownMenuItem(
                 text = { Text(branch.name, fontWeight = FontWeight.Bold) },
                 onClick = { },
@@ -338,7 +280,6 @@ fun BranchItemRich(
             )
             HorizontalDivider()
 
-            // 1. Checkout (Switch)
             if (!branch.isCurrent) {
                 DropdownMenuItem(
                     text = { Text("Checkout") },
@@ -347,7 +288,6 @@ fun BranchItemRich(
                 )
             }
 
-            // 2. Merge (Merge INTO current)
             if (!branch.isCurrent) {
                 DropdownMenuItem(
                     text = { Text("Merge into Current") },
@@ -356,7 +296,6 @@ fun BranchItemRich(
                 )
             }
 
-            // 3. Rebase (Rebase current ONTO this)
             if (!branch.isCurrent) {
                 DropdownMenuItem(
                     text = { Text("Rebase Current onto this") },
@@ -365,7 +304,6 @@ fun BranchItemRich(
                 )
             }
 
-            // 4. Rename (Local Only & Current)
             if (!isRemote && branch.isCurrent) {
                 DropdownMenuItem(
                     text = { Text("Rename") },
@@ -374,8 +312,7 @@ fun BranchItemRich(
                 )
             }
 
-            // 5. Delete (Not current)
-            if (!branch.isCurrent && !isRemote) { // Safety: Don't delete remote via simple menu yet
+            if (!branch.isCurrent && !isRemote) { 
                 HorizontalDivider()
                 DropdownMenuItem(
                     text = { Text("Delete", color = MaterialTheme.colorScheme.error) },

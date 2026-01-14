@@ -1,10 +1,12 @@
 [versions]
-agp = "8.13.0"
-kotlin = "2.1.0"
-coreKtx = "1.17.0"
-lifecycleRuntimeKtx = "2.9.2"
-activityCompose = "1.11.0"
-composeBom = "2025.10.01"
+# Stable versions compatible with SDK 34 & AGP 8.2.1
+agp = "8.2.1"
+kotlin = "1.9.24" # FIX: تم التحديث لحل مشكلة التوافق
+coreKtx = "1.12.0"
+lifecycleRuntimeKtx = "2.7.0"
+activityCompose = "1.8.2"
+composeBom = "2024.09.00" # Material 3 v1.3.0
+navigationCompose = "2.7.7"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -14,7 +16,9 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycleRuntimeKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+# Compose BOM
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
@@ -22,3 +26,10 @@ androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+# Navigation
+androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+# Icons
+androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
+# Git Libraries
+jgit = { group = "org.eclipse.jgit", name = "org.eclipse.jgit", version = "6.8.0.202311291450-r" }
+slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version = "1.7.36" }

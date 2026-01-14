@@ -18,15 +18,13 @@ import androidx.compose.ui.unit.sp
 import com.android.git.data.GitManager
 import com.android.git.data.GitTemplates
 import kotlinx.coroutines.launch
-import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IgnoreEditorScreen(
-    repoFile: File,
+    gitManager: GitManager, // Passed from ViewModel
     onBack: () -> Unit
 ) {
-    val gitManager = remember { GitManager(repoFile) }
     val scope = rememberCoroutineScope()
     
     var content by remember { mutableStateOf("") }
@@ -40,7 +38,7 @@ fun IgnoreEditorScreen(
         onBack()
     }
 
-    LaunchedEffect(repoFile) {
+    LaunchedEffect(gitManager) {
         content = gitManager.readGitIgnore()
         isLoading = false
     }
