@@ -2,7 +2,6 @@ package com.android.git.data
 
 object GitTemplates {
 
-    // قائمة القوالب (الاسم -> المحتوى)
     val templates = mapOf(
         "Android / Kotlin" to """
             # Android

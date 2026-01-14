@@ -1,12 +1,21 @@
 [versions]
-# Stable versions compatible with SDK 34 & AGP 8.2.1
-agp = "8.2.1"
-kotlin = "1.9.24" # FIX: تم التحديث لحل مشكلة التوافق
-coreKtx = "1.12.0"
-lifecycleRuntimeKtx = "2.7.0"
-activityCompose = "1.8.2"
-composeBom = "2024.09.00" # Material 3 v1.3.0
-navigationCompose = "2.7.7"
+# Core Build System
+agp = "8.7.3"                 # Updated from 8.2.1
+kotlin = "2.1.0"              # Updated from 1.9.24 (Kotlin 2.0 compiler is faster)
+
+# AndroidX & Compose
+coreKtx = "1.15.0"            # Updated from 1.12.0
+lifecycleRuntimeKtx = "2.8.7" # Updated from 2.7.0
+activityCompose = "1.9.3"     # Updated from 1.8.2
+composeBom = "2024.12.01"     # Updated from 2024.09.00
+navigationCompose = "2.8.5"   # Updated from 2.7.7
+
+# Git Engine
+# JGit 7.x requires Java 17, which your project already uses.
+jgit = "7.1.0.202411261347-r" # Updated from 6.8.0
+
+# Logging
+slf4j-simple = "2.0.16"       # Updated from 1.7.36
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -14,22 +23,27 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 
 [libraries]
+# Android Core
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycleRuntimeKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
-# Compose BOM
+
+# Compose
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
-androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
-androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
+
 # Navigation
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
-# Icons
-androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
-# Git Libraries
-jgit = { group = "org.eclipse.jgit", name = "org.eclipse.jgit", version = "6.8.0.202311291450-r" }
-slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version = "1.7.36" }
+
+# Tools & Debug
+androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+
+# External
+jgit = { group = "org.eclipse.jgit", name = "org.eclipse.jgit", version.ref = "jgit" }
+slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j-simple" }

@@ -56,7 +56,7 @@ fun AppNavGraph(
         composable(Screen.Selection.route) {
             RepoSelectionScreen(
                 onRepoSelected = { uri ->
-                    FileUtils.getFileFromUri(context, uri)?.let { viewModel.openProject(it) }
+                    FileUtils.getFileFromUri(uri)?.let { viewModel.openProject(it) }
                 },
                 onCloneRequest = { navController.navigate(Screen.Clone.route) },
                 onGeneralSettingsClick = { navController.navigate(Screen.GeneralSettings.route) }

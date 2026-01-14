@@ -1,6 +1,5 @@
 package com.android.git.utils
 
-import android.content.Context
 import android.net.Uri
 import android.os.Environment
 import android.provider.DocumentsContract
@@ -12,7 +11,7 @@ object FileUtils {
      * Robust URI parsing for High-Performance / All-Files-Access scenarios.
      * Optimized for Internal Storage (primary) and standard paths.
      */
-    fun getFileFromUri(context: Context, uri: Uri): File? {
+    fun getFileFromUri(uri: Uri): File? {
         try {
             // 1. Direct File Scheme
             if (uri.scheme == "file") {

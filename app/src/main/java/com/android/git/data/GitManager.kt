@@ -116,7 +116,6 @@ class GitManager(private val rootDir: File) : Closeable {
                 Pair(count, repo.branch ?: "Unknown")
             }
 
-            // 2. Unpushed Commits (Read-Only, JGit allows concurrent object database access)
             var unpushedCount = 0
             if (hasRemoteInternal()) {
                 runCatching {

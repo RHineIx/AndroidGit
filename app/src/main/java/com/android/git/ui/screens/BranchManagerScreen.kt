@@ -9,8 +9,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.CallMerge
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CallMerge
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudDownload
@@ -32,99 +32,51 @@ import com.android.git.model.BranchType
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.viewmodel.MainViewModel
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BranchManagerScreen(
-    viewModel: MainViewModel, // Injected ViewModel
+    viewModel: MainViewModel,
     onBack: () -> Unit
 ) {
-    // Observing ViewModel State
     val branches = viewModel.branchList
     val isLoading = viewModel.isLoading
     val statusMessage = viewModel.statusMessage
     val statusType = viewModel.statusType
 
-    // Local UI State
-    var selectedTab by remember { mutableStateOf(0) } // 0 = Local, 1 = Remote
+    // [Fix] Use mutableIntStateOf for primitive integer state
+    var selectedTab by remember { mutableIntStateOf(0) }
     var searchQuery by remember { mutableStateOf("") }
-    
-    // Dialogs
+
+    // Dialog State
     var showCreateDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
-    var newBranchName by remember { mutableStateOf("") }
     var branchToRename by remember { mutableStateOf<BranchModel?>(null) }
 
-    // Initial Load
     LaunchedEffect(Unit) {
         viewModel.loadBranches()
     }
 
     BackHandler(enabled = !isLoading) { onBack() }
 
-    // --- Dialogs ---
-    if (showCreateDialog) {
-        AlertDialog(
-            onDismissRequest = { showCreateDialog = false },
-            title = { Text("Create New Branch") },
-            text = {
-                OutlinedTextField(
-                    value = newBranchName,
-                    onValueChange = { newBranchName = it },
-                    label = { Text("Branch Name") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            confirmButton = {
-                Button(onClick = {
-                    if (newBranchName.isNotEmpty()) {
-                        viewModel.createBranch(newBranchName)
-                        showCreateDialog = false
-                        newBranchName = ""
-                    }
-                }) { Text("Create") }
-            },
-            dismissButton = { TextButton(onClick = { showCreateDialog = false }) { Text("Cancel") } }
-        )
-    }
-
-    if (showRenameDialog && branchToRename != null) {
-        AlertDialog(
-            onDismissRequest = { showRenameDialog = false },
-            title = { Text("Rename Branch") },
-            text = {
-                Column {
-                    Text("Renaming: ${branchToRename!!.name}")
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = newBranchName,
-                        onValueChange = { newBranchName = it },
-                        label = { Text("New Name") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                Button(onClick = {
-                    if (newBranchName.isNotEmpty()) {
-                        viewModel.renameBranch(newBranchName)
-                        showRenameDialog = false
-                        branchToRename = null
-                        newBranchName = ""
-                    }
-                }) { Text("Rename") }
-            },
-            dismissButton = { TextButton(onClick = { showRenameDialog = false }) { Text("Cancel") } }
-        )
-    }
+    // [Refactor] Extracted Dialog Logic to reduce complexity of main screen
+    BranchDialogs(
+        showCreateDialog = showCreateDialog,
+        showRenameDialog = showRenameDialog,
+        branchToRename = branchToRename,
+        onDismissCreate = { showCreateDialog = false },
+        onDismissRename = { showRenameDialog = false; branchToRename = null },
+        onCreate = { name -> viewModel.createBranch(name) },
+        onRename = { name -> viewModel.renameBranch(name) }
+    )
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Manage Branches") },
                 navigationIcon = {
-                    IconButton(onClick = onBack, enabled = !isLoading) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+                    IconButton(onClick = onBack, enabled = !isLoading) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
                 },
                 actions = {
                     IconButton(
@@ -143,80 +95,170 @@ fun BranchManagerScreen(
             }
         }
     ) { padding ->
-        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            
-            // 1. Search Bar
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                placeholder = { Text("Search branches...") },
-                leadingIcon = { Icon(Icons.Default.Search, null) },
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true
+        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
+
+            // [Refactor] Moved list and filter logic to separate composable
+            BranchListContent(
+                branches = branches,
+                searchQuery = searchQuery,
+                selectedTab = selectedTab,
+                isLoading = isLoading,
+                onSearchChange = { searchQuery = it },
+                onTabChange = { selectedTab = it },
+                onAction = { action, branch ->
+                    when (action) {
+                        BranchAction.CHECKOUT -> viewModel.checkoutBranch(branch.name)
+                        BranchAction.DELETE -> viewModel.deleteBranch(branch.name)
+                        BranchAction.MERGE -> viewModel.mergeBranch(branch.fullPath)
+                        BranchAction.REBASE -> viewModel.rebaseBranch(branch.fullPath)
+                        BranchAction.RENAME -> {
+                            branchToRename = branch
+                            showRenameDialog = true
+                        }
+                    }
+                }
             )
 
-            // 2. Tabs (Local / Remote)
-            TabRow(selectedTabIndex = selectedTab) {
-                Tab(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    text = { Text("Local") },
-                    icon = { Icon(Icons.Default.Computer, null) }
-                )
-                Tab(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    text = { Text("Remote") },
-                    icon = { Icon(Icons.Default.Cloud, null) }
+            Box(modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)) {
+                AppSnackbar(message = statusMessage, type = statusType, onDismiss = { viewModel.clearStatus() })
+            }
+        }
+    }
+}
+
+@Composable
+private fun BranchDialogs(
+    showCreateDialog: Boolean,
+    showRenameDialog: Boolean,
+    branchToRename: BranchModel?,
+    onDismissCreate: () -> Unit,
+    onDismissRename: () -> Unit,
+    onCreate: (String) -> Unit,
+    onRename: (String) -> Unit
+) {
+    if (showCreateDialog) {
+        InputBranchDialog(
+            title = "Create New Branch",
+            confirmText = "Create",
+            onDismiss = onDismissCreate,
+            onConfirm = onCreate
+        )
+    }
+
+    if (showRenameDialog && branchToRename != null) {
+        InputBranchDialog(
+            title = "Rename Branch",
+            textPrefix = "Renaming: ${branchToRename.name}",
+            confirmText = "Rename",
+            onDismiss = onDismissRename,
+            onConfirm = onRename
+        )
+    }
+}
+
+@Composable
+private fun InputBranchDialog(
+    title: String,
+    textPrefix: String? = null,
+    confirmText: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var textValue by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column {
+                if (textPrefix != null) {
+                    Text(textPrefix)
+                    Spacer(Modifier.height(8.dp))
+                }
+                OutlinedTextField(
+                    value = textValue,
+                    onValueChange = { textValue = it },
+                    label = { Text("Branch Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
+        },
+        confirmButton = {
+            Button(onClick = {
+                if (textValue.isNotEmpty()) {
+                    onConfirm(textValue)
+                    onDismiss()
+                    textValue = ""
+                }
+            }) { Text(confirmText) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
 
-            // 3. List
-            Box(modifier = Modifier.weight(1f)) {
-                if (isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                } else {
-                    val targetType = if (selectedTab == 0) BranchType.LOCAL else BranchType.REMOTE
-                    val filteredBranches = branches.filter { 
-                        it.type == targetType && it.name.contains(searchQuery, ignoreCase = true) 
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun BranchListContent(
+    branches: List<BranchModel>,
+    searchQuery: String,
+    selectedTab: Int,
+    isLoading: Boolean,
+    onSearchChange: (String) -> Unit,
+    onTabChange: (Int) -> Unit,
+    onAction: (BranchAction, BranchModel) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = onSearchChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            placeholder = { Text("Search branches...") },
+            leadingIcon = { Icon(Icons.Default.Search, null) },
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true
+        )
+
+        TabRow(selectedTabIndex = selectedTab) {
+            Tab(
+                selected = selectedTab == 0,
+                onClick = { onTabChange(0) },
+                text = { Text("Local") },
+                icon = { Icon(Icons.Default.Computer, null) }
+            )
+            Tab(
+                selected = selectedTab == 1,
+                onClick = { onTabChange(1) },
+                text = { Text("Remote") },
+                icon = { Icon(Icons.Default.Cloud, null) }
+            )
+        }
+
+        Box(modifier = Modifier.weight(1f)) {
+            if (isLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else {
+                val targetType = if (selectedTab == 0) BranchType.LOCAL else BranchType.REMOTE
+                val filteredBranches = branches.filter {
+                    it.type == targetType && it.name.contains(searchQuery, ignoreCase = true)
+                }
+
+                if (filteredBranches.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("No branches found", color = MaterialTheme.colorScheme.secondary)
                     }
-
+                } else {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        if (filteredBranches.isEmpty()) {
-                            item {
-                                Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                                    Text("No branches found", color = MaterialTheme.colorScheme.secondary)
-                                }
-                            }
-                        }
-                        
                         items(filteredBranches) { branch ->
                             BranchItemRich(
                                 branch = branch,
-                                onAction = { action ->
-                                    when (action) {
-                                        BranchAction.CHECKOUT -> viewModel.checkoutBranch(branch.name)
-                                        BranchAction.DELETE -> viewModel.deleteBranch(branch.name)
-                                        BranchAction.MERGE -> viewModel.mergeBranch(branch.fullPath)
-                                        BranchAction.REBASE -> viewModel.rebaseBranch(branch.fullPath)
-                                        BranchAction.RENAME -> {
-                                            branchToRename = branch
-                                            showRenameDialog = true
-                                        }
-                                    }
-                                }
+                                onAction = { action -> onAction(action, branch) }
                             )
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                         }
                     }
-                }
-                
-                // Snackbar Area
-                Box(modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)) {
-                    AppSnackbar(message = statusMessage, type = statusType, onDismiss = { viewModel.clearStatus() })
                 }
             }
         }
@@ -245,9 +287,9 @@ fun BranchItemRich(
             contentDescription = null,
             tint = if (branch.isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
         )
-        
+
         Spacer(modifier = Modifier.width(16.dp))
-        
+
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = branch.name,
@@ -268,58 +310,70 @@ fun BranchItemRich(
             Icon(Icons.Default.MoreVert, "Actions", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
-        // --- Context Menu ---
-        DropdownMenu(
+        // [Refactor] Extracted menu logic to reduce Cognitive Complexity
+        BranchActionMenu(
             expanded = showMenu,
-            onDismissRequest = { showMenu = false }
-        ) {
+            branch = branch,
+            isRemote = isRemote,
+            onDismiss = { showMenu = false },
+            onAction = onAction
+        )
+    }
+}
+
+@Composable
+private fun BranchActionMenu(
+    expanded: Boolean,
+    branch: BranchModel,
+    isRemote: Boolean,
+    onDismiss: () -> Unit,
+    onAction: (BranchAction) -> Unit
+) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss
+    ) {
+        DropdownMenuItem(
+            text = { Text(branch.name, fontWeight = FontWeight.Bold) },
+            onClick = { },
+            enabled = false
+        )
+        HorizontalDivider()
+
+        if (!branch.isCurrent) {
             DropdownMenuItem(
-                text = { Text(branch.name, fontWeight = FontWeight.Bold) },
-                onClick = { },
-                enabled = false
+                text = { Text("Checkout") },
+                leadingIcon = { Icon(Icons.Default.Check, null) },
+                onClick = { onDismiss(); onAction(BranchAction.CHECKOUT) }
             )
+            DropdownMenuItem(
+                text = { Text("Merge into Current") },
+                // [Fix] Use AutoMirrored version for CallMerge
+                leadingIcon = { Icon(Icons.AutoMirrored.Filled.CallMerge, null) },
+                onClick = { onDismiss(); onAction(BranchAction.MERGE) }
+            )
+            DropdownMenuItem(
+                text = { Text("Rebase Current onto this") },
+                leadingIcon = { Icon(Icons.Default.SyncAlt, null) },
+                onClick = { onDismiss(); onAction(BranchAction.REBASE) }
+            )
+        }
+
+        if (!isRemote && branch.isCurrent) {
+            DropdownMenuItem(
+                text = { Text("Rename") },
+                leadingIcon = { Icon(Icons.Default.Edit, null) },
+                onClick = { onDismiss(); onAction(BranchAction.RENAME) }
+            )
+        }
+
+        if (!branch.isCurrent && !isRemote) {
             HorizontalDivider()
-
-            if (!branch.isCurrent) {
-                DropdownMenuItem(
-                    text = { Text("Checkout") },
-                    leadingIcon = { Icon(Icons.Default.Check, null) },
-                    onClick = { showMenu = false; onAction(BranchAction.CHECKOUT) }
-                )
-            }
-
-            if (!branch.isCurrent) {
-                DropdownMenuItem(
-                    text = { Text("Merge into Current") },
-                    leadingIcon = { Icon(Icons.Default.CallMerge, null) },
-                    onClick = { showMenu = false; onAction(BranchAction.MERGE) }
-                )
-            }
-
-            if (!branch.isCurrent) {
-                DropdownMenuItem(
-                    text = { Text("Rebase Current onto this") },
-                    leadingIcon = { Icon(Icons.Default.SyncAlt, null) },
-                    onClick = { showMenu = false; onAction(BranchAction.REBASE) }
-                )
-            }
-
-            if (!isRemote && branch.isCurrent) {
-                DropdownMenuItem(
-                    text = { Text("Rename") },
-                    leadingIcon = { Icon(Icons.Default.Edit, null) },
-                    onClick = { showMenu = false; onAction(BranchAction.RENAME) }
-                )
-            }
-
-            if (!branch.isCurrent && !isRemote) { 
-                HorizontalDivider()
-                DropdownMenuItem(
-                    text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
-                    leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
-                    onClick = { showMenu = false; onAction(BranchAction.DELETE) }
-                )
-            }
+            DropdownMenuItem(
+                text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
+                onClick = { onDismiss(); onAction(BranchAction.DELETE) }
+            )
         }
     }
 }

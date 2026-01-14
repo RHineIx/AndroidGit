@@ -1,19 +1,21 @@
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    // Kotlin 2.0+ uses the dedicated Compose compiler plugin
+    alias(libs.plugins.kotlin.compose)
 }
 
 android {
     namespace = "com.android.git"
-    compileSdk = 34
+    compileSdk = 35  // Updated from 34
 
     defaultConfig {
         applicationId = "com.android.git"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 48
-        versionName = "4.8.0-stable" // Reverted to stable
-        
+        targetSdk = 35 // Updated from 34
+        versionCode = 49
+        versionName = "4.9.0-stable"
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
@@ -29,7 +31,7 @@ android {
             )
         }
     }
-    
+
     splits {
         abi {
             isEnable = true
@@ -40,6 +42,7 @@ android {
     }
 
     compileOptions {
+        // JGit 7 requires Java 17, ensuring compatibility here
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -52,16 +55,15 @@ android {
         compose = true
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14" // متوافق تمامًا مع Kotlin 1.9.24
-    }
+    // Note: 'composeOptions { kotlinCompilerExtensionVersion = ... }'
+    // is removed because the 'org.jetbrains.kotlin.plugin.compose' plugin
+    // handles this automatically in Kotlin 2.0+.
 
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "META-INF/DEPENDENCIES"
         }
-        // تجاهل تحذير stripDebugDebugSymbols الذي ظهر في اللوج
         jniLibs {
             useLegacyPackaging = true
         }
@@ -73,20 +75,19 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
-    // Compose BOM
+
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    // Navigation
+
     implementation(libs.androidx.navigation.compose)
-    // Extended Icons
     implementation(libs.androidx.material.icons.extended)
-    // Git Libraries
+
     implementation(libs.jgit)
     implementation(libs.slf4j.simple)
-    
+
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }
