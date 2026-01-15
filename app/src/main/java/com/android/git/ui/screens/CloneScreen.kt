@@ -7,19 +7,18 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.android.git.R
 import com.android.git.data.PreferencesManager
 import com.android.git.ui.viewmodel.MainViewModel
 import java.io.File
@@ -27,25 +26,22 @@ import java.io.File
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CloneScreen(
-    viewModel: MainViewModel, // Inject ViewModel instead of direct logic
+    viewModel: MainViewModel,
     onBack: () -> Unit,
     onCloneSuccess: (File) -> Unit
 ) {
     val context = LocalContext.current
     val prefsManager = remember { PreferencesManager(context) }
     
-    // Local Form State
     var repoUrl by remember { mutableStateOf("") }
     var folderName by remember { mutableStateOf("") }
     var token by remember { mutableStateOf(prefsManager.getToken()) }
     var saveToken by remember { mutableStateOf(token.isNotEmpty()) }
     
-    // Observables from ViewModel
     val isLoading = viewModel.isLoading
     val statusMessage = viewModel.statusMessage
     val statusType = viewModel.statusType
 
-    // Auto-fill folder name from URL
     LaunchedEffect(repoUrl) {
         if (repoUrl.endsWith(".git")) {
             val name = repoUrl.substringAfterLast("/").substringBefore(".git")
@@ -61,41 +57,32 @@ fun CloneScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Clone Repository") },
+                title = { Text(stringResource(R.string.clone_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack, enabled = !isLoading) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }
     ) { padding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp).verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    
-                    // 1. URL
                     Icon(Icons.Default.Link, null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = repoUrl,
                         onValueChange = { repoUrl = it },
-                        label = { Text("Repository URL") },
-                        placeholder = { Text("https://github.com/user/project.git") },
+                        label = { Text(stringResource(R.string.clone_url_label)) },
+                        placeholder = { Text(stringResource(R.string.clone_url_placeholder)) },
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                         enabled = !isLoading
@@ -103,32 +90,30 @@ fun CloneScreen(
                     
                     Spacer(Modifier.height(16.dp))
 
-                    // 2. Folder Name
                     Icon(Icons.Default.Folder, null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = folderName,
                         onValueChange = { folderName = it },
-                        label = { Text("Local Folder Name") },
+                        label = { Text(stringResource(R.string.clone_folder_label)) },
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                         enabled = !isLoading
                     )
                     Text(
-                        "Will be created in /Internal Storage/",
+                        stringResource(R.string.clone_folder_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     Spacer(Modifier.height(16.dp))
 
-                    // 3. Token
                     Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = token,
                         onValueChange = { token = it },
-                        label = { Text("Token (Optional for Public)") },
+                        label = { Text(stringResource(R.string.clone_token_label)) },
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -146,20 +131,18 @@ fun CloneScreen(
                             },
                             enabled = !isLoading
                         )
-                        Text("Remember Token")
+                        Text(stringResource(R.string.clone_remember_token))
                     }
                 }
             }
 
             Spacer(Modifier.height(24.dp))
 
-            // Clone Button
             Button(
                 onClick = {
                     if (saveToken && token.isNotEmpty()) {
                         prefsManager.saveToken(token)
                     }
-                    // Delegate to ViewModel
                     viewModel.cloneRepository(repoUrl, folderName, token, onCloneSuccess)
                 },
                 enabled = repoUrl.isNotEmpty() && folderName.isNotEmpty() && !isLoading,
@@ -168,11 +151,11 @@ fun CloneScreen(
                 if (isLoading) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
                     Spacer(Modifier.width(16.dp))
-                    Text("Cloning...")
+                    Text(stringResource(R.string.clone_status_running))
                 } else {
                     Icon(Icons.Default.CloudDownload, null)
                     Spacer(Modifier.width(16.dp))
-                    Text("Clone Repository")
+                    Text(stringResource(R.string.clone_btn_action))
                 }
             }
 

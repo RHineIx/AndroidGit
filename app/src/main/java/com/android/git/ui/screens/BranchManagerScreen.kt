@@ -10,23 +10,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.CallMerge
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Computer
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SyncAlt
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.android.git.R
 import com.android.git.model.BranchModel
 import com.android.git.model.BranchType
 import com.android.git.ui.components.AppSnackbar
@@ -43,11 +36,9 @@ fun BranchManagerScreen(
     val statusMessage = viewModel.statusMessage
     val statusType = viewModel.statusType
 
-    // [Fix] Use mutableIntStateOf for primitive integer state
     var selectedTab by remember { mutableIntStateOf(0) }
     var searchQuery by remember { mutableStateOf("") }
 
-    // Dialog State
     var showCreateDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var branchToRename by remember { mutableStateOf<BranchModel?>(null) }
@@ -58,7 +49,6 @@ fun BranchManagerScreen(
 
     BackHandler(enabled = !isLoading) { onBack() }
 
-    // [Refactor] Extracted Dialog Logic to reduce complexity of main screen
     BranchDialogs(
         showCreateDialog = showCreateDialog,
         showRenameDialog = showRenameDialog,
@@ -72,10 +62,10 @@ fun BranchManagerScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Manage Branches") },
+                title = { Text(stringResource(R.string.branch_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack, enabled = !isLoading) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 actions = {
@@ -83,7 +73,7 @@ fun BranchManagerScreen(
                         onClick = { viewModel.fetchAll() },
                         enabled = !isLoading
                     ) {
-                        Icon(Icons.Default.CloudDownload, "Fetch All")
+                        Icon(Icons.Default.CloudDownload, contentDescription = stringResource(R.string.dashboard_tool_fetch))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -91,13 +81,11 @@ fun BranchManagerScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showCreateDialog = true }, containerColor = MaterialTheme.colorScheme.primary) {
-                Icon(Icons.Default.Add, contentDescription = "New Branch")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.branch_dialog_create_title))
             }
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-
-            // [Refactor] Moved list and filter logic to separate composable
             BranchListContent(
                 branches = branches,
                 searchQuery = searchQuery,
@@ -138,8 +126,8 @@ private fun BranchDialogs(
 ) {
     if (showCreateDialog) {
         InputBranchDialog(
-            title = "Create New Branch",
-            confirmText = "Create",
+            title = stringResource(R.string.branch_dialog_create_title),
+            confirmText = stringResource(R.string.action_create),
             onDismiss = onDismissCreate,
             onConfirm = onCreate
         )
@@ -147,9 +135,9 @@ private fun BranchDialogs(
 
     if (showRenameDialog && branchToRename != null) {
         InputBranchDialog(
-            title = "Rename Branch",
-            textPrefix = "Renaming: ${branchToRename.name}",
-            confirmText = "Rename",
+            title = stringResource(R.string.branch_dialog_rename_title),
+            textPrefix = stringResource(R.string.branch_dialog_rename_prefix, branchToRename.name),
+            confirmText = stringResource(R.string.action_rename),
             onDismiss = onDismissRename,
             onConfirm = onRename
         )
@@ -178,7 +166,7 @@ private fun InputBranchDialog(
                 OutlinedTextField(
                     value = textValue,
                     onValueChange = { textValue = it },
-                    label = { Text("Branch Name") },
+                    label = { Text(stringResource(R.string.branch_dialog_create_label)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -193,7 +181,7 @@ private fun InputBranchDialog(
                 }
             }) { Text(confirmText) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } }
     )
 }
 
@@ -212,10 +200,8 @@ private fun BranchListContent(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchChange,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            placeholder = { Text("Search branches...") },
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            placeholder = { Text(stringResource(R.string.branch_search_hint)) },
             leadingIcon = { Icon(Icons.Default.Search, null) },
             shape = RoundedCornerShape(12.dp),
             singleLine = true
@@ -225,13 +211,13 @@ private fun BranchListContent(
             Tab(
                 selected = selectedTab == 0,
                 onClick = { onTabChange(0) },
-                text = { Text("Local") },
+                text = { Text(stringResource(R.string.branch_tab_local)) },
                 icon = { Icon(Icons.Default.Computer, null) }
             )
             Tab(
                 selected = selectedTab == 1,
                 onClick = { onTabChange(1) },
-                text = { Text("Remote") },
+                text = { Text(stringResource(R.string.branch_tab_remote)) },
                 icon = { Icon(Icons.Default.Cloud, null) }
             )
         }
@@ -247,7 +233,7 @@ private fun BranchListContent(
 
                 if (filteredBranches.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("No branches found", color = MaterialTheme.colorScheme.secondary)
+                        Text(stringResource(R.string.branch_empty_search), color = MaterialTheme.colorScheme.secondary)
                     }
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -299,7 +285,7 @@ fun BranchItemRich(
             )
             if (branch.isCurrent) {
                 Text(
-                    text = "Current",
+                    text = stringResource(R.string.branch_current_label),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -310,7 +296,6 @@ fun BranchItemRich(
             Icon(Icons.Default.MoreVert, "Actions", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
-        // [Refactor] Extracted menu logic to reduce Cognitive Complexity
         BranchActionMenu(
             expanded = showMenu,
             branch = branch,
@@ -342,18 +327,17 @@ private fun BranchActionMenu(
 
         if (!branch.isCurrent) {
             DropdownMenuItem(
-                text = { Text("Checkout") },
+                text = { Text(stringResource(R.string.branch_menu_checkout)) },
                 leadingIcon = { Icon(Icons.Default.Check, null) },
                 onClick = { onDismiss(); onAction(BranchAction.CHECKOUT) }
             )
             DropdownMenuItem(
-                text = { Text("Merge into Current") },
-                // [Fix] Use AutoMirrored version for CallMerge
+                text = { Text(stringResource(R.string.branch_menu_merge)) },
                 leadingIcon = { Icon(Icons.AutoMirrored.Filled.CallMerge, null) },
                 onClick = { onDismiss(); onAction(BranchAction.MERGE) }
             )
             DropdownMenuItem(
-                text = { Text("Rebase Current onto this") },
+                text = { Text(stringResource(R.string.branch_menu_rebase)) },
                 leadingIcon = { Icon(Icons.Default.SyncAlt, null) },
                 onClick = { onDismiss(); onAction(BranchAction.REBASE) }
             )
@@ -361,7 +345,7 @@ private fun BranchActionMenu(
 
         if (!isRemote && branch.isCurrent) {
             DropdownMenuItem(
-                text = { Text("Rename") },
+                text = { Text(stringResource(R.string.action_rename)) },
                 leadingIcon = { Icon(Icons.Default.Edit, null) },
                 onClick = { onDismiss(); onAction(BranchAction.RENAME) }
             )
@@ -370,7 +354,7 @@ private fun BranchActionMenu(
         if (!branch.isCurrent && !isRemote) {
             HorizontalDivider()
             DropdownMenuItem(
-                text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                text = { Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error) },
                 leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
                 onClick = { onDismiss(); onAction(BranchAction.DELETE) }
             )

@@ -10,10 +10,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.android.git.R
 
 @Composable
 fun PermissionScreen(onRequest: () -> Unit) {
@@ -30,9 +31,7 @@ fun PermissionScreen(onRequest: () -> Unit) {
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
             Column(
-                modifier = Modifier
-                    .padding(32.dp)
-                    .fillMaxWidth(),
+                modifier = Modifier.padding(32.dp).fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -44,14 +43,14 @@ fun PermissionScreen(onRequest: () -> Unit) {
                 )
 
                 Text(
-                    text = "Storage Access Required",
+                    text = stringResource(R.string.perm_title),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Text(
-                    text = "AndroidGit is a full-featured Git client. To clone, create, and manage repositories anywhere on your device, we need 'All Files Access' permission.",
+                    text = stringResource(R.string.perm_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -63,7 +62,7 @@ fun PermissionScreen(onRequest: () -> Unit) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Without this permission, the app cannot access your repositories.",
+                        text = stringResource(R.string.perm_warning),
                         modifier = Modifier.padding(12.dp),
                         style = MaterialTheme.typography.bodySmall,
                         textAlign = TextAlign.Center,
@@ -80,7 +79,7 @@ fun PermissionScreen(onRequest: () -> Unit) {
                 ) {
                     Icon(Icons.Default.Settings, null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Grant Permission")
+                    Text(stringResource(R.string.perm_btn_grant))
                 }
             }
         }

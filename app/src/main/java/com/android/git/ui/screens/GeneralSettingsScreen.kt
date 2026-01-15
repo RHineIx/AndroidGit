@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -43,10 +44,10 @@ fun GeneralSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("General Settings") },
+                title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -66,7 +67,7 @@ fun GeneralSettingsScreen(
                     .padding(top = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                SettingsSection(title = "App Preferences") {
+                SettingsSection(title = stringResource(R.string.settings_section_app)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -74,12 +75,12 @@ fun GeneralSettingsScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                "Auto-open last project", 
+                                stringResource(R.string.settings_auto_open), 
                                 fontWeight = FontWeight.SemiBold, 
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Text(
-                                "Reopen repository on launch.",
+                                stringResource(R.string.settings_auto_open_desc),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -140,7 +141,7 @@ fun AppVersionFooter(context: Context, bottomPadding: androidx.compose.ui.unit.D
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Version $versionName ($versionCode)",
+            text = stringResource(R.string.settings_version_fmt, versionName, versionCode),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
             textAlign = TextAlign.Center
@@ -162,7 +163,7 @@ fun DeveloperSection(context: Context) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Developed by",
+                text = stringResource(R.string.settings_developer_by),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.secondary
             )
@@ -207,7 +208,7 @@ fun DeveloperSection(context: Context) {
             ) {
                 SocialButton(
                     iconRes = R.drawable.ic_github, 
-                    label = "GitHub",
+                    label = stringResource(R.string.settings_social_github),
                     onClick = { openUrl(context, "https://github.com/RHineix") }
                 )
                 
@@ -215,7 +216,7 @@ fun DeveloperSection(context: Context) {
                 
                 SocialButton(
                     iconRes = R.drawable.ic_telegram, 
-                    label = "Telegram",
+                    label = stringResource(R.string.settings_social_telegram),
                     onClick = { openUrl(context, "https://t.me/RHineix") }
                 )
             }

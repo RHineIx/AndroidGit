@@ -1,18 +1,17 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    // Kotlin 2.0+ uses the dedicated Compose compiler plugin
     alias(libs.plugins.kotlin.compose)
 }
 
 android {
     namespace = "com.android.git"
-    compileSdk = 35  // Updated from 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.android.git"
         minSdk = 26
-        targetSdk = 35 // Updated from 34
+        targetSdk = 35
         versionCode = 49
         versionName = "4.9.0-stable"
 
@@ -54,10 +53,6 @@ android {
     buildFeatures {
         compose = true
     }
-
-    // Note: 'composeOptions { kotlinCompilerExtensionVersion = ... }'
-    // is removed because the 'org.jetbrains.kotlin.plugin.compose' plugin
-    // handles this automatically in Kotlin 2.0+.
 
     packaging {
         resources {

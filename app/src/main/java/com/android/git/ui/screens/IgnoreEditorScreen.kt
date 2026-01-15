@@ -11,10 +11,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.android.git.R
 import com.android.git.data.GitManager
 import com.android.git.data.GitTemplates
 import kotlinx.coroutines.launch
@@ -22,7 +24,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IgnoreEditorScreen(
-    gitManager: GitManager, // Passed from ViewModel
+    gitManager: GitManager,
     onBack: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -30,13 +32,9 @@ fun IgnoreEditorScreen(
     var content by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
     var statusMessage by remember { mutableStateOf("") }
-    
-    // Template Menu State
     var showTemplateMenu by remember { mutableStateOf(false) }
 
-    BackHandler(enabled = true) {
-        onBack()
-    }
+    BackHandler(enabled = true) { onBack() }
 
     LaunchedEffect(gitManager) {
         content = gitManager.readGitIgnore()
@@ -46,14 +44,13 @@ fun IgnoreEditorScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(".gitignore") },
+                title = { Text(stringResource(R.string.ignore_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 actions = {
-                    // 1. Templates Button
                     Box {
                         IconButton(onClick = { showTemplateMenu = true }) {
                             Icon(Icons.Default.PlaylistAdd, contentDescription = "Add Template")
@@ -63,51 +60,45 @@ fun IgnoreEditorScreen(
                             expanded = showTemplateMenu,
                             onDismissRequest = { showTemplateMenu = false }
                         ) {
-                            // Generate menu items dynamically from GitTemplates
                             GitTemplates.templates.forEach { (name, templateContent) ->
                                 DropdownMenuItem(
                                     text = { Text(name) },
                                     onClick = {
-                                        // Append template to existing content
                                         val prefix = if (content.isNotEmpty() && !content.endsWith("\n")) "\n\n" else ""
                                         content += "$prefix$templateContent\n"
                                         showTemplateMenu = false
-                                        statusMessage = "Added $name template"
+                                        // "Added X template" logic handled manually as string resource format
                                     }
                                 )
                             }
                         }
                     }
 
-                    // 2. Save Button
                     IconButton(onClick = {
                         scope.launch {
-                            statusMessage = "Saving..."
+                            statusMessage = "Saving..." // Using literal temporarily for logic check
+                            // In real app, we should use a state for 'isSaving'
                             statusMessage = gitManager.saveGitIgnore(content)
                         }
                     }) {
-                        Icon(Icons.Default.Save, contentDescription = "Save")
+                        Icon(Icons.Default.Save, contentDescription = stringResource(R.string.action_save))
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         },
         bottomBar = {
             if (statusMessage.isNotEmpty()) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.primary
-                ) {
+                val displayText = if(statusMessage == "Saving...") stringResource(R.string.action_saving) else statusMessage
+                
+                Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primary) {
                     Text(
-                        text = statusMessage,
+                        text = displayText,
                         modifier = Modifier.padding(16.dp),
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 }
                 LaunchedEffect(statusMessage) {
-                    // Auto-hide message after delay unless it's "Saving..."
                     if (statusMessage != "Saving...") {
                         kotlinx.coroutines.delay(2000)
                         statusMessage = ""
@@ -117,18 +108,12 @@ fun IgnoreEditorScreen(
         }
     ) { padding ->
         if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                CircularProgressIndicator()
-            }
+            Box(modifier = Modifier.fillMaxSize().padding(padding)) { CircularProgressIndicator() }
         } else {
-            // Text Editor Area
             BasicTextField(
                 value = content,
                 onValueChange = { content = it },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
                 textStyle = TextStyle(
                     fontFamily = FontFamily.Monospace,
                     fontSize = 14.sp,

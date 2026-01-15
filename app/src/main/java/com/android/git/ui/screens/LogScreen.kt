@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,21 +22,24 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.git.R
 import com.android.git.data.GitManager
 import com.android.git.model.CommitItem
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.components.SnackbarType
+import com.android.git.ui.viewmodel.MainViewModel
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -47,12 +51,14 @@ import kotlin.math.abs
 @Composable
 fun LogScreen(
     gitManager: GitManager,
+    viewModel: MainViewModel, // Injected ViewModel for state
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var commits by remember { mutableStateOf<List<CommitItem>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
+    val commits = viewModel.logList
+    val isLogLoading = viewModel.isLogLoading
+    
+    // Status Snackbar local state
     var statusMessage by remember { mutableStateOf("") }
     var statusType by remember { mutableStateOf(SnackbarType.INFO) }
     
@@ -60,24 +66,41 @@ fun LogScreen(
     var selectedCommit by remember { mutableStateOf<CommitItem?>(null) }
     val sheetState = rememberModalBottomSheetState()
     var showBottomSheet by remember { mutableStateOf(false) }
+    
+    // Scroll State for Pagination
+    val listState = rememberLazyListState()
 
     BackHandler(enabled = true) { onBack() }
 
-    fun loadCommits() {
-        scope.launch {
-            isLoading = true
-            commits = gitManager.getCommits()
-            isLoading = false
+    // Initial Load (Only if empty)
+    LaunchedEffect(Unit) {
+        if (commits.isEmpty()) {
+            viewModel.loadLogs(reset = true)
         }
     }
 
-    LaunchedEffect(gitManager) { loadCommits() }
+    // Infinite Scroll Logic: Load more when we reach near the bottom
+    LaunchedEffect(listState) {
+        snapshotFlow { 
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            
+            // Trigger load when we are within 5 items of the bottom
+            totalItems > 0 && lastVisibleItemIndex >= (totalItems - 5)
+        }
+        .distinctUntilChanged()
+        .filter { it } // Only emit when condition is true
+        .collect {
+             viewModel.loadLogs(reset = false)
+        }
+    }
 
     fun copyToClipboard(text: String) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("Commit Hash", text)
         clipboard.setPrimaryClip(clip)
-        statusMessage = "Hash copied to clipboard"
+        statusMessage = context.getString(R.string.log_copied_hash)
         statusType = SnackbarType.SUCCESS
     }
 
@@ -86,18 +109,26 @@ fun LogScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Commit History", fontWeight = FontWeight.Bold)
-                        Text("${commits.size} commits", style = MaterialTheme.typography.labelMedium)
+                        Text(stringResource(R.string.log_title), fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.log_subtitle, commits.size), style = MaterialTheme.typography.labelMedium)
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 actions = {
-                    IconButton(onClick = { loadCommits() }) {
-                        Icon(Icons.Default.Refresh, "Refresh")
+                    if (isLogLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp).padding(end = 16.dp), 
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    } else {
+                        IconButton(onClick = { viewModel.loadLogs(reset = true) }) {
+                            Icon(Icons.Default.Refresh, stringResource(R.string.action_refresh))
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -105,33 +136,42 @@ fun LogScreen(
         },
         content = { padding ->
             Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-                if (isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                if (commits.isEmpty() && !isLogLoading) {
+                    EmptyStateView(modifier = Modifier.align(Alignment.Center))
                 } else {
-                    if (commits.isEmpty()) {
-                        EmptyStateView(modifier = Modifier.align(Alignment.Center))
-                    } else {
-                        // Timeline List
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 16.dp) // Add padding at bottom
-                        ) {
-                            itemsIndexed(commits) { index, commit ->
-                                val isLast = index == commits.lastIndex
-                                TimelineCommitItem(
-                                    commit = commit,
-                                    isLast = isLast,
-                                    onClick = {
-                                        selectedCommit = commit
-                                        showBottomSheet = true
-                                    }
-                                )
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 16.dp)
+                    ) {
+                        itemsIndexed(commits) { index, commit ->
+                            val isLast = index == commits.lastIndex
+                            TimelineCommitItem(
+                                commit = commit,
+                                isLast = isLast,
+                                onClick = {
+                                    selectedCommit = commit
+                                    showBottomSheet = true
+                                }
+                            )
+                        }
+                        
+                        // Footer Loader for Pagination
+                        if (isLogLoading && commits.isNotEmpty()) {
+                            item {
+                                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                                }
                             }
                         }
                     }
                 }
 
-                // Snackbar
+                // Initial Full Loader
+                if (commits.isEmpty() && isLogLoading) {
+                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                }
+
                 Box(modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)) {
                     AppSnackbar(
                         message = statusMessage,
@@ -143,7 +183,6 @@ fun LogScreen(
         }
     )
 
-    // Detailed Bottom Sheet
     if (showBottomSheet && selectedCommit != null) {
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
@@ -156,7 +195,7 @@ fun LogScreen(
                 onAction = { msg, type ->
                     statusMessage = msg
                     statusType = type
-                    loadCommits() // Refresh if action modified history
+                    viewModel.loadLogs(reset = true) // Reload on changes
                     showBottomSheet = false
                 },
                 onCopy = { copyToClipboard(it) }
@@ -180,37 +219,32 @@ fun TimelineCommitItem(
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.Top
     ) {
-        // --- Left: Visual Timeline Track ---
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.width(24.dp) // Fixed width for track
+            modifier = Modifier.width(24.dp)
         ) {
-            // Top Line
             Box(
                 modifier = Modifier
                     .width(2.dp)
                     .height(16.dp)
                     .background(MaterialTheme.colorScheme.outlineVariant)
             )
-            // Commit Dot
             Canvas(modifier = Modifier.size(12.dp)) {
                 drawCircle(
                     color = if (commit.isPushed) Color(0xFF2E7D32) else Color(0xFFE65100),
                     radius = size.minDimension / 2
                 )
-                // Draw stroke for contrast
                 drawCircle(
                     color = Color.White,
                     radius = size.minDimension / 2,
                     style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f)
                 )
             }
-            // Bottom Line (extend if not last)
             if (!isLast) {
                 Box(
                     modifier = Modifier
                         .width(2.dp)
-                        .weight(1f) // Fill remaining height
+                        .weight(1f)
                         .background(MaterialTheme.colorScheme.outlineVariant)
                 )
             } else {
@@ -220,14 +254,12 @@ fun TimelineCommitItem(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        // --- Right: Content Card ---
         Column(
             modifier = Modifier
-                .padding(bottom = 24.dp) // Spacing between items
+                .padding(bottom = 24.dp)
                 .weight(1f)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Author Avatar (Small)
                 Surface(
                     color = authorColor,
                     shape = CircleShape,
@@ -269,7 +301,6 @@ fun TimelineCommitItem(
 
             Spacer(Modifier.height(4.dp))
 
-            // Footer (Hash & Status)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant,
@@ -313,24 +344,22 @@ fun CommitDetailsSheet(
             .padding(24.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        // Header
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.Commit, null, tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(8.dp))
             Text(
-                "Commit Details",
+                stringResource(R.string.log_details_title),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary
             )
             Spacer(Modifier.weight(1f))
             IconButton(onClick = { onCopy(commit.hash) }) {
-                Icon(Icons.Default.ContentCopy, "Copy Hash")
+                Icon(Icons.Default.ContentCopy, stringResource(R.string.action_copy))
             }
         }
 
         Spacer(Modifier.height(16.dp))
 
-        // Message
         Text(
             text = commit.message,
             style = MaterialTheme.typography.headlineSmall,
@@ -339,28 +368,26 @@ fun CommitDetailsSheet(
 
         Spacer(Modifier.height(16.dp))
 
-        // Metadata Grid
         Row(Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
-                LabelValueItem("Author", commit.author, Icons.Default.Person)
+                LabelValueItem(stringResource(R.string.log_label_author), commit.author, Icons.Default.Person)
                 Spacer(Modifier.height(12.dp))
-                LabelValueItem("Hash", commit.hash, Icons.Default.Tag)
+                LabelValueItem(stringResource(R.string.log_label_hash), commit.hash, Icons.Default.Tag)
             }
             Column(Modifier.weight(1f)) {
-                LabelValueItem("Date", fullDateFormat.format(commit.date), Icons.Default.CalendarToday)
+                LabelValueItem(stringResource(R.string.log_label_date), fullDateFormat.format(commit.date), Icons.Default.CalendarToday)
                 Spacer(Modifier.height(12.dp))
                 LabelValueItem(
-                    "Status", 
-                    if (commit.isPushed) "Pushed to Remote" else "Local Only", 
+                    stringResource(R.string.log_label_status),
+                    if (commit.isPushed) stringResource(R.string.log_status_pushed) else stringResource(R.string.log_status_local),
                     if (commit.isPushed) Icons.Default.CloudDone else Icons.Default.CloudOff
                 )
             }
         }
 
-        Divider(Modifier.padding(vertical = 24.dp))
+        HorizontalDivider(Modifier.padding(vertical = 24.dp))
 
-        // Actions
-        Text("Danger Zone", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error)
+        Text(stringResource(R.string.log_danger_zone), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error)
         Spacer(Modifier.height(8.dp))
         
         OutlinedButton(
@@ -376,7 +403,7 @@ fun CommitDetailsSheet(
         ) {
             Icon(Icons.Default.Undo, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Revert this Commit")
+            Text(stringResource(R.string.log_btn_revert))
         }
 
         Spacer(Modifier.height(8.dp))
@@ -393,7 +420,7 @@ fun CommitDetailsSheet(
         ) {
             Icon(Icons.Default.Restore, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Reset to Here (Keep Changes)")
+            Text(stringResource(R.string.log_btn_reset))
         }
         
         Spacer(Modifier.height(32.dp))
@@ -431,21 +458,20 @@ fun EmptyStateView(modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.height(16.dp))
         Text(
-            text = "No commits yet",
+            text = stringResource(R.string.log_empty),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.secondary
         )
     }
 }
 
-// --- Helpers ---
-
+@Composable
 fun getRelativeTime(date: Date): String {
     val now = Date().time
     val diff = now - date.time
     
     return when {
-        diff < TimeUnit.MINUTES.toMillis(1) -> "Just now"
+        diff < TimeUnit.MINUTES.toMillis(1) -> stringResource(R.string.log_time_now)
         diff < TimeUnit.HOURS.toMillis(1) -> "${TimeUnit.MILLISECONDS.toMinutes(diff)}m ago"
         diff < TimeUnit.DAYS.toMillis(1) -> "${TimeUnit.MILLISECONDS.toHours(diff)}h ago"
         diff < TimeUnit.DAYS.toMillis(7) -> "${TimeUnit.MILLISECONDS.toDays(diff)}d ago"

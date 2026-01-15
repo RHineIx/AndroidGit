@@ -159,6 +159,7 @@ fun AppNavGraph(
             manager?.let {
                 LogScreen(
                     gitManager = it,
+                    viewModel = viewModel,
                     onBack = { navController.popBackStack() }
                 )
             }

@@ -14,10 +14,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.android.git.R
 import com.android.git.data.GitManager
 import com.android.git.model.StashItem
 import com.android.git.ui.components.AppSnackbar
@@ -27,7 +29,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StashScreen(
-    gitManager: GitManager, // Passed from ViewModel
+    gitManager: GitManager,
     onBack: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -59,12 +61,12 @@ fun StashScreen(
     if (showCreateDialog) {
         AlertDialog(
             onDismissRequest = { showCreateDialog = false },
-            title = { Text("Stash Changes") },
+            title = { Text(stringResource(R.string.stash_dialog_create_title)) },
             text = {
                 OutlinedTextField(
                     value = stashMessage,
                     onValueChange = { stashMessage = it },
-                    label = { Text("Message (Optional)") },
+                    label = { Text(stringResource(R.string.stash_dialog_msg_label)) },
                     modifier = Modifier.fillMaxWidth()
                 )
             },
@@ -80,15 +82,15 @@ fun StashScreen(
                     }
                 }) { Text("Stash") }
             },
-            dismissButton = { TextButton(onClick = { showCreateDialog = false }) { Text("Cancel") } }
+            dismissButton = { TextButton(onClick = { showCreateDialog = false }) { Text(stringResource(R.string.action_cancel)) } }
         )
     }
 
     if (showActionDialog && selectedStash != null) {
         AlertDialog(
             onDismissRequest = { showActionDialog = false },
-            title = { Text("Stash Actions") },
-            text = { Text("What do you want to do with this stash?") },
+            title = { Text(stringResource(R.string.stash_dialog_action_title)) },
+            text = { Text(stringResource(R.string.stash_dialog_action_msg)) },
             confirmButton = {
                 Button(onClick = {
                     scope.launch {
@@ -98,7 +100,7 @@ fun StashScreen(
                         showActionDialog = false
                         loadStashes()
                     }
-                }) { Text("Pop (Apply & Drop)") }
+                }) { Text(stringResource(R.string.stash_btn_pop)) }
             },
             dismissButton = {
                 OutlinedButton(onClick = {
@@ -107,7 +109,7 @@ fun StashScreen(
                         statusMessage = res
                         showActionDialog = false
                     }
-                }) { Text("Apply (Keep)") }
+                }) { Text(stringResource(R.string.stash_btn_apply)) }
             },
             icon = { Icon(Icons.Default.Archive, null) }
         )
@@ -116,10 +118,10 @@ fun StashScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Stash Shelf") },
+                title = { Text(stringResource(R.string.stash_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -142,7 +144,7 @@ fun StashScreen(
                     ) {
                         Icon(Icons.Default.Archive, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.surfaceVariant)
                         Spacer(Modifier.height(16.dp))
-                        Text("Stash list is empty", color = MaterialTheme.colorScheme.secondary)
+                        Text(stringResource(R.string.stash_empty), color = MaterialTheme.colorScheme.secondary)
                     }
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -189,7 +191,7 @@ fun StashItemView(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = stash.message.ifEmpty { "WIP on ${stash.hash}" },
+                text = stash.message.ifEmpty { "${stringResource(R.string.stash_wip_prefix)} ${stash.hash}" },
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp
             )
@@ -202,7 +204,7 @@ fun StashItemView(
         }
         
         IconButton(onClick = onDrop) {
-            Icon(Icons.Default.Delete, "Drop", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
+            Icon(Icons.Default.Delete, stringResource(R.string.action_delete), tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
         }
     }
 }

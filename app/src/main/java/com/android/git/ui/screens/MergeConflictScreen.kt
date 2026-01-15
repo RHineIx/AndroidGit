@@ -14,8 +14,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.android.git.R
 import com.android.git.data.GitManager
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.components.SnackbarType
@@ -24,9 +26,9 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MergeConflictScreen(
-    gitManager: GitManager, // Passed from ViewModel
+    gitManager: GitManager,
     onBack: () -> Unit,
-    onResolveFile: (String) -> Unit // Navigate to detail resolver
+    onResolveFile: (String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
 
@@ -42,7 +44,7 @@ fun MergeConflictScreen(
             conflicts = gitManager.getConflictingFiles()
             isLoading = false
             if (conflicts.isEmpty()) {
-                statusMessage = "No conflicts found. You are safe!"
+                statusMessage = "No conflicts found. You are safe!" // Could be string resource too, but logic implies safe state
             }
         }
     }
@@ -50,10 +52,10 @@ fun MergeConflictScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Merge Conflicts") },
+                title = { Text(stringResource(R.string.conflict_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.errorContainer)
@@ -71,9 +73,10 @@ fun MergeConflictScreen(
                     ) {
                         Icon(Icons.Default.Warning, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.surfaceVariant)
                         Spacer(Modifier.height(16.dp))
-                        Text("No conflicts detected.", color = MaterialTheme.colorScheme.secondary)
+                        Text(stringResource(R.string.conflict_none), color = MaterialTheme.colorScheme.secondary)
+                        
                         Button(onClick = onBack, modifier = Modifier.padding(top = 16.dp)) {
-                            Text("Go Back")
+                            Text(stringResource(R.string.action_back))
                         }
                     }
                 } else {
@@ -84,7 +87,7 @@ fun MergeConflictScreen(
                     ) {
                         item {
                             Text(
-                                "The following files have merge conflicts. Tap a file to resolve.",
+                                stringResource(R.string.conflict_list_header),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.error
                             )

@@ -8,24 +8,20 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.CloudOff
-import androidx.compose.material.icons.filled.CloudSync
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.android.git.R
 import com.android.git.data.GitManager
 import com.android.git.data.PreferencesManager
 import com.android.git.ui.components.AppSnackbar
@@ -34,23 +30,16 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RepoSettingsScreen(
-    gitManager: GitManager, // Passed from ViewModel
-    onBack: () -> Unit
-) {
+fun RepoSettingsScreen(gitManager: GitManager, onBack: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { PreferencesManager(context) }
     val scope = rememberCoroutineScope()
 
-    // Config State
     var userName by remember { mutableStateOf(prefs.getUserName()) }
     var userEmail by remember { mutableStateOf(prefs.getUserEmail()) }
     var token by remember { mutableStateOf(prefs.getToken()) }
-    
-    // Remote State
     var remoteUrl by remember { mutableStateOf("") }
     var isRemoteLinked by remember { mutableStateOf(false) }
-
     var statusMessage by remember { mutableStateOf("") }
     var statusType by remember { mutableStateOf(SnackbarType.INFO) }
 
@@ -69,11 +58,9 @@ fun RepoSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Repository Settings") },
+                title = { Text(stringResource(R.string.repo_settings_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back)) }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
@@ -81,109 +68,64 @@ fun RepoSettingsScreen(
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                // --- SECTION 1: Identity & Auth ---
-                RepoSettingsSection(title = "User & Authentication") {
-                    ModernInput(
-                        value = userName,
-                        onValueChange = { userName = it },
-                        label = "User Name",
-                        icon = Icons.Default.AccountCircle
-                    )
+                RepoSettingsSection(title = stringResource(R.string.repo_settings_section_auth)) {
+                    ModernInput(value = userName, onValueChange = { userName = it }, label = stringResource(R.string.repo_settings_label_user), icon = Icons.Default.AccountCircle)
                     Spacer(Modifier.height(16.dp))
-                    
-                    ModernInput(
-                        value = userEmail,
-                        onValueChange = { userEmail = it },
-                        label = "User Email",
-                        icon = Icons.Default.Email
-                    )
+                    ModernInput(value = userEmail, onValueChange = { userEmail = it }, label = stringResource(R.string.repo_settings_label_email), icon = Icons.Default.Email)
                     Spacer(Modifier.height(16.dp))
-                    
-                    ModernInput(
-                        value = token,
-                        onValueChange = { token = it },
-                        label = "Personal Access Token",
-                        icon = Icons.Default.Lock,
-                        visualTransformation = PasswordVisualTransformation()
-                    )
+                    ModernInput(value = token, onValueChange = { token = it }, label = stringResource(R.string.repo_settings_label_token), icon = Icons.Default.Lock, visualTransformation = PasswordVisualTransformation())
                 }
 
-                // --- SECTION 2: Remote Origin ---
-                RepoSettingsSection(title = "Remote Repository") {
-                    
-                    // Status Card
+                RepoSettingsSection(title = stringResource(R.string.repo_settings_section_remote)) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         border = BorderStroke(1.dp, if (isRemoteLinked) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                             Surface(
                                 color = if (isRemoteLinked) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
                                 shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier.size(40.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = if (isRemoteLinked) Icons.Default.CloudSync else Icons.Default.CloudOff,
-                                        contentDescription = null,
-                                        tint = if (isRemoteLinked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(24.dp)
-                                    )
+                                    Icon(imageVector = if (isRemoteLinked) Icons.Default.CloudSync else Icons.Default.CloudOff, contentDescription = null, tint = if (isRemoteLinked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
                                 }
                             }
-                            
                             Spacer(Modifier.width(16.dp))
-                            
                             Column {
                                 Text(
-                                    text = if (isRemoteLinked) "Connected to Origin" else "No Remote Linked",
+                                    text = if (isRemoteLinked) stringResource(R.string.repo_settings_remote_connected) else stringResource(R.string.repo_settings_remote_disconnected),
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = if (isRemoteLinked) "Syncing is available." else "Add a URL to enable push/pull.",
+                                    text = if (isRemoteLinked) stringResource(R.string.repo_settings_remote_hint_connected) else stringResource(R.string.repo_settings_remote_hint_disconnected),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
                     }
-                    
                     Spacer(Modifier.height(16.dp))
-
-                    ModernInput(
-                        value = remoteUrl,
-                        onValueChange = { remoteUrl = it },
-                        label = "Remote URL (HTTPS)",
-                        icon = Icons.Default.Link,
-                        placeholder = "https://github.com/user/repo.git"
-                    )
-                    
+                    ModernInput(value = remoteUrl, onValueChange = { remoteUrl = it }, label = stringResource(R.string.repo_settings_label_url), icon = Icons.Default.Link, placeholder = "https://github.com/user/repo.git")
                     Spacer(Modifier.height(16.dp))
-                    
                     if (remoteUrl.isNotEmpty()) {
                         OutlinedButton(
                             onClick = {
                                 scope.launch {
                                     if (remoteUrl.startsWith("http")) {
                                         gitManager.addRemote(remoteUrl)
-                                        statusMessage = "Remote Updated!"
+                                        statusMessage = context.getString(R.string.repo_settings_msg_remote_updated)
                                         statusType = SnackbarType.SUCCESS
                                         isRemoteLinked = true
                                     } else {
-                                        statusMessage = "Invalid URL (Must start with http)"
+                                        statusMessage = context.getString(R.string.repo_settings_err_invalid_url)
                                         statusType = SnackbarType.ERROR
                                     }
                                 }
@@ -191,23 +133,20 @@ fun RepoSettingsScreen(
                             modifier = Modifier.align(Alignment.End),
                             shape = RoundedCornerShape(10.dp)
                         ) {
-                            Text(if (isRemoteLinked) "Update URL" else "Link Remote")
+                            Text(if (isRemoteLinked) stringResource(R.string.repo_settings_btn_update_url) else stringResource(R.string.repo_settings_btn_link_remote))
                         }
                     }
                 }
 
                 Spacer(Modifier.height(8.dp))
 
-                // Save Button
                 Button(
                     onClick = {
                         scope.launch {
                             prefs.saveGitIdentity(userName, userEmail)
                             if (token.isNotEmpty()) prefs.saveToken(token) else prefs.clearToken()
-                            
                             gitManager.configureUser(userName, userEmail)
-                            
-                            statusMessage = "Repository Settings Saved!"
+                            statusMessage = context.getString(R.string.repo_settings_msg_saved)
                             statusType = SnackbarType.SUCCESS
                         }
                     },
@@ -217,18 +156,13 @@ fun RepoSettingsScreen(
                 ) {
                     Icon(Icons.Default.Save, null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(12.dp))
-                    Text("Save Repo Settings", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.repo_settings_btn_save), fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
-                
                 Spacer(Modifier.height(32.dp))
             }
 
             Box(modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)) {
-                AppSnackbar(
-                    message = statusMessage,
-                    type = statusType,
-                    onDismiss = { statusMessage = "" }
-                )
+                AppSnackbar(message = statusMessage, type = statusType, onDismiss = { statusMessage = "" })
             }
         }
     }
@@ -244,15 +178,12 @@ fun RepoSettingsSection(title: String, content: @Composable ColumnScope.() -> Un
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(start = 4.dp, bottom = 12.dp)
         )
-        
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                content()
-            }
+            Column(modifier = Modifier.padding(20.dp)) { content() }
         }
     }
 }

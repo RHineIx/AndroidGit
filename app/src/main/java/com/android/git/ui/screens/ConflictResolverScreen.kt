@@ -11,27 +11,28 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.android.git.R
 import com.android.git.data.GitManager
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConflictResolverScreen(
-    gitManager: GitManager, // Passed from ViewModel
+    gitManager: GitManager,
     filePath: String,
-    onBack: () -> Unit // Returns to list
+    onBack: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
     
-    var fileContent by remember { mutableStateOf("Loading preview...") }
+    var fileContent by remember { mutableStateOf("") } // Init empty, load in LaunchedEffect
 
     BackHandler(enabled = true) { onBack() }
 
     LaunchedEffect(filePath) {
-        // Load the current content (which usually contains <<<< HEAD markers)
         fileContent = gitManager.readFileContent(filePath)
     }
 
@@ -40,13 +41,13 @@ fun ConflictResolverScreen(
             TopAppBar(
                 title = { 
                     Column {
-                        Text("Resolve Conflict")
+                        Text(stringResource(R.string.conflict_resolver_title))
                         Text(filePath, style = MaterialTheme.typography.labelSmall)
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -63,13 +64,13 @@ fun ConflictResolverScreen(
                         onClick = {
                             scope.launch {
                                 gitManager.resolveUsingOurs(filePath)
-                                onBack() // Go back to list
+                                onBack()
                             }
                         },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)) // Green
                     ) {
-                        Text("Keep Ours")
+                        Text(stringResource(R.string.conflict_btn_ours))
                     }
                     
                     Button(
@@ -82,7 +83,7 @@ fun ConflictResolverScreen(
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828)) // Red
                     ) {
-                        Text("Take Theirs")
+                        Text(stringResource(R.string.conflict_btn_theirs))
                     }
                 }
             }
@@ -96,7 +97,7 @@ fun ConflictResolverScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    "Review the file below.\nChoose 'Keep Ours' (Current Branch) or 'Take Theirs' (Incoming).",
+                    stringResource(R.string.conflict_instruction),
                     modifier = Modifier.padding(16.dp),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSecondaryContainer
@@ -112,12 +113,16 @@ fun ConflictResolverScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp)
             ) {
-                Text(
-                    text = fileContent,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                if (fileContent.isEmpty()) {
+                    Text(stringResource(R.string.action_loading), fontSize = 12.sp)
+                } else {
+                    Text(
+                        text = fileContent,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
         }
     }

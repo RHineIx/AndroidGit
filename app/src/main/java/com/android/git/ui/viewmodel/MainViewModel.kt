@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.android.git.data.GitManager
 import com.android.git.data.PreferencesManager
 import com.android.git.model.BranchModel
+import com.android.git.model.CommitItem
 import com.android.git.model.DashboardState
 import com.android.git.model.GitFile
 import com.android.git.ui.components.SnackbarType
@@ -21,7 +22,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     
     private val prefs = PreferencesManager(application)
 
-    // Engineering Note: GitManager is a heavy logic object, not a UI state. 
+    // Engineering Note: GitManager is a heavy logic object, not a UI state.
     // It should NOT be wrapped in mutableStateOf to avoid unnecessary recompositions.
     // The UI should react to 'dashboardState' or 'currentRepoFile' changes instead.
     var gitManager: GitManager? = null
@@ -48,6 +49,17 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         
     var statusType: SnackbarType by mutableStateOf(SnackbarType.INFO)
         private set
+
+    // --- Log / Pagination State ---
+    var logList: List<CommitItem> by mutableStateOf(emptyList())
+        private set
+        
+    var isLogLoading: Boolean by mutableStateOf(false)
+        private set
+        
+    private var logCurrentOffset = 0
+    private var logHasMore = true
+    private val LOG_PAGE_SIZE = 50 // Load 50 commits at a time
 
     init {
         // Restore session if process was killed
@@ -82,6 +94,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         dashboardState = DashboardState.NotInitialized
         branchList = emptyList()
         changedFiles = emptyList()
+        logList = emptyList()
         statusMessage = ""
     }
 
@@ -274,6 +287,36 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     fun getLastCommitMessage(onResult: (String) -> Unit) {
         val manager = gitManager ?: return
         viewModelScope.launch { onResult(manager.getLastCommitMessage()) }
+    }
+
+    // --- Log Pagination Logic ---
+
+    fun loadLogs(reset: Boolean = false) {
+        val manager = gitManager ?: return
+        if (isLogLoading) return
+        
+        if (reset) {
+            logCurrentOffset = 0
+            logHasMore = true
+            logList = emptyList()
+        }
+        
+        if (!logHasMore) return
+
+        viewModelScope.launch {
+            isLogLoading = true
+            // Fetch next page
+            val newLogs = manager.getCommits(limit = LOG_PAGE_SIZE, offset = logCurrentOffset)
+            
+            if (newLogs.size < LOG_PAGE_SIZE) {
+                logHasMore = false
+            }
+            
+            logList = if (reset) newLogs else logList + newLogs
+            logCurrentOffset += newLogs.size
+            
+            isLogLoading = false
+        }
     }
 
     fun clearStatus() { statusMessage = "" }

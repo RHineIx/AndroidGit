@@ -7,24 +7,14 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Android
-import androidx.compose.material.icons.filled.CloudOff
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Smartphone
-import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +25,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -58,6 +49,7 @@ fun RepoSelectionScreen(
     
     var recentProjects by remember { mutableStateOf<List<String>>(emptyList()) }
 
+    // Load recent projects on start
     LaunchedEffect(Unit) {
         recentProjects = prefs.getRecentProjects()
     }
@@ -69,8 +61,9 @@ fun RepoSelectionScreen(
             try {
                 val takeFlags: Int = (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                 context.contentResolver.takePersistableUriPermission(uri, takeFlags)
-            } catch (e: Exception) { }
-            
+            } catch (e: Exception) { 
+                // Ignore if permission persistence fails
+            }
             onRepoSelected(uri)
         }
     }
@@ -80,20 +73,20 @@ fun RepoSelectionScreen(
             CenterAlignedTopAppBar(
                 title = { 
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        // App Icon (Drawable resource)
                         Icon(
                             painter = painterResource(id = R.drawable.icon),
                             contentDescription = null,
                             tint = Color.Unspecified,
                             modifier = Modifier.size(38.dp)
                         )
-                        
                         Spacer(Modifier.width(4.dp))
-                        Text("AndroidGit", fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.selection_title), fontWeight = FontWeight.Bold)
                     }
                 },
                 actions = {
                     IconButton(onClick = onGeneralSettingsClick) {
-                        Icon(Icons.Default.Settings, contentDescription = "General Settings")
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -109,20 +102,20 @@ fun RepoSelectionScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            
+            // Top Action Cards
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 ActionCard(
-                    title = "Open Local",
+                    title = stringResource(R.string.selection_open_local),
                     icon = Icons.Default.FolderOpen,
                     modifier = Modifier.weight(1f),
                     onClick = { launcher.launch(null) }
                 )
                 
                 ActionCard(
-                    title = "Clone Repo",
+                    title = stringResource(R.string.selection_clone_repo),
                     icon = Icons.Default.Download,
                     modifier = Modifier.weight(1f),
                     onClick = onCloneRequest
@@ -131,12 +124,13 @@ fun RepoSelectionScreen(
             
             Spacer(modifier = Modifier.height(32.dp))
             
+            // Recent Projects Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Recent Projects",
+                    text = stringResource(R.string.selection_recent_projects),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -149,20 +143,16 @@ fun RepoSelectionScreen(
                             recentProjects = emptyList()
                         }
                     }) {
-                        Text("Clear All", color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.action_clear_all), color = MaterialTheme.colorScheme.error)
                     }
                 }
             }
             
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Recent Projects List
             if (recentProjects.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
                             imageVector = Icons.Default.History,
@@ -172,7 +162,7 @@ fun RepoSelectionScreen(
                         )
                         Spacer(Modifier.height(16.dp))
                         Text(
-                            "No recent projects",
+                            stringResource(R.string.selection_no_recent),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.secondary
                         )
@@ -185,30 +175,18 @@ fun RepoSelectionScreen(
                 ) {
                     items(recentProjects) { path ->
                         val file = File(path)
-                        if (file.exists()) {
-                            RecentProjectItem(
-                                file = file,
-                                onClick = { onRepoSelected(Uri.fromFile(file)) },
-                                onRemove = {
-                                    scope.launch {
-                                        prefs.removeRecentProject(path)
-                                        recentProjects = prefs.getRecentProjects()
-                                    }
+                        val exists = file.exists()
+                        RecentProjectItem(
+                            file = file,
+                            isMissing = !exists,
+                            onClick = { if (exists) onRepoSelected(Uri.fromFile(file)) },
+                            onRemove = {
+                                scope.launch {
+                                    prefs.removeRecentProject(path)
+                                    recentProjects = prefs.getRecentProjects()
                                 }
-                            )
-                        } else {
-                            RecentProjectItem(
-                                file = file,
-                                isMissing = true,
-                                onClick = { },
-                                onRemove = {
-                                    scope.launch {
-                                        prefs.removeRecentProject(path)
-                                        recentProjects = prefs.getRecentProjects()
-                                    }
-                                }
-                            )
-                        }
+                            }
+                        )
                     }
                 }
             }
@@ -217,16 +195,9 @@ fun RepoSelectionScreen(
 }
 
 @Composable
-fun ActionCard(
-    title: String,
-    icon: ImageVector,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
+fun ActionCard(title: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Card(
-        modifier = modifier
-            .height(100.dp)
-            .clickable(onClick = onClick),
+        modifier = modifier.height(100.dp).clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -243,26 +214,17 @@ fun ActionCard(
 }
 
 @Composable
-fun RecentProjectItem(
-    file: File,
-    isMissing: Boolean = false,
-    onClick: () -> Unit,
-    onRemove: () -> Unit
-) {
+fun RecentProjectItem(file: File, isMissing: Boolean = false, onClick: () -> Unit, onRemove: () -> Unit) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = !isMissing, onClick = onClick),
+        modifier = Modifier.fillMaxWidth().clickable(enabled = !isMissing, onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = if (isMissing) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceContainerLow
         ),
         shape = RoundedCornerShape(12.dp),
-        border = if(isMissing) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+        border = if(isMissing) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
     ) {
         Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             ProjectIcon(projectDir = file, isMissing = isMissing)
@@ -277,20 +239,15 @@ fun RecentProjectItem(
                     color = if(isMissing) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = if(isMissing) "Directory not found" else file.absolutePath,
+                    text = if(isMissing) stringResource(R.string.selection_dir_not_found) else file.absolutePath,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            
             IconButton(onClick = onRemove) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "Remove",
-                    tint = MaterialTheme.colorScheme.outline
-                )
+                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.action_delete), tint = MaterialTheme.colorScheme.outline)
             }
         }
     }
@@ -301,58 +258,41 @@ fun ProjectIcon(projectDir: File, isMissing: Boolean) {
     var projectBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var projectTypeIcon by remember { mutableStateOf(Icons.Default.Folder) }
     var iconTint by remember { mutableStateOf(Color.Unspecified) }
+    val primaryColor = MaterialTheme.colorScheme.primary
 
     LaunchedEffect(projectDir) {
-        if (isMissing) return@LaunchedEffect
-
-        withContext(Dispatchers.IO) {
-            val iconPaths = listOf(
-                "app/src/main/res/mipmap-xxxhdpi/ic_launcher.png",
-                "app/src/main/res/mipmap-xxhdpi/ic_launcher.png",
-                "app/src/main/res/mipmap-xhdpi/ic_launcher.png",
-                "src/main/res/mipmap-xxxhdpi/ic_launcher.png"
-            )
-            
-            var foundBitmap: Bitmap? = null
-            for (path in iconPaths) {
-                val iconFile = File(projectDir, path)
-                if (iconFile.exists()) {
-                    try {
-                        foundBitmap = BitmapFactory.decodeFile(iconFile.absolutePath)
-                        break
-                    } catch (e: Exception) { }
-                }
-            }
-
-            if (foundBitmap != null) {
-                projectBitmap = foundBitmap
-            } else {
+        if (!isMissing) {
+            withContext(Dispatchers.IO) {
                 val files = projectDir.list()?.toList() ?: emptyList()
                 
-                when {
-                    files.contains("index.html") || files.contains("package.json") -> {
-                        projectTypeIcon = Icons.Default.Language
-                        iconTint = Color(0xFFE65100)
-                    }
-                    files.contains("pubspec.yaml") -> {
-                        projectTypeIcon = Icons.Default.Smartphone
-                        iconTint = Color(0xFF0277BD)
-                    }
-                    files.contains("build.gradle") || files.contains("build.gradle.kts") -> {
-                        projectTypeIcon = Icons.Default.Android
-                        iconTint = Color(0xFF2E7D32)
-                    }
-                    files.contains("pom.xml") -> {
-                        projectTypeIcon = Icons.Default.Code
-                        iconTint = Color(0xFFC62828)
-                    }
-                    files.contains("requirements.txt") || files.any { it.endsWith(".py") } -> {
-                        projectTypeIcon = Icons.Default.Terminal
-                        iconTint = Color(0xFFF9A825)
-                    }
-                    else -> {
-                        projectTypeIcon = Icons.Default.Folder
-                        iconTint = Color.Gray
+                // 1. Determine Project Type
+                if (files.any { it.contains("build.gradle") }) {
+                    projectTypeIcon = Icons.Default.Android
+                    iconTint = Color(0xFF3DDC84) // Android Green
+                } else if (files.contains(".git")) {
+                    projectTypeIcon = Icons.Default.Code // Represents Source/Git
+                    iconTint = primaryColor
+                }
+
+                // 2. Try to load real app icon (Heuristic Search)
+                val possibleIconPaths = listOf(
+                    "app/src/main/res/mipmap-xxxhdpi/ic_launcher.png",
+                    "app/src/main/res/mipmap-xxhdpi/ic_launcher.png",
+                    "app/src/main/res/mipmap-xhdpi/ic_launcher.png",
+                    "src/main/res/mipmap-xxxhdpi/ic_launcher.png",
+                    "app/src/main/res/drawable/ic_launcher.png",
+                    "icon.png"
+                )
+
+                for (path in possibleIconPaths) {
+                    val iconFile = File(projectDir, path)
+                    if (iconFile.exists()) {
+                        try {
+                            projectBitmap = BitmapFactory.decodeFile(iconFile.absolutePath)
+                            if (projectBitmap != null) break
+                        } catch (e: Exception) {
+                            // Continue searching if decoding fails
+                        }
                     }
                 }
             }
@@ -363,7 +303,7 @@ fun ProjectIcon(projectDir: File, isMissing: Boolean) {
         modifier = Modifier.size(48.dp),
         shape = RoundedCornerShape(12.dp),
         color = if (isMissing) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceContainerHigh,
-        border = if (projectBitmap == null) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)) else null
+        border = if (projectBitmap == null) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)) else null
     ) {
         if (projectBitmap != null && !isMissing) {
             Image(
@@ -374,16 +314,12 @@ fun ProjectIcon(projectDir: File, isMissing: Boolean) {
             )
         } else {
             Box(contentAlignment = Alignment.Center) {
-                if (isMissing) {
-                    Icon(Icons.Default.CloudOff, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else {
-                    Icon(
-                        imageVector = projectTypeIcon,
-                        contentDescription = "Project Type",
-                        tint = if (iconTint != Color.Unspecified) iconTint else MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
+                Icon(
+                    imageVector = if (isMissing) Icons.Default.CloudOff else projectTypeIcon,
+                    contentDescription = null,
+                    tint = if (isMissing) MaterialTheme.colorScheme.onSurfaceVariant else if (iconTint != Color.Unspecified) iconTint else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
             }
         }
     }

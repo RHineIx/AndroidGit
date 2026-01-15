@@ -13,6 +13,7 @@ import kotlinx.coroutines.withContext
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.ListBranchCommand
 import org.eclipse.jgit.api.ResetCommand
+import org.eclipse.jgit.api.errors.NoHeadException
 import org.eclipse.jgit.diff.DiffFormatter
 import org.eclipse.jgit.lib.ObjectId
 import org.eclipse.jgit.lib.Repository
@@ -25,19 +26,29 @@ import java.io.ByteArrayOutputStream
 import java.io.Closeable
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import kotlin.concurrent.read
+import kotlin.concurrent.write
 
 /**
  * A robust, thread-safe Git Manager.
- * Optimized for Concurrency: Separates Index-Write locks from Read-only operations.
+ * Optimized for Concurrency:
+ * 1. Uses [ReentrantReadWriteLock] to protect the Manager lifecycle (init/open vs close).
+ * 2. Uses [Mutex] to serialize Git Index write operations (add, commit, checkout).
  */
 class GitManager(private val rootDir: File) : Closeable {
 
     private var git: Git? = null
     private var branchManager: GitBranchManager? = null
     private var stashManager: GitStashManager? = null
-    
-    // Mutex specifically for operations that modify the Working Tree or Index (Staging Area).
-    // e.g., Checkout, Merge, Commit, Add, Pull, Status (updates index cache).
+
+    // Lifecycle Lock:
+    // - Read Lock: Used by ALL Git operations (ensures 'git' is not null/closed while running).
+    // - Write Lock: Used ONLY by close() and init/open (ensures exclusive access to change state).
+    private val lifecycleLock = ReentrantReadWriteLock()
+
+    // Operation Lock:
+    // - Mutex: Serializes operations that modify the Git Index/Working Tree.
     private val writeMutex = Mutex()
     
     private val isClosed = AtomicBoolean(false)
@@ -49,7 +60,8 @@ class GitManager(private val rootDir: File) : Closeable {
     // --- Initialization ---
 
     suspend fun initRepo(): String = withContext(Dispatchers.IO) {
-        writeMutex.withLock {
+        // Init requires exclusive access to lifecycle
+        lifecycleLock.write {
             runCatching {
                 Git.init().setDirectory(rootDir).call()
                 openRepoInternal()
@@ -59,8 +71,7 @@ class GitManager(private val rootDir: File) : Closeable {
     }
 
     suspend fun openRepo(): String = withContext(Dispatchers.IO) {
-        // Opening usually doesn't need a write lock, but we want to ensure atomicity during setup
-        writeMutex.withLock {
+        lifecycleLock.write {
             runCatching {
                 openRepoInternal()
                 "Repository opened successfully!"
@@ -72,7 +83,8 @@ class GitManager(private val rootDir: File) : Closeable {
         if (isClosed.get()) throw IllegalStateException("Manager is closed")
         
         if (isGitRepo()) {
-            git?.close() // Close old instance if exists
+            // Close old instance safely if it exists (though we hold write lock here)
+            git?.close()
             git = Git.open(rootDir)
             branchManager = GitBranchManager(git!!)
             stashManager = GitStashManager(git!!)
@@ -82,9 +94,7 @@ class GitManager(private val rootDir: File) : Closeable {
     }
 
     suspend fun configureUser(name: String, email: String) = withContext(Dispatchers.IO) {
-        // Config writes are safe to do quickly
-        writeMutex.withLock {
-            ensureOpen()
+        runSafeRead {
             val config = git?.repository?.config
             if (name.isNotEmpty()) config?.setString("user", null, "name", name)
             if (email.isNotEmpty()) config?.setString("user", null, "email", email)
@@ -92,129 +102,136 @@ class GitManager(private val rootDir: File) : Closeable {
         }
     }
 
-    // --- Dashboard & Status (READ + WRITE MIXED) ---
+    // --- Dashboard & Status ---
 
-    /**
-     * Optimized:
-     * - `status` needs Write Lock (updates index).
-     * - `log` (unpushed count) is Read-only (safe).
-     */
     suspend fun getDashboardStats(): DashboardState = withContext(Dispatchers.IO) {
-        try {
-            ensureOpen()
-            val repo = git?.repository ?: return@withContext DashboardState.Error("Repo closed")
-            
-            // 1. Status (Requires Lock to be accurate and safe)
-            val (changedCount, branchName) = writeMutex.withLock {
-                val status = git?.status()?.call()
-                val count = (status?.untracked?.size ?: 0) + 
-                             (status?.modified?.size ?: 0) + 
-                             (status?.added?.size ?: 0) + 
-                             (status?.missing?.size ?: 0) + 
-                             (status?.removed?.size ?: 0) +
-                             (status?.conflicting?.size ?: 0)
-                Pair(count, repo.branch ?: "Unknown")
-            }
+        // Acquiring Read Lock prevents close() from happening during this block
+        lifecycleLock.read {
+            try {
+                ensureOpen()
+                val repo = git?.repository ?: return@read DashboardState.Error("Repo closed")
+                
+                // Status calculation needs Write Mutex to prevent index corruption during concurrent writes
+                val (changedCount, branchName) = writeMutex.withLock {
+                    val status = git?.status()?.call()
+                    val count = (status?.untracked?.size ?: 0) + 
+                                 (status?.modified?.size ?: 0) + 
+                                 (status?.added?.size ?: 0) + 
+                                 (status?.missing?.size ?: 0) + 
+                                 (status?.removed?.size ?: 0) +
+                                 (status?.conflicting?.size ?: 0)
+                    Pair(count, repo.branch ?: "Unknown")
+                }
 
-            var unpushedCount = 0
-            if (hasRemoteInternal()) {
-                runCatching {
-                    val localHead = repo.resolve("HEAD")
-                    val remoteBranch = "origin/$branchName"
-                    val remoteHead = repo.resolve("refs/remotes/$remoteBranch")
-                    
-                    if (localHead != null) {
-                        unpushedCount = if (remoteHead != null) {
-                            // Only counting commits, no index modification -> No Mutex needed
-                            git?.log()?.addRange(remoteHead, localHead)?.call()?.count() ?: 0
-                        } else {
-                            git?.log()?.call()?.count() ?: 0
+                var unpushedCount = 0
+                if (hasRemoteInternal()) {
+                    runCatching {
+                        val localHead = repo.resolve("HEAD")
+                        val remoteBranch = "origin/$branchName"
+                        val remoteHead = repo.resolve("refs/remotes/$remoteBranch")
+                        
+                        if (localHead != null) {
+                            unpushedCount = if (remoteHead != null) {
+                                // JGit Log is thread-safe for reading
+                                git?.log()?.addRange(remoteHead, localHead)?.call()?.count() ?: 0
+                            } else {
+                                git?.log()?.call()?.count() ?: 0
+                            }
                         }
                     }
                 }
+                DashboardState.Success(branchName, changedCount, unpushedCount)
+            } catch (e: Exception) {
+                DashboardState.Error(e.message ?: "Unknown Error")
             }
-            DashboardState.Success(branchName, changedCount, unpushedCount)
-        } catch (e: Exception) {
-            DashboardState.Error(e.message ?: "Unknown Error")
         }
     }
 
     suspend fun getChangedFiles(): List<GitFile> = withContext(Dispatchers.IO) {
-        writeMutex.withLock {
-            val list = mutableListOf<GitFile>()
-            try {
-                ensureOpen()
-                val status = git?.status()?.call() ?: return@withLock emptyList()
-                status.added.forEach { list.add(GitFile(it, ChangeType.ADDED)) }
-                status.modified.forEach { list.add(GitFile(it, ChangeType.MODIFIED)) }
-                status.changed.forEach { list.add(GitFile(it, ChangeType.MODIFIED)) }
-                status.untracked.forEach { list.add(GitFile(it, ChangeType.UNTRACKED)) }
-                status.missing.forEach { list.add(GitFile(it, ChangeType.MISSING)) }
-                status.removed.forEach { list.add(GitFile(it, ChangeType.DELETED)) }
-                status.conflicting.forEach { list.add(GitFile(it, ChangeType.MODIFIED)) }
-                list.sortedBy { it.path }
-            } catch (e: Exception) { emptyList() }
+        lifecycleLock.read {
+            writeMutex.withLock {
+                val list = mutableListOf<GitFile>()
+                try {
+                    ensureOpen()
+                    val status = git?.status()?.call() ?: return@withLock emptyList()
+                    status.added.forEach { list.add(GitFile(it, ChangeType.ADDED)) }
+                    status.modified.forEach { list.add(GitFile(it, ChangeType.MODIFIED)) }
+                    status.changed.forEach { list.add(GitFile(it, ChangeType.MODIFIED)) }
+                    status.untracked.forEach { list.add(GitFile(it, ChangeType.UNTRACKED)) }
+                    status.missing.forEach { list.add(GitFile(it, ChangeType.MISSING)) }
+                    status.removed.forEach { list.add(GitFile(it, ChangeType.DELETED)) }
+                    status.conflicting.forEach { list.add(GitFile(it, ChangeType.MODIFIED)) }
+                    list.sortedBy { it.path }
+                } catch (e: Exception) { emptyList() }
+            }
         }
     }
 
-    // --- Branch Operations (READ vs WRITE) ---
+    // --- Branch Operations ---
 
-    // READ-ONLY: No Mutex needed (JGit reads packed-refs safely)
     suspend fun getRichBranches(): List<BranchModel> = withContext(Dispatchers.IO) {
         runSafeRead { branchManager?.getRichBranches() ?: emptyList() }
     }
 
-    // WRITE: Requires Mutex
     suspend fun checkoutBranch(name: String): String = withContext(Dispatchers.IO) {
-        writeMutex.withLock { runGitOperation { branchManager?.checkoutBranch(name) ?: "Error" } }
+        runGitOperation { branchManager?.checkoutBranch(name) ?: "Error" }
     }
 
     suspend fun createBranch(name: String): String = withContext(Dispatchers.IO) {
-        writeMutex.withLock { runGitOperation { branchManager?.createBranch(name) ?: "Error" } }
+        runGitOperation { branchManager?.createBranch(name) ?: "Error" }
     }
 
     suspend fun deleteBranch(name: String): String = withContext(Dispatchers.IO) {
-        writeMutex.withLock { runGitOperation { branchManager?.deleteBranch(name) ?: "Error" } }
+        runGitOperation { branchManager?.deleteBranch(name) ?: "Error" }
     }
 
     suspend fun mergeBranch(name: String): String = withContext(Dispatchers.IO) {
-        writeMutex.withLock { runGitOperation { branchManager?.mergeBranch(name) ?: "Error" } }
+        runGitOperation { branchManager?.mergeBranch(name) ?: "Error" }
     }
 
     suspend fun rebaseBranch(name: String): String = withContext(Dispatchers.IO) {
-        writeMutex.withLock { runGitOperation { branchManager?.rebaseBranch(name) ?: "Error" } }
+        runGitOperation { branchManager?.rebaseBranch(name) ?: "Error" }
     }
 
     suspend fun renameBranch(name: String): String = withContext(Dispatchers.IO) {
-        writeMutex.withLock { runGitOperation { branchManager?.renameBranch(name) ?: "Error" } }
+        runGitOperation { branchManager?.renameBranch(name) ?: "Error" }
     }
 
-    // --- Stash (WRITE) ---
+    // --- Stash ---
 
     suspend fun stashChanges(msg: String): String = withContext(Dispatchers.IO) {
-        writeMutex.withLock { runGitOperation { stashManager?.stashChanges(msg) ?: "Error" } }
+        runGitOperation { stashManager?.stashChanges(msg) ?: "Error" }
     }
 
     suspend fun applyStash(index: Int, drop: Boolean): String = withContext(Dispatchers.IO) {
-        writeMutex.withLock { runGitOperation { stashManager?.applyStash(index, drop) ?: "Error" } }
+        runGitOperation { stashManager?.applyStash(index, drop) ?: "Error" }
     }
 
     suspend fun dropStash(index: Int): String = withContext(Dispatchers.IO) {
-        writeMutex.withLock { runGitOperation { stashManager?.dropStash(index) ?: "Error" } }
+        runGitOperation { stashManager?.dropStash(index) ?: "Error" }
     }
 
-    // READ-ONLY
     suspend fun getStashList(): List<StashItem> = withContext(Dispatchers.IO) {
         runSafeRead { stashManager?.getStashList() ?: emptyList() }
     }
 
-    // --- Commits & Log (READ vs WRITE) ---
+    // --- Commits & Log ---
 
     // READ-ONLY: Pure history reading
-    suspend fun getCommits(): List<CommitItem> = withContext(Dispatchers.IO) {
+    // UPDATED: Added Pagination support (limit/offset) to prevent OOM
+    suspend fun getCommits(limit: Int = 100, offset: Int = 0): List<CommitItem> = withContext(Dispatchers.IO) {
         runSafeRead {
             val repo = git?.repository ?: return@runSafeRead emptyList()
-            val logs = git?.log()?.call() ?: return@runSafeRead emptyList()
+
+            // Safe handling for empty repos + Pagination
+            val logs = try {
+                val cmd = git?.log() ?: return@runSafeRead emptyList()
+                if (limit > 0) cmd.setMaxCount(limit)
+                if (offset > 0) cmd.setSkip(offset)
+                cmd.call()
+            } catch (e: NoHeadException) {
+                return@runSafeRead emptyList()
+            }
 
             val branch = repo.branch
             val remoteRef = if (branch != null) repo.resolve("refs/remotes/origin/$branch") else null
@@ -241,195 +258,184 @@ class GitManager(private val rootDir: File) : Closeable {
         }
     }
 
-    // READ-ONLY
     suspend fun getLastCommitMessage(): String = withContext(Dispatchers.IO) {
         runSafeRead {
-            git?.log()?.setMaxCount(1)?.call()?.firstOrNull()?.fullMessage ?: ""
+             try {
+                 git?.log()?.setMaxCount(1)?.call()?.firstOrNull()?.fullMessage ?: ""
+             } catch (e: NoHeadException) { "" }
         }
     }
 
-    // WRITE: Modifies Index
     suspend fun addToStage(files: List<GitFile>) = withContext(Dispatchers.IO) {
-        writeMutex.withLock {
-            ensureOpen()
-            val addCommand = git?.add()
-            val rmCommand = git?.rm()
-            var hasAdds = false
-            var hasRms = false
+        // Uses both locks: Lifecycle Read (Keep alive) + Write Mutex (Serialize changes)
+        lifecycleLock.read {
+            writeMutex.withLock {
+                ensureOpen()
+                val addCommand = git?.add()
+                val rmCommand = git?.rm()
             
-            files.forEach { file ->
-                if (file.type == ChangeType.DELETED || file.type == ChangeType.MISSING) {
-                    rmCommand?.addFilepattern(file.path)
-                    hasRms = true
-                } else {
-                    addCommand?.addFilepattern(file.path)
-                    hasAdds = true
+                var hasAdds = false
+                var hasRms = false
+                
+                files.forEach { file ->
+                    if (file.type == ChangeType.DELETED || file.type == ChangeType.MISSING) {
+                        rmCommand?.addFilepattern(file.path)
+                        hasRms = true
+                    } else {
+                        addCommand?.addFilepattern(file.path)
+                        hasAdds = true
+                    }
                 }
+                if (hasAdds) addCommand?.call()
+                if (hasRms) rmCommand?.call()
             }
-            if (hasAdds) addCommand?.call()
-            if (hasRms) rmCommand?.call()
         }
     }
 
-    // WRITE: Creates Commit object and updates HEAD
     suspend fun commit(message: String, amend: Boolean = false): String = withContext(Dispatchers.IO) {
-        writeMutex.withLock {
-            runGitOperation {
-                git?.commit()?.setMessage(message)?.setAmend(amend)?.call()
-                if (amend) "Commit amended!" else "Committed!"
-            }
+        runGitOperation {
+            git?.commit()?.setMessage(message)?.setAmend(amend)?.call()
+            if (amend) "Commit amended!" else "Committed!"
         }
     }
 
-    // WRITE: Updates Index/WorkingDir
     suspend fun checkoutCommit(hash: String): String = withContext(Dispatchers.IO) {
-        writeMutex.withLock {
-            runGitOperation {
-                git?.checkout()?.setName(hash)?.call()
-                "Checked out $hash"
-            }
+        runGitOperation {
+            git?.checkout()?.setName(hash)?.call()
+            "Checked out $hash"
         }
     }
 
     suspend fun revertCommit(hash: String): String = withContext(Dispatchers.IO) {
-        writeMutex.withLock {
-            runGitOperation {
-                val objId = git?.repository?.resolve(hash) ?: throw Exception("Commit not found")
-                git?.revert()?.include(objId)?.call()
-                "Reverted commit"
-            }
+        runGitOperation {
+            val objId = git?.repository?.resolve(hash) ?: throw Exception("Commit not found")
+            git?.revert()?.include(objId)?.call()
+            "Reverted commit"
         }
     }
 
     suspend fun cherryPickCommit(hash: String): String = withContext(Dispatchers.IO) {
-        writeMutex.withLock {
-            runGitOperation {
-                val objId = git?.repository?.resolve(hash) ?: throw Exception("Commit not found")
-                val res = git?.cherryPick()?.include(objId)?.call()
-                if (res?.status == org.eclipse.jgit.api.CherryPickResult.CherryPickStatus.OK) "Cherry-picked!" else "Failed: ${res?.status}"
-            }
+        runGitOperation {
+            val objId = git?.repository?.resolve(hash) ?: throw Exception("Commit not found")
+            val res = git?.cherryPick()?.include(objId)?.call()
+            if (res?.status == org.eclipse.jgit.api.CherryPickResult.CherryPickStatus.OK) "Cherry-picked!" else "Failed: ${res?.status}"
         }
     }
 
     suspend fun resetToCommit(hash: String, hard: Boolean): String = withContext(Dispatchers.IO) {
-        writeMutex.withLock {
-            runGitOperation {
-                val objId = git?.repository?.resolve(hash) ?: throw Exception("Not found")
-                val mode = if (hard) ResetCommand.ResetType.HARD else ResetCommand.ResetType.MIXED
-                git?.reset()?.setMode(mode)?.setRef(objId.name)?.call()
-                if (hard) "Reset HARD" else "Reset MIXED"
-            }
+        runGitOperation {
+            val objId = git?.repository?.resolve(hash) ?: throw Exception("Not found")
+            val mode = if (hard) ResetCommand.ResetType.HARD else ResetCommand.ResetType.MIXED
+            git?.reset()?.setMode(mode)?.setRef(objId.name)?.call()
+            if (hard) "Reset HARD" else "Reset MIXED"
         }
     }
 
     // --- Remote Operations ---
 
     suspend fun hasRemote(): Boolean = withContext(Dispatchers.IO) {
-        hasRemoteInternal() // Fast config read, no lock needed usually
+        hasRemoteInternal()
     }
 
     private fun hasRemoteInternal(): Boolean {
-        ensureOpen()
-        return !git?.repository?.config?.getString("remote", "origin", "url").isNullOrEmpty()
-    }
-
-    suspend fun getRemoteUrl(): String = withContext(Dispatchers.IO) {
-        ensureOpen()
-        git?.repository?.config?.getString("remote", "origin", "url") ?: ""
-    }
-
-    suspend fun addRemote(url: String): String = withContext(Dispatchers.IO) {
-        writeMutex.withLock {
-            runGitOperation {
-                val config = git?.repository?.config
-                config?.setString("remote", "origin", "url", url)
-                config?.setString("remote", "origin", "fetch", "+refs/heads/*:refs/remotes/origin/*")
-                config?.save()
-                "Remote linked!"
-            }
+        lifecycleLock.read {
+            if (isClosed.get()) return false
+            return !git?.repository?.config?.getString("remote", "origin", "url").isNullOrEmpty()
         }
     }
 
-    // Optimized: No Write Lock needed for simple Fetch
-    suspend fun fetchAll(token: String): String = withContext(Dispatchers.IO) {
+    suspend fun getRemoteUrl(): String = withContext(Dispatchers.IO) {
+        runSafeRead { git?.repository?.config?.getString("remote", "origin", "url") ?: "" }
+    }
+
+    suspend fun addRemote(url: String): String = withContext(Dispatchers.IO) {
         runGitOperation {
-            val cmd = git?.fetch()?.setCheckFetchedObjects(true)
-            if (token.isNotEmpty()) cmd?.setCredentialsProvider(authManager.getCredentialsProvider(token))
-            cmd?.call()
-            "Fetched all"
+            val config = git?.repository?.config
+            config?.setString("remote", "origin", "url", url)
+            config?.setString("remote", "origin", "fetch", "+refs/heads/*:refs/remotes/origin/*")
+            config?.save()
+            "Remote linked!"
+        }
+    }
+
+    suspend fun fetchAll(token: String): String = withContext(Dispatchers.IO) {
+        // Fetch is network IO, usually thread safe on JGit, but we need lifecycle safety
+        lifecycleLock.read {
+             try {
+                ensureOpen()
+                val cmd = git?.fetch()?.setCheckFetchedObjects(true)
+                if (token.isNotEmpty()) cmd?.setCredentialsProvider(authManager.getCredentialsProvider(token))
+                cmd?.call()
+                "Fetched all"
+             } catch (e: Exception) { "Error: ${e.message}" }
         }
     }
 
     suspend fun push(token: String, force: Boolean = false): String = withContext(Dispatchers.IO) {
-        writeMutex.withLock {
-            runGitOperation {
-                val cmd = git?.push()?.setForce(force)
-                if (token.isNotEmpty()) {
-                    cmd?.setCredentialsProvider(authManager.getCredentialsProvider(token))
-                }
+        // Push updates remote, doesn't modify local index/tree significantly, but best to lock
+        runGitOperation {
+            val cmd = git?.push()?.setForce(force)
+            if (token.isNotEmpty()) {
+                cmd?.setCredentialsProvider(authManager.getCredentialsProvider(token))
+            }
 
-                val pushResults = cmd?.call()
-                var resultMessage = ""
-                
-                pushResults?.forEach { result ->
-                    result.remoteUpdates.forEach { update ->
-                        when (update.status) {
-                            RemoteRefUpdate.Status.OK -> resultMessage += "Success: ${update.srcRef} -> ${update.remoteName}\n"
-                            RemoteRefUpdate.Status.UP_TO_DATE -> resultMessage += "Up to date.\n"
-                            RemoteRefUpdate.Status.REJECTED_NONFASTFORWARD -> resultMessage += "Rejected: Non-fast-forward (Pull first!)\n"
-                            RemoteRefUpdate.Status.REJECTED_NODELETE -> resultMessage += "Rejected: No Delete.\n"
-                            RemoteRefUpdate.Status.REJECTED_REMOTE_CHANGED -> resultMessage += "Rejected: Remote Changed.\n"
-                            RemoteRefUpdate.Status.REJECTED_OTHER_REASON -> resultMessage += "Rejected: ${update.message}\n"
-                            else -> resultMessage += "Status: ${update.status}\n"
-                        }
+            val pushResults = cmd?.call()
+            var resultMessage = ""
+            
+            pushResults?.forEach { result ->
+                result.remoteUpdates.forEach { update ->
+                    when (update.status) {
+                        RemoteRefUpdate.Status.OK -> resultMessage += "Success: ${update.srcRef} -> ${update.remoteName}\n"
+                        RemoteRefUpdate.Status.UP_TO_DATE -> resultMessage += "Up to date.\n"
+                        RemoteRefUpdate.Status.REJECTED_NONFASTFORWARD -> resultMessage += "Rejected: Non-fast-forward (Pull first!)\n"
+                        RemoteRefUpdate.Status.REJECTED_NODELETE -> resultMessage += "Rejected: No Delete.\n"
+                        RemoteRefUpdate.Status.REJECTED_REMOTE_CHANGED -> resultMessage += "Rejected: Remote Changed.\n"
+                        RemoteRefUpdate.Status.REJECTED_OTHER_REASON -> resultMessage += "Rejected: ${update.message}\n"
+                        else -> resultMessage += "Status: ${update.status}\n"
                     }
                 }
-                if (resultMessage.isEmpty()) "Push executed (No updates)." else resultMessage.trim()
             }
+            if (resultMessage.isEmpty()) "Push executed (No updates)." else resultMessage.trim()
         }
     }
 
     suspend fun pull(token: String): String = withContext(Dispatchers.IO) {
-        writeMutex.withLock {
-            runGitOperation {
-                val cmd = git?.pull()
-                if (token.isNotEmpty()) cmd?.setCredentialsProvider(authManager.getCredentialsProvider(token))
-                cmd?.call()
-                "Pulled!"
-            }
+        runGitOperation {
+            val cmd = git?.pull()
+            if (token.isNotEmpty()) cmd?.setCredentialsProvider(authManager.getCredentialsProvider(token))
+            cmd?.call()
+            "Pulled!"
         }
     }
 
     // --- Conflict Resolution & Files ---
 
     suspend fun getConflictingFiles(): List<String> = withContext(Dispatchers.IO) {
-        writeMutex.withLock {
-            try {
-                ensureOpen()
-                val status = git?.status()?.call()
-                status?.conflicting?.toList() ?: emptyList()
-            } catch (e: Exception) { emptyList() }
+        lifecycleLock.read {
+            writeMutex.withLock {
+                try {
+                    ensureOpen()
+                    val status = git?.status()?.call()
+                    status?.conflicting?.toList() ?: emptyList()
+                } catch (e: Exception) { emptyList() }
+            }
         }
     }
     
     suspend fun resolveUsingOurs(path: String) = withContext(Dispatchers.IO) {
-        writeMutex.withLock {
-             runGitOperation {
-                 git?.checkout()?.setStage(org.eclipse.jgit.api.CheckoutCommand.Stage.OURS)?.addPath(path)?.call()
-                 git?.add()?.addFilepattern(path)?.call() 
-                 "Resolved (Ours)"
-             }
-        }
+        runGitOperation {
+             git?.checkout()?.setStage(org.eclipse.jgit.api.CheckoutCommand.Stage.OURS)?.addPath(path)?.call()
+             git?.add()?.addFilepattern(path)?.call() 
+             "Resolved (Ours)"
+         }
     }
 
     suspend fun resolveUsingTheirs(path: String) = withContext(Dispatchers.IO) {
-        writeMutex.withLock {
-             runGitOperation {
-                 git?.checkout()?.setStage(org.eclipse.jgit.api.CheckoutCommand.Stage.THEIRS)?.addPath(path)?.call()
-                 git?.add()?.addFilepattern(path)?.call() 
-                 "Resolved (Theirs)"
-             }
-        }
+        runGitOperation {
+             git?.checkout()?.setStage(org.eclipse.jgit.api.CheckoutCommand.Stage.THEIRS)?.addPath(path)?.call()
+             git?.add()?.addFilepattern(path)?.call() 
+             "Resolved (Theirs)"
+         }
     }
     
     suspend fun readFileContent(path: String): String = withContext(Dispatchers.IO) {
@@ -440,7 +446,7 @@ class GitManager(private val rootDir: File) : Closeable {
                  return@withContext "Binary file detected (Image/PDF/Exec). \nCannot display content."
              }
 
-             val maxLength = 50 * 1024 
+             val maxLength = 50 * 1024 // 50KB limit for preview
              if (file.length() > maxLength) {
                  val content = file.reader().use { it.readText().take(maxLength) }
                  "$content\n\n... [File truncated because it is too large] ..."
@@ -452,41 +458,42 @@ class GitManager(private val rootDir: File) : Closeable {
          }
     }
 
-    // --- FIX: Correct Diff Logic ---
     suspend fun getFileDiff(path: String): String = withContext(Dispatchers.IO) {
         runSafeRead {
+            val file = File(rootDir, path)
+            // Memory Guard: Prevent OOM on huge files diff
+            if (file.exists() && file.length() > 2 * 1024 * 1024) { // 2MB Limit
+                return@runSafeRead "File is too large to display diff (Size > 2MB)."
+            }
+
             val repo = git?.repository ?: return@runSafeRead "Error: Repo closed"
             val out = ByteArrayOutputStream()
             val df = DiffFormatter(out)
             df.setRepository(repo)
             df.setPathFilter(PathFilter.create(path))
 
-            // 1. Check if Untracked or Added (Fix: using status.untracked.contains)
+            // 1. Check if Untracked or Added
             val status = git?.status()?.addPath(path)?.call()
             if (status != null) {
                 if (status.untracked.contains(path) || status.added.contains(path)) {
-                    // Return whole file as added
                     return@runSafeRead readFileContent(path).lines().joinToString("\n") { "+$it" }
                 }
             }
 
             // 2. Resolve HEAD tree
             val headId = repo.resolve("HEAD^{tree}")
-            
             if (headId == null) {
-                // No HEAD yet, everything is new
                  return@runSafeRead readFileContent(path).lines().joinToString("\n") { "+$it" }
             }
 
-            // 3. Prepare Iterators (Fix: Use CanonicalTreeParser for HEAD)
+            // 3. Prepare Iterators
             val reader = repo.newObjectReader()
             val oldTreeIter = CanonicalTreeParser()
             oldTreeIter.reset(reader, headId)
             
-            // New: Working Tree
             val newTreeIter = FileTreeIterator(repo)
 
-            // 4. Format Diff (CanonicalTreeParser vs FileTreeIterator is valid)
+            // 4. Format Diff
             df.format(oldTreeIter, newTreeIter)
             
             val diffText = out.toString("UTF-8")
@@ -538,30 +545,52 @@ class GitManager(private val rootDir: File) : Closeable {
         }
     }
 
-    private inline fun runGitOperation(block: () -> String): String {
+    /**
+     * Executes a Write Operation.
+     * Uses [lifecycleLock] READ LOCK (keeps manager alive)
+     * AND [writeMutex] (serializes writes).
+     */
+    private suspend inline fun runGitOperation(crossinline block: () -> String): String {
         return try {
-            ensureOpen()
-            block()
+            lifecycleLock.read {
+                writeMutex.withLock {
+                    ensureOpen()
+                    block()
+                }
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             "Error: ${e.message ?: "Unknown"}"
         }
     }
     
+    /**
+     * Executes a Read Operation.
+     * Uses [lifecycleLock] READ LOCK (keeps manager alive).
+     */
     private inline fun <T> runSafeRead(block: () -> T): T {
-        ensureOpen()
-        return try {
-            block()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            throw e
+        return lifecycleLock.read {
+            ensureOpen()
+            try {
+                block()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                throw e
+            }
         }
     }
 
+    /**
+     * Closes the manager securely.
+     * Acquires [lifecycleLock] WRITE LOCK to ensure no reads/writes are active.
+     */
     override fun close() {
         if (isClosed.compareAndSet(false, true)) {
-            git?.close()
-            git = null
+            // Write Lock ensures we don't close while a Read/Write operation is running on another thread
+            lifecycleLock.write {
+                git?.close()
+                git = null
+            }
         }
     }
 
