@@ -22,9 +22,6 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     
     private val prefs = PreferencesManager(application)
 
-    // Engineering Note: GitManager is a heavy logic object, not a UI state.
-    // It should NOT be wrapped in mutableStateOf to avoid unnecessary recompositions.
-    // The UI should react to 'dashboardState' or 'currentRepoFile' changes instead.
     var gitManager: GitManager? = null
         private set
 
@@ -127,8 +124,6 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         viewModelScope.launch {
             isLoading = true
             showStatus("Cloning...", SnackbarType.INFO)
-            // Note: For Sideloading apps with Full Storage Access, we can clone to root storage if needed.
-            // Using getExternalStorageDirectory() requires MANAGE_EXTERNAL_STORAGE permission.
             val result = GitManager.cloneRepo(url, Environment.getExternalStorageDirectory(), folderName, token)
             isLoading = false
             if (result.first != null) {
@@ -328,7 +323,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
 
     override fun onCleared() {
         super.onCleared()
-        // Critical: Close file handles when ViewModel is destroyed
+        // [Solution #2] Critical: Close file handles when ViewModel is destroyed
         gitManager?.close()
     }
 }

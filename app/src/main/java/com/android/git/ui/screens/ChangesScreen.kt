@@ -113,7 +113,12 @@ fun ChangesScreen(
         },
         bottomBar = {
             Column(
-                modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainer).padding(16.dp).animateContentSize()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .imePadding() // [Fix] إضافة imePadding لرفع المحتوى عند فتح الكيبورد
+                    .padding(16.dp)
+                    .animateContentSize()
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
                     Checkbox(checked = isAmend, onCheckedChange = { isAmend = it }, enabled = !isLoading)

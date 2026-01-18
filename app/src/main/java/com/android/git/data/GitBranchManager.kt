@@ -46,10 +46,11 @@ class GitBranchManager(private val git: Git) {
             val remoteRef = remoteRefs.find { it.name.endsWith("/$branchName") }
             
             if (remoteRef != null) {
+                val localName = branchName.substringAfterLast("/")
                 git.checkout()
                     .setCreateBranch(true)
-                    .setName(branchName)
-                    .setStartPoint("origin/$branchName")
+                    .setName(localName)
+                    .setStartPoint(remoteRef.name)
                     .setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK)
                     .call()
             } else {
@@ -77,7 +78,6 @@ class GitBranchManager(private val git: Git) {
         
         val repo = git.repository
         val ref = repo.findRef(branchName) ?: throw Exception("Branch not found")
-        // Fix: Pass ObjectId
         val result = git.rebase().setUpstream(ref.objectId).call()
         return if (result.status.isSuccessful) "Rebased onto $branchName" else "Rebase failed: ${result.status}"
     }

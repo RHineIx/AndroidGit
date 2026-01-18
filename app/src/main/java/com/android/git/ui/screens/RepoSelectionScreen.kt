@@ -263,33 +263,92 @@ fun ProjectIcon(projectDir: File, isMissing: Boolean) {
     LaunchedEffect(projectDir) {
         if (!isMissing) {
             withContext(Dispatchers.IO) {
-                val files = projectDir.list()?.toList() ?: emptyList()
+                val fileNames = projectDir.list()?.toList() ?: emptyList()
                 
                 // 1. Determine Project Type
-                if (files.any { it.contains("build.gradle") }) {
+                if (fileNames.contains("pubspec.yaml")) {
+                    // Flutter
+                    projectTypeIcon = Icons.Default.Smartphone
+                    iconTint = Color(0xFF02569B) // Flutter Blue
+                } else if (fileNames.any { it.contains("build.gradle") }) {
+                    // Android
                     projectTypeIcon = Icons.Default.Android
                     iconTint = Color(0xFF3DDC84) // Android Green
-                } else if (files.contains(".git")) {
-                    projectTypeIcon = Icons.Default.Code // Represents Source/Git
+                } else if (fileNames.contains("package.json")) {
+                    // Web / Node
+                    projectTypeIcon = Icons.Default.Language
+                    iconTint = Color(0xFFF7DF1E) // JS Yellow
+                } else if (fileNames.contains(".git")) {
+                    // Generic Git
+                    projectTypeIcon = Icons.Default.Code
                     iconTint = primaryColor
                 }
 
-                // 2. Try to load real app icon (Heuristic Search)
-                val possibleIconPaths = listOf(
-                    "app/src/main/res/mipmap-xxxhdpi/ic_launcher.png",
-                    "app/src/main/res/mipmap-xxhdpi/ic_launcher.png",
-                    "app/src/main/res/mipmap-xhdpi/ic_launcher.png",
-                    "src/main/res/mipmap-xxxhdpi/ic_launcher.png",
-                    "app/src/main/res/drawable/ic_launcher.png",
-                    "icon.png"
+                // 2. Comprehensive Icon Search Strategy
+                // Priority: High Res Android/Flutter -> Playstore Icon -> Web Root Icons
+                
+                val extensions = listOf("webp", "png", "jpg", "jpeg", "ico")
+                
+                // Common Android paths (supports Native & Flutter structure)
+                val androidBaseDirs = listOf(
+                    "app/src/main/res",             // Native Android
+                    "android/app/src/main/res",     // Flutter / React Native
+                    "src/main/res"                  // Older structures
                 )
+                
+                // Densities from highest to lowest quality
+                val densities = listOf(
+                    "mipmap-xxxhdpi", "mipmap-xxhdpi", "mipmap-xhdpi", 
+                    "drawable-xxxhdpi", "drawable-xxhdpi", "drawable"
+                )
+                
+                val iconNames = listOf("ic_launcher", "ic_launcher_round", "app_icon")
+                
+                val searchPaths = mutableListOf<String>()
 
-                for (path in possibleIconPaths) {
+                // A. Add Android/Flutter Paths
+                for (base in androidBaseDirs) {
+                    for (density in densities) {
+                        for (name in iconNames) {
+                            for (ext in extensions) {
+                                searchPaths.add("$base/$density/$name.$ext")
+                            }
+                        }
+                    }
+                }
+
+                // B. Add Playstore/Store Icons (often in src/main or root)
+                val storeIconNames = listOf("ic_launcher-playstore", "playstore-icon")
+                val storeBaseDirs = listOf("app/src/main", "android/app/src/main", "src/main", ".")
+                
+                for (base in storeBaseDirs) {
+                    for (name in storeIconNames) {
+                        for (ext in extensions) {
+                            val path = if(base == ".") "$name.$ext" else "$base/$name.$ext"
+                            searchPaths.add(path)
+                        }
+                    }
+                }
+
+                // C. Add Web/Root Icons
+                val rootIconNames = listOf("icon", "logo", "favicon", "assets/icon/icon", "assets/logo")
+                for (name in rootIconNames) {
+                    for (ext in extensions) {
+                        searchPaths.add("$name.$ext")
+                    }
+                }
+
+                // 3. Execute Search
+                for (path in searchPaths) {
                     val iconFile = File(projectDir, path)
                     if (iconFile.exists()) {
                         try {
-                            projectBitmap = BitmapFactory.decodeFile(iconFile.absolutePath)
-                            if (projectBitmap != null) break
+                            // Decode file (supports png, jpg, webp)
+                            val decoded = BitmapFactory.decodeFile(iconFile.absolutePath)
+                            if (decoded != null) {
+                                projectBitmap = decoded
+                                break // Stop at first valid high-priority icon
+                            }
                         } catch (e: Exception) {
                             // Continue searching if decoding fails
                         }

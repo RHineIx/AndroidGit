@@ -27,7 +27,6 @@ fun AppNavGraph(
     val context = LocalContext.current
     val manager = viewModel.gitManager
 
-    // Handle redirection logic
     LaunchedEffect(viewModel.currentRepoFile) {
         val currentRoute = navController.currentBackStackEntry?.destination?.route
         
@@ -69,6 +68,9 @@ fun AppNavGraph(
                 onBack = { navController.popBackStack() },
                 onCloneSuccess = { file ->
                     viewModel.openProject(file)
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(Screen.Selection.route) { inclusive = true }
+                    }
                 }
             )
         }
@@ -109,7 +111,6 @@ fun AppNavGraph(
                         viewModel.loadDashboard()
                         navController.popBackStack()
                     },
-                    // NEW: Navigate to Diff Viewer
                     onViewDiff = { path ->
                         navController.navigate(Screen.DiffViewer.createRoute(path))
                     }
@@ -117,7 +118,6 @@ fun AppNavGraph(
             }
         }
 
-        // NEW: Diff Viewer Composable
         composable(
             route = Screen.DiffViewer.route,
             arguments = listOf(navArgument("filePath") { type = NavType.StringType })
