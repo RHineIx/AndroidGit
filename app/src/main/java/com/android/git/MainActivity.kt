@@ -22,6 +22,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.android.git.data.PreferencesManager
 import com.android.git.navigation.AppNavGraph
+import com.android.git.ui.components.UpdateBottomSheet
 import com.android.git.ui.screens.PermissionScreen
 import com.android.git.ui.theme.AndroidGitTheme
 import com.android.git.ui.viewmodel.MainViewModel
@@ -70,6 +71,7 @@ fun MainAppContent(
 
     var hasPermission by remember { mutableStateOf(checkPermission()) }
 
+    // Auto-open logic
     LaunchedEffect(Unit) {
         if (hasPermission && prefs.isAutoOpenEnabled() && viewModel.currentRepoFile == null) {
             prefs.getLastProjectPath()?.let { path ->
@@ -78,6 +80,7 @@ fun MainAppContent(
         }
     }
 
+    // Lifecycle handling for permissions
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -94,7 +97,17 @@ fun MainAppContent(
         if (!hasPermission) {
             PermissionScreen { requestPermission() }
         } else {
+            // Main Navigation Graph
             AppNavGraph(navController = navController, viewModel = viewModel)
+            
+            // [New] Global Update Sheet Overlay
+            // This sits at the root level, so it covers any screen in the NavGraph
+            if (viewModel.showUpdateSheet && viewModel.updateInfo != null) {
+                UpdateBottomSheet(
+                    updateInfo = viewModel.updateInfo!!,
+                    onDismiss = { viewModel.dismissUpdateSheet() }
+                )
+            }
         }
     }
 }

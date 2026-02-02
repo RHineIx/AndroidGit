@@ -130,6 +130,7 @@ fun AppVersionFooter(context: Context, bottomPadding: androidx.compose.ui.unit.D
     val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
         packageInfo?.longVersionCode ?: 0
     } else {
+        @Suppress("DEPRECATION")
         packageInfo?.versionCode ?: 0
     }
 

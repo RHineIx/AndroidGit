@@ -207,10 +207,10 @@ class GitManager(private val rootDir: File) : Closeable {
                 }
                 val isPushed = isSynced
 
-                commits.add(CommitItem(
+               commits.add(CommitItem(
                     message = rev.fullMessage.trim(),
                     author = rev.authorIdent.name ?: "Unknown",
-                    date = rev.authorIdent.`when`,
+                    date = java.util.Date.from(rev.authorIdent.whenAsInstant),
                     hash = hash.substring(0, 7),
                     isPushed = isPushed
                 ))

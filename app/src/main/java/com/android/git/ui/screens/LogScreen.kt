@@ -1,6 +1,7 @@
 package com.android.git.ui.screens
 
 import android.content.ClipData
+import androidx.compose.material.icons.automirrored.filled.Undo
 import android.content.ClipboardManager
 import android.content.Context
 import androidx.activity.compose.BackHandler
@@ -401,7 +402,7 @@ fun CommitDetailsSheet(
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
         ) {
-            Icon(Icons.Default.Undo, null, modifier = Modifier.size(18.dp))
+            Icon(Icons.AutoMirrored.Filled.Undo, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.log_btn_revert))
         }

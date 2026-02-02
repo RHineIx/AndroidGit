@@ -12,8 +12,8 @@ android {
         applicationId = "com.android.git"
         minSdk = 26
         targetSdk = 35
-        versionCode = 50
-        versionName = "4.9.1-stable"
+        versionCode = 55
+        versionName = "4.9.5-stable"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -61,6 +61,7 @@ android {
         }
         jniLibs {
             useLegacyPackaging = true
+            doNotStrip += "**/libandroidx.graphics.path.so"
         }
     }
 }

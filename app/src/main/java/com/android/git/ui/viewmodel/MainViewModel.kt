@@ -1,6 +1,8 @@
 package com.android.git.ui.viewmodel
 
 import android.app.Application
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Environment
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -8,13 +10,16 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.android.git.data.GitHubUpdateManager
 import com.android.git.data.GitManager
 import com.android.git.data.PreferencesManager
 import com.android.git.model.BranchModel
 import com.android.git.model.CommitItem
 import com.android.git.model.DashboardState
 import com.android.git.model.GitFile
+import com.android.git.model.UpdateInfo
 import com.android.git.ui.components.SnackbarType
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -56,27 +61,69 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         
     private var logCurrentOffset = 0
     private var logHasMore = true
-    private val LOG_PAGE_SIZE = 50 // Load 50 commits at a time
+    private val LOG_PAGE_SIZE = 50 
+
+    // --- Update System State ---
+    var updateInfo: UpdateInfo? by mutableStateOf(null)
+        private set
+
+    var showUpdateSheet: Boolean by mutableStateOf(false)
+        private set
 
     init {
-        // Restore session if process was killed
+        // Restore session
         savedStateHandle.get<String>("current_repo_path")?.let { path ->
             File(path).takeIf { it.exists() }?.let { openProject(it) }
         }
+
+        // [Real Implementation] Check for updates on startup
+        checkForUpdates()
     }
 
+    private fun checkForUpdates() {
+        viewModelScope.launch {
+            // 1. Get current version name dynamically
+            val context = getApplication<Application>()
+            val packageInfo = try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
+                } else {
+                    context.packageManager.getPackageInfo(context.packageName, 0)
+                }
+            } catch (e: Exception) { null }
+
+            val currentVersion = packageInfo?.versionName ?: "1.0.0"
+
+            // 2. Initialize Update Manager (Configured for RHineix/AndroidGit)
+            val updateManager = GitHubUpdateManager(
+                repoOwner = "RHineix", 
+                repoName = "AndroidGit",
+                currentVersionName = currentVersion
+            )
+
+            // 3. Fetch (Non-blocking)
+            val result = updateManager.checkForUpdate()
+
+            // 4. Show Sheet only if valid update found
+            if (result != null) {
+                updateInfo = result
+                showUpdateSheet = true
+            }
+        }
+    }
+
+    fun dismissUpdateSheet() {
+        showUpdateSheet = false
+    }
+
+    // --- Existing Git Logic Below (Unchanged) ---
+    
     fun openProject(file: File) {
         if (currentRepoFile?.absolutePath == file.absolutePath && gitManager != null) return
-        
-        // Ensure clean slate
         closeProject()
-        
         currentRepoFile = file
         savedStateHandle["current_repo_path"] = file.absolutePath
-        
-        // Initialize the heavy manager
         gitManager = GitManager(file)
-        
         prefs.addRecentProject(file.absolutePath)
         loadDashboard()
     }
@@ -86,8 +133,6 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         gitManager = null
         currentRepoFile = null
         savedStateHandle.remove<String>("current_repo_path")
-        
-        // Reset all UI states to avoid showing stale data
         dashboardState = DashboardState.NotInitialized
         branchList = emptyList()
         changedFiles = emptyList()
@@ -99,7 +144,6 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         val manager = gitManager ?: return
         viewModelScope.launch {
             if (manager.isGitRepo()) {
-                // Ensure user config is loaded
                 manager.configureUser(prefs.getUserName(), prefs.getUserEmail())
                 manager.openRepo()
                 dashboardState = manager.getDashboardStats()
@@ -284,8 +328,6 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         viewModelScope.launch { onResult(manager.getLastCommitMessage()) }
     }
 
-    // --- Log Pagination Logic ---
-
     fun loadLogs(reset: Boolean = false) {
         val manager = gitManager ?: return
         if (isLogLoading) return
@@ -300,16 +342,12 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
 
         viewModelScope.launch {
             isLogLoading = true
-            // Fetch next page
             val newLogs = manager.getCommits(limit = LOG_PAGE_SIZE, offset = logCurrentOffset)
-            
             if (newLogs.size < LOG_PAGE_SIZE) {
                 logHasMore = false
             }
-            
             logList = if (reset) newLogs else logList + newLogs
             logCurrentOffset += newLogs.size
-            
             isLogLoading = false
         }
     }
@@ -323,7 +361,6 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
 
     override fun onCleared() {
         super.onCleared()
-        // [Solution #2] Critical: Close file handles when ViewModel is destroyed
         gitManager?.close()
     }
 }

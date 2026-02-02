@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -215,7 +216,7 @@ fun DashboardScreen(
                                 colors = CardDefaults.cardColors(containerColor = Color(0xFF1F6FEB).copy(alpha = 0.2f))
                             ) {
                                 Column(Modifier.padding(16.dp)) {
-                                    Icon(Icons.Default.CallSplit, null, tint = Color(0xFF1F6FEB))
+                                    Icon(Icons.AutoMirrored.Filled.CallSplit, null, tint = Color(0xFF1F6FEB))
                                     Text(stringResource(R.string.dashboard_card_branch), fontSize = 12.sp)
                                     Text(dashboardState.branch, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 1)
                                 }

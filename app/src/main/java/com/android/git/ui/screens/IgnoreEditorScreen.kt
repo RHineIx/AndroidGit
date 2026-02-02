@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -53,7 +54,7 @@ fun IgnoreEditorScreen(
                 actions = {
                     Box {
                         IconButton(onClick = { showTemplateMenu = true }) {
-                            Icon(Icons.Default.PlaylistAdd, contentDescription = "Add Template")
+                            Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Add Template")
                         }
                         
                         DropdownMenu(

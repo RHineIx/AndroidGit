@@ -46,3 +46,12 @@ data class BranchModel(
     val type: BranchType,
     val isCurrent: Boolean
 )
+
+// [New] Model for Update System
+data class UpdateInfo(
+    val versionName: String,
+    val versionCode: Int,
+    val releaseNotes: String,
+    val downloadUrl: String,
+    val isMandatory: Boolean = false
+)
