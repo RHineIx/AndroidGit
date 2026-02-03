@@ -161,7 +161,7 @@ fun UpdateBottomSheet(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             
-            // Header Shield
+            // Header Shield (Protects against drag-to-dismiss in empty areas)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -258,15 +258,15 @@ fun UpdateBottomSheet(
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
-                            // [Fixed Logic] Show Build number ONLY if > 0. Otherwise, hide it cleanly.
-                            val versionText = if (updateInfo.versionCode > 0) {
-                                "v${updateInfo.versionName} (Build ${updateInfo.versionCode})"
-                            } else {
-                                "v${updateInfo.versionName}"
+                            
+                            // [Fixed Logic] Hides "(Build 0)" cleanly
+                            val versionLabel = remember(updateInfo) {
+                                if (updateInfo.versionCode > 0) "v${updateInfo.versionName} (Build ${updateInfo.versionCode})"
+                                else "v${updateInfo.versionName}"
                             }
                             
                             Text(
-                                text = versionText,
+                                text = versionLabel,
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -286,6 +286,7 @@ fun UpdateBottomSheet(
                             .weight(1f, fill = false)
                             .verticalScroll(rememberScrollState())
                     ) {
+                        // [Reverted] Back to standard Text
                         Text(
                             text = updateInfo.releaseNotes,
                             style = MaterialTheme.typography.bodyMedium,

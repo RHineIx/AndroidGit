@@ -13,7 +13,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-
 rootProject.name = "AndroidGit"
-
 include(":app")
