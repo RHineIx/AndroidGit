@@ -21,7 +21,6 @@ class GitHubUpdateManager(
     suspend fun checkForUpdate(): UpdateInfo? = withContext(Dispatchers.IO) {
         var connection: HttpURLConnection? = null
         try {
-            // [Fix] Ensure the repo URL matches your case exactly just to be safe
             val url = URL("https://api.github.com/repos/$repoOwner/$repoName/releases/latest")
             connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
@@ -51,7 +50,7 @@ class GitHubUpdateManager(
         try {
             val json = JSONObject(jsonString)
             
-            // Extract Version Tag (e.g., "v4.9.1-stable")
+            // Extract Version Tag (e.g., "v4.9.1-stable") -> "4.9.1-stable"
             val tagName = json.optString("tag_name", "").removePrefix("v")
             
             // Compare Versions
@@ -61,7 +60,7 @@ class GitHubUpdateManager(
 
             val body = json.optString("body", "New update available.")
 
-            // Extract Download URL
+            // Extract Download URL for APK
             var downloadUrl = json.optString("html_url")
             val assets = json.optJSONArray("assets")
             if (assets != null && assets.length() > 0) {
@@ -77,7 +76,7 @@ class GitHubUpdateManager(
 
             return UpdateInfo(
                 versionName = tagName,
-                versionCode = 0,
+                versionCode = 0, // GitHub doesn't provide versionCode usually
                 releaseNotes = body,
                 downloadUrl = downloadUrl,
                 isMandatory = false
@@ -90,15 +89,14 @@ class GitHubUpdateManager(
     }
 
     /**
-     * [FIXED] Robust version comparison that ignores suffixes like "-stable" or "-beta".
-     * It compares "4.9.0" vs "4.9.1" correctly.
+     * Compare versions robustly. 
+     * Ignores suffixes like "-stable". E.g., "4.9.1" > "4.9.0"
      */
     private fun isNewerVersion(localVersion: String, remoteVersion: String): Boolean {
-        // 1. Clean the version strings: "4.9.1-stable" -> "4.9.1"
+        // Clean strings: "4.9.1-stable" -> "4.9.1"
         val localClean = localVersion.substringBefore("-")
         val remoteClean = remoteVersion.substringBefore("-")
 
-        // 2. Split by dot and convert to integers
         val localParts = localClean.split(".").map { it.toIntOrNull() ?: 0 }
         val remoteParts = remoteClean.split(".").map { it.toIntOrNull() ?: 0 }
         
@@ -112,8 +110,6 @@ class GitHubUpdateManager(
             if (remotePart < localPart) return false
         }
         
-        // If versions are numerically equal (e.g. 4.9.1 vs 4.9.1), check for pre-release logic if needed.
-        // For now, if numbers are equal, we assume no update.
         return false
     }
 }

@@ -8,6 +8,7 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -19,6 +20,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color // [Fix] Added missing import
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -26,16 +28,25 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp // [Fix] Added missing import
 import com.android.git.R
 import com.android.git.data.PreferencesManager
+import com.android.git.ui.components.AppSnackbar
+import com.android.git.ui.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GeneralSettingsScreen(
-    onBack: () -> Unit
+    viewModel: MainViewModel,
+    onBack: () -> Unit,
+    onCheckUpdate: () -> Unit
 ) {
     val context = LocalContext.current
     val prefs = remember { PreferencesManager(context) }
+    
+    // UI State from ViewModel
+    val statusMessage = viewModel.statusMessage
+    val statusType = viewModel.statusType
     
     var autoOpen by remember { mutableStateOf(prefs.isAutoOpenEnabled()) }
 
@@ -54,66 +65,79 @@ fun GeneralSettingsScreen(
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(top = padding.calculateTopPadding())
-                .fillMaxSize()
-        ) {
+        Box(modifier = Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize()) {
             Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                modifier = Modifier.fillMaxSize()
             ) {
-                SettingsSection(title = stringResource(R.string.settings_section_app)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                stringResource(R.string.settings_auto_open), 
-                                fontWeight = FontWeight.SemiBold, 
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                            Text(
-                                stringResource(R.string.settings_auto_open_desc),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
+                    SettingsSection(title = stringResource(R.string.settings_section_app)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    stringResource(R.string.settings_auto_open), 
+                                    fontWeight = FontWeight.SemiBold, 
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                Text(
+                                    stringResource(R.string.settings_auto_open_desc),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = autoOpen,
+                                onCheckedChange = { 
+                                    autoOpen = it
+                                    prefs.setAutoOpenEnabled(it)
+                                },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MaterialTheme.colorScheme.background,
+                                    checkedTrackColor = MaterialTheme.colorScheme.primary
+                                )
                             )
                         }
-                        Switch(
-                            checked = autoOpen,
-                            onCheckedChange = { 
-                                autoOpen = it
-                                prefs.setAutoOpenEnabled(it)
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = MaterialTheme.colorScheme.background,
-                                checkedTrackColor = MaterialTheme.colorScheme.primary
-                            )
-                        )
                     }
+
+                    DeveloperSection(context)
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                DeveloperSection(context)
-                
-                Spacer(modifier = Modifier.height(16.dp))
+                AppVersionFooter(
+                    context = context,
+                    bottomPadding = padding.calculateBottomPadding(),
+                    onCheckUpdate = onCheckUpdate
+                )
             }
 
-            AppVersionFooter(
-                context = context,
-                bottomPadding = padding.calculateBottomPadding()
-            )
+            Box(modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)) {
+                AppSnackbar(
+                    message = statusMessage, 
+                    type = statusType, 
+                    onDismiss = { viewModel.clearStatus() }
+                )
+            }
         }
     }
 }
 
 @Composable
-fun AppVersionFooter(context: Context, bottomPadding: androidx.compose.ui.unit.Dp) {
+fun AppVersionFooter(
+    context: Context, 
+    bottomPadding: androidx.compose.ui.unit.Dp,
+    onCheckUpdate: () -> Unit
+) {
     val packageInfo = remember {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -141,12 +165,30 @@ fun AppVersionFooter(context: Context, bottomPadding: androidx.compose.ui.unit.D
             .padding(bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = stringResource(R.string.settings_version_fmt, versionName, versionCode),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-            textAlign = TextAlign.Center
-        )
+        Surface(
+            onClick = onCheckUpdate,
+            shape = RoundedCornerShape(12.dp),
+            color = Color.Transparent,
+            modifier = Modifier.padding(4.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_version_fmt, versionName, versionCode),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = "Tap to check for updates",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                )
+            }
+        }
     }
 }
 
@@ -168,7 +210,7 @@ fun DeveloperSection(context: Context) {
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.secondary
             )
-            
+           
             Spacer(Modifier.height(12.dp))
              
             Surface(
@@ -186,7 +228,7 @@ fun DeveloperSection(context: Context) {
             }
             
             Spacer(Modifier.height(16.dp))
-            
+        
             Text(
                 text = "RHineix",
                 style = MaterialTheme.typography.headlineSmall,
@@ -262,15 +304,12 @@ fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) 
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(start = 4.dp, bottom = 12.dp)
         )
-        
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                content()
-            }
+            Column(modifier = Modifier.padding(20.dp)) { content() }
         }
     }
 }

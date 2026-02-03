@@ -76,13 +76,18 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
             File(path).takeIf { it.exists() }?.let { openProject(it) }
         }
 
-        // [Real Implementation] Check for updates on startup
-        checkForUpdates()
+        // Auto check for updates on startup
+        checkForUpdates(isManual = false)
     }
 
-    private fun checkForUpdates() {
+    // [Update Logic]
+    fun checkForUpdates(isManual: Boolean = false) {
         viewModelScope.launch {
-            // 1. Get current version name dynamically
+            if (isManual) {
+                showStatus("Checking for updates...", SnackbarType.INFO)
+            }
+
+            // Get current version
             val context = getApplication<Application>()
             val packageInfo = try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -94,20 +99,22 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
 
             val currentVersion = packageInfo?.versionName ?: "1.0.0"
 
-            // 2. Initialize Update Manager (Configured for RHineix/AndroidGit)
             val updateManager = GitHubUpdateManager(
                 repoOwner = "RHineix", 
                 repoName = "AndroidGit",
                 currentVersionName = currentVersion
             )
 
-            // 3. Fetch (Non-blocking)
             val result = updateManager.checkForUpdate()
 
-            // 4. Show Sheet only if valid update found
             if (result != null) {
                 updateInfo = result
                 showUpdateSheet = true
+                if (isManual) clearStatus()
+            } else {
+                if (isManual) {
+                    showStatus("You are using the latest version", SnackbarType.SUCCESS)
+                }
             }
         }
     }
@@ -116,7 +123,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         showUpdateSheet = false
     }
 
-    // --- Existing Git Logic Below (Unchanged) ---
+    // --- Existing Git Logic ---
     
     fun openProject(file: File) {
         if (currentRepoFile?.absolutePath == file.absolutePath && gitManager != null) return

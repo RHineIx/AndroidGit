@@ -77,7 +77,9 @@ fun AppNavGraph(
 
         composable(Screen.GeneralSettings.route) {
             GeneralSettingsScreen(
-                onBack = { navController.popBackStack() }
+                viewModel = viewModel, // [Fix] Passing ViewModel so Snackbar works
+                onBack = { navController.popBackStack() },
+                onCheckUpdate = { viewModel.checkForUpdates(isManual = true) }
             )
         }
 
