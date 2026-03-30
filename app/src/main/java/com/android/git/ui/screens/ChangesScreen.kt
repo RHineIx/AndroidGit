@@ -31,8 +31,7 @@ import com.android.git.ui.viewmodel.MainViewModel
 @Composable
 fun ChangesScreen(
     viewModel: MainViewModel,
-    onBack: () -> Unit,
-    onViewDiff: (String) -> Unit
+    onBack: () -> Unit
 ) {
     val files = viewModel.changedFiles
     val isLoading = viewModel.isLoading
@@ -116,7 +115,7 @@ fun ChangesScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surfaceContainer)
-                    .imePadding() // [Fix] إضافة imePadding لرفع المحتوى عند فتح الكيبورد
+                    .imePadding()
                     .padding(16.dp)
                     .animateContentSize()
             ) {
@@ -166,7 +165,11 @@ fun ChangesScreen(
                 items(files) { file ->
                     val isSelected = selectedFiles.contains(file.path)
                     AnimatedVisibility(visible = true, enter = fadeIn() + slideInVertically()) {
-                        FileChangeItem(file = file, isSelected = isSelected, onToggle = { selectedFiles = if (isSelected) selectedFiles - file.path else selectedFiles + file.path }, onViewDiff = { onViewDiff(file.path) })
+                        FileChangeItem(
+                            file = file, 
+                            isSelected = isSelected, 
+                            onToggle = { selectedFiles = if (isSelected) selectedFiles - file.path else selectedFiles + file.path }
+                        )
                     }
                 }
                 item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -187,7 +190,7 @@ fun ChangesScreen(
 }
 
 @Composable
-fun FileChangeItem(file: GitFile, isSelected: Boolean, onToggle: () -> Unit, onViewDiff: () -> Unit) {
+fun FileChangeItem(file: GitFile, isSelected: Boolean, onToggle: () -> Unit) {
     Card(
         colors = CardDefaults.cardColors(containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceContainer),
         modifier = Modifier.fillMaxWidth().clickable { onToggle() }.animateContentSize()
@@ -200,7 +203,6 @@ fun FileChangeItem(file: GitFile, isSelected: Boolean, onToggle: () -> Unit, onV
                 Text(text = file.path, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 Text(text = getFriendlyStatusName(file.type), style = MaterialTheme.typography.labelSmall, color = getStatusColor(file.type))
             }
-            IconButton(onClick = onViewDiff) { Icon(imageVector = Icons.Default.Visibility, contentDescription = "View Diff", tint = MaterialTheme.colorScheme.primary) }
         }
     }
 }

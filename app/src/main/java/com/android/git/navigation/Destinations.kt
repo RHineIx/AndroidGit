@@ -24,12 +24,4 @@ sealed class Screen(val route: String) {
             return "conflict_resolver/$encoded"
         }
     }
-
-    // NEW: Diff Viewer Route
-    data object DiffViewer : Screen("diff_viewer/{filePath}") {
-        fun createRoute(filePath: String): String {
-            val encoded = java.net.URLEncoder.encode(filePath, "UTF-8")
-            return "diff_viewer/$encoded"
-        }
-    }
 }

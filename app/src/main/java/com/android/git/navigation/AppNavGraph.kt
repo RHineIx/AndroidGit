@@ -77,7 +77,7 @@ fun AppNavGraph(
 
         composable(Screen.GeneralSettings.route) {
             GeneralSettingsScreen(
-                viewModel = viewModel, // [Fix] Passing ViewModel so Snackbar works
+                viewModel = viewModel,
                 onBack = { navController.popBackStack() },
                 onCheckUpdate = { viewModel.checkForUpdates(isManual = true) }
             )
@@ -112,26 +112,7 @@ fun AppNavGraph(
                     onBack = {
                         viewModel.loadDashboard()
                         navController.popBackStack()
-                    },
-                    onViewDiff = { path ->
-                        navController.navigate(Screen.DiffViewer.createRoute(path))
                     }
-                )
-            }
-        }
-
-        composable(
-            route = Screen.DiffViewer.route,
-            arguments = listOf(navArgument("filePath") { type = NavType.StringType })
-        ) { backStackEntry ->
-            manager?.let { mgr ->
-                val encodedPath = backStackEntry.arguments?.getString("filePath") ?: ""
-                val decodedPath = URLDecoder.decode(encodedPath, "UTF-8")
-                
-                DiffViewerScreen(
-                    gitManager = mgr,
-                    filePath = decodedPath,
-                    onBack = { navController.popBackStack() }
                 )
             }
         }

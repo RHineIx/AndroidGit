@@ -13,13 +13,8 @@ import kotlinx.coroutines.withContext
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.ResetCommand
 import org.eclipse.jgit.api.errors.NoHeadException
-import org.eclipse.jgit.diff.DiffFormatter
 import org.eclipse.jgit.transport.RemoteRefUpdate
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
-import org.eclipse.jgit.treewalk.CanonicalTreeParser
-import org.eclipse.jgit.treewalk.FileTreeIterator
-import org.eclipse.jgit.treewalk.filter.PathFilter
-import java.io.ByteArrayOutputStream
 import java.io.Closeable
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
@@ -395,50 +390,6 @@ class GitManager(private val rootDir: File) : Closeable {
          } catch (e: Exception) { 
              "Error reading file: ${e.message}" 
          }
-    }
-
-    suspend fun getFileDiff(path: String): String = withContext(Dispatchers.IO) {
-        runSafeRead {
-            val file = File(rootDir, path)
-            // Limit to 1MB to prevent crashes
-            if (file.exists() && file.length() > 1024 * 1024) { 
-                return@runSafeRead "File is too large to display diff (Size > 1MB)."
-            }
-
-            val repo = git?.repository ?: return@runSafeRead "Error: Repo closed"
-            val out = ByteArrayOutputStream()
-            val df = DiffFormatter(out)
-            df.setRepository(repo)
-            df.setPathFilter(PathFilter.create(path))
-
-            // 1. Check if Untracked or Added
-            val status = git?.status()?.addPath(path)?.call()
-            if (status != null) {
-                if (status.untracked.contains(path) || status.added.contains(path)) {
-                    // Call readFileContent safely inside suspend block
-                    return@runSafeRead readFileContent(path).lines().joinToString("\n") { "+$it" }
-                }
-            }
-
-            // 2. Resolve HEAD tree
-            val headId = repo.resolve("HEAD^{tree}")
-            if (headId == null) {
-                 return@runSafeRead readFileContent(path).lines().joinToString("\n") { "+$it" }
-            }
-
-            // 3. Prepare Iterators
-            val reader = repo.newObjectReader()
-            val oldTreeIter = CanonicalTreeParser()
-            oldTreeIter.reset(reader, headId)
-            
-            val newTreeIter = FileTreeIterator(repo)
-
-            // 4. Format Diff
-            df.format(oldTreeIter, newTreeIter)
-            
-            val diffText = out.toString("UTF-8")
-            if (diffText.isBlank()) "No changes or binary file." else diffText
-        }
     }
 
     private fun isBinaryFile(file: File): Boolean {
