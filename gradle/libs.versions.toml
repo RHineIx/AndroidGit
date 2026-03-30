@@ -1,21 +1,20 @@
 [versions]
 # Core Build System
-agp = "8.7.3"                 # Updated from 8.2.1
-kotlin = "2.1.0"              # Updated from 1.9.24 (Kotlin 2.0 compiler is faster)
+agp = "9.1.0"
+kotlin = "2.3.20"
 
 # AndroidX & Compose
-coreKtx = "1.15.0"            # Updated from 1.12.0
-lifecycleRuntimeKtx = "2.8.7" # Updated from 2.7.0
-activityCompose = "1.9.3"     # Updated from 1.8.2
-composeBom = "2024.12.01"     # Updated from 2024.09.00
-navigationCompose = "2.8.5"   # Updated from 2.7.7
+coreKtx = "1.18.0"
+lifecycleRuntimeKtx = "2.10.0"
+activityCompose = "1.13.0"
+composeBom = "2026.03.01"
+navigationCompose = "2.9.7"
 
 # Git Engine
-# JGit 7.x requires Java 17, which your project already uses.
-jgit = "7.1.0.202411261347-r" # Updated from 6.8.0
+jgit = "7.1.0.202411261347-r"
 
 # Logging
-slf4j-simple = "2.0.16"       # Updated from 1.7.36
+slf4j-simple = "2.0.17"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
