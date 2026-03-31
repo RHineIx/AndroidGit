@@ -11,8 +11,8 @@ android {
         applicationId = "com.android.git"
         minSdk = 26
         targetSdk = 36
-        versionCode = 60
-        versionName = "5.0.0-stable"
+        versionCode = 61
+        versionName = "5.1.0-stable"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -78,7 +78,7 @@ dependencies {
 
     implementation(libs.jgit)
     implementation(libs.slf4j.simple)
-
+    implementation(libs.miuix)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }

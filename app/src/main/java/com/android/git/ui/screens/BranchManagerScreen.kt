@@ -2,7 +2,6 @@ package com.android.git.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -24,6 +23,11 @@ import com.android.git.model.BranchModel
 import com.android.git.model.BranchType
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.viewmodel.MainViewModel
+
+// Miuix Library Imports
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardColors
+import top.yukonga.miuix.kmp.utils.PressFeedbackType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -222,7 +226,7 @@ private fun BranchListContent(
             )
         }
 
-        Box(modifier = Modifier.weight(1f)) {
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else {
@@ -236,13 +240,16 @@ private fun BranchListContent(
                         Text(stringResource(R.string.branch_empty_search), color = MaterialTheme.colorScheme.secondary)
                     }
                 } else {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(vertical = 12.dp)
+                    ) {
                         items(filteredBranches) { branch ->
                             BranchItemRich(
                                 branch = branch,
                                 onAction = { action -> onAction(action, branch) }
                             )
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                         }
                     }
                 }
@@ -261,48 +268,58 @@ fun BranchItemRich(
     var showMenu by remember { mutableStateOf(false) }
     val isRemote = branch.type == BranchType.REMOTE
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { showMenu = true }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+    // Replaced Row with Miuix Card and Sink effect
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        insideMargin = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        colors = CardColors(
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        pressFeedbackType = PressFeedbackType.Sink,
+        onClick = { showMenu = true }
     ) {
-        Icon(
-            imageVector = if (isRemote) Icons.Default.Cloud else Icons.Default.Computer,
-            contentDescription = null,
-            tint = if (branch.isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
-        )
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = branch.name,
-                fontWeight = if (branch.isCurrent) FontWeight.Bold else FontWeight.Normal,
-                color = if (branch.isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                fontSize = 16.sp
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = if (isRemote) Icons.Default.Cloud else Icons.Default.Computer,
+                contentDescription = null,
+                tint = if (branch.isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
             )
-            if (branch.isCurrent) {
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(R.string.branch_current_label),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
+                    text = branch.name,
+                    fontWeight = if (branch.isCurrent) FontWeight.Bold else FontWeight.Normal,
+                    color = if (branch.isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                    fontSize = 16.sp
                 )
+                if (branch.isCurrent) {
+                    Text(
+                        text = stringResource(R.string.branch_current_label),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
-        }
 
-        IconButton(onClick = { showMenu = true }) {
-            Icon(Icons.Default.MoreVert, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+            // IconButton uses its own interaction, separate from the Card's Sink effect
+            IconButton(onClick = { showMenu = true }) {
+                Icon(Icons.Default.MoreVert, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
 
-        BranchActionMenu(
-            expanded = showMenu,
-            branch = branch,
-            isRemote = isRemote,
-            onDismiss = { showMenu = false },
-            onAction = onAction
-        )
+            BranchActionMenu(
+                expanded = showMenu,
+                branch = branch,
+                isRemote = isRemote,
+                onDismiss = { showMenu = false },
+                onAction = onAction
+            )
+        }
     }
 }
 

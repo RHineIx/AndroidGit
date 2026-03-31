@@ -10,6 +10,7 @@ class PreferencesManager(context: Context) {
 
     companion object {
         private const val KEY_TOKEN = "github_token"
+        private const val KEY_LAST_VALID_TOKEN = "last_valid_github_token" // Backup key for restoration
         private const val KEY_USERNAME = "git_username"
         private const val KEY_EMAIL = "git_email"
         private const val KEY_THEME_DARK = "app_theme_dark" // Legacy key
@@ -24,9 +25,31 @@ class PreferencesManager(context: Context) {
     }
 
     // --- Git Config ---
-    fun saveToken(token: String) = prefs.edit().putString(KEY_TOKEN, token).apply()
+
+    fun saveToken(token: String) {
+        val editor = prefs.edit()
+        editor.putString(KEY_TOKEN, token)
+        // Only update the backup token if the new token is not empty
+        if (token.isNotEmpty()) {
+            editor.putString(KEY_LAST_VALID_TOKEN, token)
+        }
+        editor.apply()
+    }
+
     fun getToken(): String = prefs.getString(KEY_TOKEN, "") ?: ""
+
+    // Clears only the active token, leaving the backup intact for restoration
     fun clearToken() = prefs.edit().remove(KEY_TOKEN).apply()
+
+    fun getLastValidToken(): String = prefs.getString(KEY_LAST_VALID_TOKEN, "") ?: ""
+
+    fun restoreLastToken(): String {
+        val lastToken = getLastValidToken()
+        if (lastToken.isNotEmpty()) {
+            saveToken(lastToken)
+        }
+        return lastToken
+    }
 
     fun saveGitIdentity(name: String, email: String) {
         prefs.edit()

@@ -15,6 +15,9 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.theme.darkColorScheme as miuixDarkColorScheme
+import top.yukonga.miuix.kmp.theme.lightColorScheme as miuixLightColorScheme
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -27,6 +30,9 @@ private val LightColorScheme = lightColorScheme(
     secondary = PurpleGrey40,
     tertiary = Pink40
 )
+
+// A distinct, strong active color for Miuix components (HyperOS Blue)
+private val MiuixActiveColor = Color(0xFF007AFF)
 
 @Composable
 fun AndroidGitTheme(
@@ -42,30 +48,42 @@ fun AndroidGitTheme(
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
-    
+
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            
-            // 1. جعل الألوان شفافة تماماً
+
             window.statusBarColor = Color.Transparent.toArgb()
             window.navigationBarColor = Color.Transparent.toArgb()
 
-            // 2. التحكم في لون الأيقونات (فاتح/داكن)
             val insetsController = WindowCompat.getInsetsController(window, view)
             insetsController.isAppearanceLightStatusBars = !darkTheme
             insetsController.isAppearanceLightNavigationBars = !darkTheme
 
-            // 3. الحل الجذري: إلغاء طبقة "الغبش" أو الظل التي يفرضها النظام
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 window.isNavigationBarContrastEnforced = false
             }
         }
     }
 
+    // Theme Bridge: Decoupling Miuix primary color from Material 3 to ensure strong visibility
+    val miuixColors = if (darkTheme) {
+        miuixDarkColorScheme(
+            primary = MiuixActiveColor
+        )
+    } else {
+        miuixLightColorScheme(
+            primary = MiuixActiveColor
+        )
+    }
+
     MaterialTheme(
-        colorScheme = colorScheme,
-        content = content
-    )
+        colorScheme = colorScheme
+    ) {
+        MiuixTheme(
+            colors = miuixColors,
+            content = content
+        )
+    }
 }

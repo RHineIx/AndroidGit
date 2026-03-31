@@ -16,6 +16,9 @@ jgit = "7.1.0.202411261347-r"
 # Logging
 slf4j-simple = "2.0.17"
 
+# Miuix
+miuix = "0.8.8"
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
@@ -46,3 +49,6 @@ androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-man
 # External
 jgit = { group = "org.eclipse.jgit", name = "org.eclipse.jgit", version.ref = "jgit" }
 slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j-simple" }
+
+# Miuix Library
+miuix = { group = "top.yukonga.miuix.kmp", name = "miuix", version.ref = "miuix" }

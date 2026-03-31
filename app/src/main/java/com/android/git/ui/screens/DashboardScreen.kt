@@ -28,6 +28,8 @@ import com.android.git.model.DashboardState
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.viewmodel.MainViewModel
 import java.io.File
+// Explicitly import Miuix Checkbox to override Material 3 Checkbox
+import top.yukonga.miuix.kmp.basic.Checkbox
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -198,6 +200,7 @@ fun DashboardScreen(
                                         onCheckedChange = { isForcePushChecked = it },
                                         modifier = Modifier.scale(0.9f)
                                     )
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Text(stringResource(R.string.dashboard_allow_force), style = MaterialTheme.typography.bodyMedium)
                                 }
                             }

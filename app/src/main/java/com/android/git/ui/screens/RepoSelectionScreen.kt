@@ -4,6 +4,7 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.LruCache
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -19,6 +20,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -37,6 +39,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+
+// Miuix Library Imports for interactive cards
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardColors
+import top.yukonga.miuix.kmp.utils.PressFeedbackType
+
+// Global in-memory cache for project icons to prevent scroll jank
+object ProjectImageCache {
+    val memoryCache = LruCache<String, Bitmap>(30) // Cache up to 30 decoded icons
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,7 +74,7 @@ fun RepoSelectionScreen(
             try {
                 val takeFlags: Int = (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                 context.contentResolver.takePersistableUriPermission(uri, takeFlags)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // Ignore if permission persistence fails
             }
             onRepoSelected(uri)
@@ -174,7 +186,7 @@ fun RepoSelectionScreen(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(recentProjects) { path ->
+                    items(recentProjects, key = { it }) { path ->
                         val file = File(path)
                         val exists = file.exists()
                         RecentProjectItem(
@@ -197,14 +209,18 @@ fun RepoSelectionScreen(
 
 @Composable
 fun ActionCard(title: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    ElevatedCard(
-        modifier = modifier.height(100.dp).clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+    Card(
+        modifier = modifier.height(100.dp),
+        insideMargin = PaddingValues(16.dp),
+        colors = CardColors(
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        pressFeedbackType = PressFeedbackType.Tilt,
+        onClick = onClick
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -215,7 +231,11 @@ fun ActionCard(title: String, icon: ImageVector, modifier: Modifier = Modifier, 
                 tint = MaterialTheme.colorScheme.primary
             )
             Spacer(Modifier.height(8.dp))
-            Text(title, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+            Text(
+                text = title,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
     }
 }
@@ -223,10 +243,14 @@ fun ActionCard(title: String, icon: ImageVector, modifier: Modifier = Modifier, 
 @Composable
 fun RecentProjectItem(file: File, isMissing: Boolean = false, onClick: () -> Unit, onRemove: () -> Unit) {
     ElevatedCard(
-        modifier = Modifier.fillMaxWidth().clickable(enabled = !isMissing, onClick = onClick),
+        modifier = Modifier
+            .fillMaxWidth()
+            .alpha(if (isMissing) 0.6f else 1f)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(enabled = !isMissing, onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(
-            containerColor = if (isMissing) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceContainerLow
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = if (isMissing) 0.dp else 2.dp)
     ) {
@@ -243,7 +267,7 @@ fun RecentProjectItem(file: File, isMissing: Boolean = false, onClick: () -> Uni
                     text = file.name,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
-                    color = if(isMissing) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
@@ -267,30 +291,33 @@ fun RecentProjectItem(file: File, isMissing: Boolean = false, onClick: () -> Uni
 
 @Composable
 fun ProjectIcon(projectDir: File, isMissing: Boolean) {
-    var projectBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    val pathKey = projectDir.absolutePath
+    var projectBitmap by remember(pathKey) { mutableStateOf(ProjectImageCache.memoryCache.get(pathKey)) }
     var projectTypeIcon by remember { mutableStateOf(Icons.Default.Folder) }
     var iconTint by remember { mutableStateOf(Color.Unspecified) }
     val primaryColor = MaterialTheme.colorScheme.primary
 
-    LaunchedEffect(projectDir) {
-        if (!isMissing) {
+    LaunchedEffect(pathKey) {
+        if (!isMissing && projectBitmap == null) {
             withContext(Dispatchers.IO) {
                 val fileNames = projectDir.list()?.toList() ?: emptyList()
 
+                // Determine Project Type
                 if (fileNames.contains("pubspec.yaml")) {
                     projectTypeIcon = Icons.Default.Smartphone
-                    iconTint = Color(0xFF02569B)
+                    iconTint = Color(0xFF02569B) // Flutter Blue
                 } else if (fileNames.any { it.contains("build.gradle") }) {
                     projectTypeIcon = Icons.Default.Android
-                    iconTint = Color(0xFF3DDC84)
+                    iconTint = Color(0xFF3DDC84) // Android Green
                 } else if (fileNames.contains("package.json")) {
                     projectTypeIcon = Icons.Default.Language
-                    iconTint = Color(0xFFF7DF1E)
+                    iconTint = Color(0xFFF7DF1E) // JS Yellow
                 } else if (fileNames.contains(".git")) {
                     projectTypeIcon = Icons.Default.Code
                     iconTint = primaryColor
                 }
 
+                // Search for an actual project icon
                 val extensions = listOf("webp", "png", "jpg", "jpeg", "ico")
                 val androidBaseDirs = listOf("app/src/main/res", "android/app/src/main/res", "src/main/res")
                 val densities = listOf("mipmap-xxxhdpi", "mipmap-xxhdpi", "mipmap-xhdpi", "drawable-xxxhdpi", "drawable-xxhdpi", "drawable")
@@ -333,11 +360,12 @@ fun ProjectIcon(projectDir: File, isMissing: Boolean) {
                         try {
                             val decoded = BitmapFactory.decodeFile(iconFile.absolutePath)
                             if (decoded != null) {
+                                ProjectImageCache.memoryCache.put(pathKey, decoded)
                                 projectBitmap = decoded
                                 break
                             }
-                        } catch (e: Exception) {
-                            // Ignore
+                        } catch (_: Exception) {
+                            // Ignore specific decoding errors and continue searching
                         }
                     }
                 }
