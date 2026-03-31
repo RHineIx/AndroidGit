@@ -88,4 +88,47 @@
     <string name="branch_menu_checkout">Checkout</string>
     <string name="branch_menu_merge">Merge into current</string>
     <string name="branch_menu_rebase">Rebase current onto this</string>
+
+    <string name="log_danger_zone">Danger Zone</string>
+    <string name="log_btn_revert">Revert Commit</string>
+    <string name="log_btn_reset">Reset to Commit</string>
+    <string name="log_empty">No commits found.</string>
+    <string name="log_time_now">Just now</string>
+
+    <string name="conflict_title">Merge Conflicts</string>
+    <string name="conflict_none">No conflicts found.</string>
+    <string name="conflict_list_header">Conflicting Files</string>
+
+    <string name="perm_title">Storage Permission Required</string>
+    <string name="perm_desc">This app requires all files access to manage Git repositories on your device.</string>
+    <string name="perm_warning">Without this permission, the app cannot function.</string>
+    <string name="perm_btn_grant">Grant Permission</string>
+
+    <string name="repo_settings_title">Repository Settings</string>
+    <string name="repo_settings_section_auth">Authentication</string>
+    <string name="repo_settings_label_user">Username</string>
+    <string name="repo_settings_label_email">Email</string>
+    <string name="repo_settings_label_token">Personal Access Token</string>
+    <string name="repo_settings_section_remote">Remote</string>
+    <string name="repo_settings_remote_connected">Connected</string>
+    <string name="repo_settings_remote_disconnected">Disconnected</string>
+    <string name="repo_settings_remote_hint_connected">Remote URL is set.</string>
+    <string name="repo_settings_remote_hint_disconnected">No remote configured.</string>
+    <string name="repo_settings_label_url">Remote URL</string>
+    <string name="repo_settings_msg_remote_updated">Remote updated successfully.</string>
+    <string name="repo_settings_err_invalid_url">Invalid URL format.</string>
+    <string name="repo_settings_btn_update_url">Update URL</string>
+    <string name="repo_settings_btn_link_remote">Link Remote</string>
+    <string name="repo_settings_msg_saved">Settings saved.</string>
+    <string name="repo_settings_btn_save">Save Settings</string>
+
+    <string name="stash_title">Stashes</string>
+    <string name="stash_dialog_create_title">Create Stash</string>
+    <string name="stash_dialog_msg_label">Stash Message</string>
+    <string name="stash_dialog_action_title">Stash Action</string>
+    <string name="stash_dialog_action_msg">What do you want to do with this stash?</string>
+    <string name="stash_btn_pop">Pop (Apply &amp; Drop)</string>
+    <string name="stash_btn_apply">Apply (Keep)</string>
+    <string name="stash_empty">No stashes found.</string>
+    <string name="stash_wip_prefix">WIP on</string>
 </resources>
