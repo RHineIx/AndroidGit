@@ -3,6 +3,8 @@ package com.android.git.data
 import android.content.Context
 import android.content.SharedPreferences
 
+enum class ThemeMode { SYSTEM, LIGHT, DARK }
+
 class PreferencesManager(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("git_prefs", Context.MODE_PRIVATE)
 
@@ -10,12 +12,15 @@ class PreferencesManager(context: Context) {
         private const val KEY_TOKEN = "github_token"
         private const val KEY_USERNAME = "git_username"
         private const val KEY_EMAIL = "git_email"
-        private const val KEY_THEME_DARK = "app_theme_dark"
-        
+        private const val KEY_THEME_DARK = "app_theme_dark" // Legacy key
+
         // New Keys
         private const val KEY_AUTO_OPEN = "auto_open_last_project"
         private const val KEY_LAST_PROJECT_PATH = "last_project_path"
         private const val KEY_RECENT_PROJECTS = "recent_projects_list" // Stored as path|path|path
+
+        // Added for modern theme management
+        private const val KEY_THEME_MODE = "theme_mode"
     }
 
     // --- Git Config ---
@@ -29,17 +34,24 @@ class PreferencesManager(context: Context) {
             .putString(KEY_EMAIL, email)
             .apply()
     }
-    
+
+    // Added for compatibility with modern UI screens
+    fun setUserName(name: String) = prefs.edit().putString(KEY_USERNAME, name).apply()
+    fun setUserEmail(email: String) = prefs.edit().putString(KEY_EMAIL, email).apply()
+
     fun getUserName(): String = prefs.getString(KEY_USERNAME, "") ?: ""
     fun getUserEmail(): String = prefs.getString(KEY_EMAIL, "") ?: ""
 
     // --- App Preferences ---
-    
+
     fun isAutoOpenEnabled(): Boolean = prefs.getBoolean(KEY_AUTO_OPEN, false)
     fun setAutoOpenEnabled(enabled: Boolean) = prefs.edit().putBoolean(KEY_AUTO_OPEN, enabled).apply()
 
     fun getLastProjectPath(): String? = prefs.getString(KEY_LAST_PROJECT_PATH, null)
-    
+
+    // Added for compatibility with ViewModel
+    fun setLastProjectPath(path: String) = prefs.edit().putString(KEY_LAST_PROJECT_PATH, path).apply()
+
     // Logic to add a project to recent list (and set as last opened)
     fun addRecentProject(path: String) {
         // 1. Set as last opened
@@ -78,5 +90,15 @@ class PreferencesManager(context: Context) {
         if (getLastProjectPath() == path) {
             prefs.edit().remove(KEY_LAST_PROJECT_PATH).apply()
         }
+    }
+
+    // --- Theme Settings ---
+    fun getThemeMode(): ThemeMode {
+        val modeOrdinal = prefs.getInt(KEY_THEME_MODE, ThemeMode.SYSTEM.ordinal)
+        return ThemeMode.entries.getOrElse(modeOrdinal) { ThemeMode.SYSTEM }
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        prefs.edit().putInt(KEY_THEME_MODE, mode.ordinal).apply()
     }
 }

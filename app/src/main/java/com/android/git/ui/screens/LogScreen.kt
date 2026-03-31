@@ -1,7 +1,6 @@
 package com.android.git.ui.screens
 
 import android.content.ClipData
-import androidx.compose.material.icons.automirrored.filled.Undo
 import android.content.ClipboardManager
 import android.content.Context
 import androidx.activity.compose.BackHandler
@@ -18,12 +17,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -32,16 +34,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.git.R
 import com.android.git.data.GitManager
 import com.android.git.model.CommitItem
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.components.SnackbarType
 import com.android.git.ui.viewmodel.MainViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -52,56 +55,53 @@ import kotlin.math.abs
 @Composable
 fun LogScreen(
     gitManager: GitManager,
-    viewModel: MainViewModel, // Injected ViewModel for state
+    viewModel: MainViewModel,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val commits = viewModel.logList
     val isLogLoading = viewModel.isLogLoading
-    
-    // Status Snackbar local state
+
     var statusMessage by remember { mutableStateOf("") }
     var statusType by remember { mutableStateOf(SnackbarType.INFO) }
-    
-    // Bottom Sheet State
+
     var selectedCommit by remember { mutableStateOf<CommitItem?>(null) }
     val sheetState = rememberModalBottomSheetState()
     var showBottomSheet by remember { mutableStateOf(false) }
-    
-    // Scroll State for Pagination
+
     val listState = rememberLazyListState()
+
+    // Safely extract string resources here (State Hoisting) to avoid Lint errors
+    val copiedHashMsg = stringResource(R.string.log_copied_hash)
 
     BackHandler(enabled = true) { onBack() }
 
-    // Initial Load (Only if empty)
     LaunchedEffect(Unit) {
         if (commits.isEmpty()) {
             viewModel.loadLogs(reset = true)
         }
     }
 
-    // Infinite Scroll Logic: Load more when we reach near the bottom
     LaunchedEffect(listState) {
-        snapshotFlow { 
+        snapshotFlow {
             val layoutInfo = listState.layoutInfo
             val totalItems = layoutInfo.totalItemsCount
             val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            
-            // Trigger load when we are within 5 items of the bottom
+
             totalItems > 0 && lastVisibleItemIndex >= (totalItems - 5)
         }
-        .distinctUntilChanged()
-        .filter { it } // Only emit when condition is true
-        .collect {
-             viewModel.loadLogs(reset = false)
-        }
+            .distinctUntilChanged()
+            .filter { it }
+            .collect {
+                viewModel.loadLogs(reset = false)
+            }
     }
 
     fun copyToClipboard(text: String) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("Commit Hash", text)
         clipboard.setPrimaryClip(clip)
-        statusMessage = context.getString(R.string.log_copied_hash)
+        statusMessage = copiedHashMsg
         statusType = SnackbarType.SUCCESS
     }
 
@@ -122,7 +122,7 @@ fun LogScreen(
                 actions = {
                     if (isLogLoading) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp).padding(end = 16.dp), 
+                            modifier = Modifier.size(24.dp).padding(end = 16.dp),
                             strokeWidth = 2.dp,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -143,7 +143,7 @@ fun LogScreen(
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 16.dp)
+                        contentPadding = PaddingValues(vertical = 16.dp)
                     ) {
                         itemsIndexed(commits) { index, commit ->
                             val isLast = index == commits.lastIndex
@@ -156,8 +156,7 @@ fun LogScreen(
                                 }
                             )
                         }
-                        
-                        // Footer Loader for Pagination
+
                         if (isLogLoading && commits.isNotEmpty()) {
                             item {
                                 Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
@@ -168,9 +167,8 @@ fun LogScreen(
                     }
                 }
 
-                // Initial Full Loader
                 if (commits.isEmpty() && isLogLoading) {
-                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
 
                 Box(modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)) {
@@ -196,7 +194,7 @@ fun LogScreen(
                 onAction = { msg, type ->
                     statusMessage = msg
                     statusType = type
-                    viewModel.loadLogs(reset = true) // Reload on changes
+                    viewModel.loadLogs(reset = true)
                     showBottomSheet = false
                 },
                 onCopy = { copyToClipboard(it) }
@@ -212,22 +210,24 @@ fun TimelineCommitItem(
     onClick: () -> Unit
 ) {
     val authorColor = remember(commit.author) { generateColorFromString(commit.author) }
-    
+    val cardShape = RoundedCornerShape(16.dp)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .height(IntrinsicSize.Min)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.Top
     ) {
+        // Timeline Column
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.width(24.dp)
+            modifier = Modifier.width(24.dp).fillMaxHeight()
         ) {
             Box(
                 modifier = Modifier
                     .width(2.dp)
-                    .height(16.dp)
+                    .height(24.dp)
                     .background(MaterialTheme.colorScheme.outlineVariant)
             )
             Canvas(modifier = Modifier.size(12.dp)) {
@@ -238,7 +238,7 @@ fun TimelineCommitItem(
                 drawCircle(
                     color = Color.White,
                     radius = size.minDimension / 2,
-                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f)
+                    style = Stroke(width = 2f)
                 )
             }
             if (!isLast) {
@@ -248,82 +248,89 @@ fun TimelineCommitItem(
                         .weight(1f)
                         .background(MaterialTheme.colorScheme.outlineVariant)
                 )
-            } else {
-                Spacer(modifier = Modifier.weight(1f))
             }
         }
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        Column(
+        // Commit Content Card
+        ElevatedCard(
             modifier = Modifier
-                .padding(bottom = 24.dp)
                 .weight(1f)
+                .padding(bottom = 16.dp)
+                .clip(cardShape)
+                .clickable(onClick = onClick),
+            shape = cardShape,
+            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    color = authorColor,
-                    shape = CircleShape,
-                    modifier = Modifier.size(20.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = commit.author.take(1).uppercase(),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontSize = 10.sp,
-                            color = Color.White
-                        )
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        color = authorColor,
+                        shape = CircleShape,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = commit.author.take(1).uppercase(),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontSize = 11.sp,
+                                color = Color.White
+                            )
+                        }
                     }
-                }
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = commit.author,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(Modifier.weight(1f))
-                Text(
-                    text = getRelativeTime(commit.date),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            Spacer(Modifier.height(4.dp))
-            
-            Text(
-                text = commit.message,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(Modifier.height(4.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = RoundedCornerShape(4.dp)
-                ) {
+                    Spacer(Modifier.width(8.dp))
                     Text(
-                        text = commit.hash,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 11.sp,
+                        text = commit.author,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        text = getRelativeTime(commit.date),
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                
-                if (!commit.isPushed) {
-                    Spacer(Modifier.width(8.dp))
-                    Icon(
-                        imageVector = Icons.Default.CloudOff,
-                        contentDescription = "Unpushed",
-                        tint = Color(0xFFE65100),
-                        modifier = Modifier.size(14.dp)
-                    )
+
+                Spacer(Modifier.height(8.dp))
+
+                Text(
+                    text = commit.message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(
+                            text = commit.hash,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    if (!commit.isPushed) {
+                        Spacer(Modifier.width(8.dp))
+                        Icon(
+                            imageVector = Icons.Default.CloudOff,
+                            contentDescription = "Unpushed",
+                            tint = Color(0xFFE65100),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
         }
@@ -350,8 +357,9 @@ fun CommitDetailsSheet(
             Spacer(Modifier.width(8.dp))
             Text(
                 stringResource(R.string.log_details_title),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.weight(1f))
             IconButton(onClick = { onCopy(commit.hash) }) {
@@ -363,43 +371,60 @@ fun CommitDetailsSheet(
 
         Text(
             text = commit.message,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
         )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(24.dp))
 
-        Row(Modifier.fillMaxWidth()) {
-            Column(Modifier.weight(1f)) {
-                LabelValueItem(stringResource(R.string.log_label_author), commit.author, Icons.Default.Person)
-                Spacer(Modifier.height(12.dp))
-                LabelValueItem(stringResource(R.string.log_label_hash), commit.hash, Icons.Default.Tag)
-            }
-            Column(Modifier.weight(1f)) {
-                LabelValueItem(stringResource(R.string.log_label_date), fullDateFormat.format(commit.date), Icons.Default.CalendarToday)
-                Spacer(Modifier.height(12.dp))
-                LabelValueItem(
-                    stringResource(R.string.log_label_status),
-                    if (commit.isPushed) stringResource(R.string.log_status_pushed) else stringResource(R.string.log_status_local),
-                    if (commit.isPushed) Icons.Default.CloudDone else Icons.Default.CloudOff
-                )
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(Modifier.fillMaxWidth()) {
+                    Column(Modifier.weight(1f)) {
+                        LabelValueItem(stringResource(R.string.log_label_author), commit.author, Icons.Default.Person)
+                        Spacer(Modifier.height(16.dp))
+                        LabelValueItem(stringResource(R.string.log_label_hash), commit.hash, Icons.Default.Tag)
+                    }
+                    Column(Modifier.weight(1f)) {
+                        LabelValueItem(stringResource(R.string.log_label_date), fullDateFormat.format(commit.date), Icons.Default.CalendarToday)
+                        Spacer(Modifier.height(16.dp))
+                        LabelValueItem(
+                            stringResource(R.string.log_label_status),
+                            if (commit.isPushed) stringResource(R.string.log_status_pushed) else stringResource(R.string.log_status_local),
+                            if (commit.isPushed) Icons.Default.CloudDone else Icons.Default.CloudOff
+                        )
+                    }
+                }
             }
         }
 
-        HorizontalDivider(Modifier.padding(vertical = 24.dp))
+        HorizontalDivider(Modifier.padding(vertical = 24.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
-        Text(stringResource(R.string.log_danger_zone), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error)
-        Spacer(Modifier.height(8.dp))
-        
+        Text(
+            text = stringResource(R.string.log_danger_zone),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
         OutlinedButton(
             onClick = {
-                scope.launch {
+                scope.launch(Dispatchers.IO) {
                     val res = gitManager.revertCommit(commit.hash)
-                    val type = if (res.contains("failed", true)) SnackbarType.ERROR else SnackbarType.SUCCESS
-                    onAction(res, type)
+                    withContext(Dispatchers.Main) {
+                        val type = if (res.contains("failed", true)) SnackbarType.ERROR else SnackbarType.SUCCESS
+                        onAction(res, type)
+                    }
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().height(50.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
         ) {
             Icon(Icons.AutoMirrored.Filled.Undo, null, modifier = Modifier.size(18.dp))
@@ -407,23 +432,26 @@ fun CommitDetailsSheet(
             Text(stringResource(R.string.log_btn_revert))
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(12.dp))
 
         Button(
             onClick = {
-                scope.launch {
+                scope.launch(Dispatchers.IO) {
                     val res = gitManager.resetToCommit(commit.hash, hard = false)
-                    onAction(res, SnackbarType.WARNING)
+                    withContext(Dispatchers.Main) {
+                        onAction(res, SnackbarType.WARNING)
+                    }
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+            modifier = Modifier.fillMaxWidth().height(50.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer)
         ) {
             Icon(Icons.Default.Restore, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.log_btn_reset))
         }
-        
+
         Spacer(Modifier.height(32.dp))
     }
 }
@@ -432,15 +460,15 @@ fun CommitDetailsSheet(
 fun LabelValueItem(label: String, value: String, icon: ImageVector) {
     Row(verticalAlignment = Alignment.Top) {
         Icon(
-            imageVector = icon, 
-            contentDescription = null, 
+            imageVector = icon,
+            contentDescription = null,
             modifier = Modifier.size(16.dp).padding(top = 2.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
+            tint = MaterialTheme.colorScheme.primary
         )
         Spacer(Modifier.width(8.dp))
         Column {
             Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value, style = MaterialTheme.typography.bodyMedium)
+            Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
         }
     }
 }
@@ -461,7 +489,7 @@ fun EmptyStateView(modifier: Modifier = Modifier) {
         Text(
             text = stringResource(R.string.log_empty),
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.secondary
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -470,7 +498,7 @@ fun EmptyStateView(modifier: Modifier = Modifier) {
 fun getRelativeTime(date: Date): String {
     val now = Date().time
     val diff = now - date.time
-    
+
     return when {
         diff < TimeUnit.MINUTES.toMillis(1) -> stringResource(R.string.log_time_now)
         diff < TimeUnit.HOURS.toMillis(1) -> "${TimeUnit.MILLISECONDS.toMinutes(diff)}m ago"

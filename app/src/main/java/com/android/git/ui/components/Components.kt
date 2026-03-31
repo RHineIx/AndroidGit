@@ -35,6 +35,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
@@ -116,7 +117,7 @@ fun AppSnackbar(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
-                        Icon(imageVector = Icons.Default.Close, contentDescription = "Dismiss", tint = contentColor.copy(alpha = 0.6f))
+                        Icon(imageVector = Icons.Default.Close, contentDescription = stringResource(R.string.action_dismiss), tint = contentColor.copy(alpha = 0.6f))
                     }
                 }
             }
@@ -175,7 +176,7 @@ fun UpdateBottomSheet(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Developed by",
+                        text = stringResource(R.string.about_developed_by),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -218,13 +219,13 @@ fun UpdateBottomSheet(
                     ) {
                         SocialChip(
                             iconRes = R.drawable.ic_github, 
-                            label = "GitHub",
+                            label = stringResource(R.string.social_github),
                             onClick = { openLink(context, "https://github.com/RHineix") }
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         SocialChip(
                             iconRes = R.drawable.ic_telegram, 
-                            label = "Telegram",
+                            label = stringResource(R.string.social_telegram),
                             onClick = { openLink(context, "https://t.me/RHineix") }
                         )
                     }
@@ -254,12 +255,11 @@ fun UpdateBottomSheet(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "New Version Available",
+                                text = stringResource(R.string.update_new_version),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             
-                            // [Fixed Logic] Hides "(Build 0)" cleanly
                             val versionLabel = remember(updateInfo) {
                                 if (updateInfo.versionCode > 0) "v${updateInfo.versionName} (Build ${updateInfo.versionCode})"
                                 else "v${updateInfo.versionName}"
@@ -286,7 +286,6 @@ fun UpdateBottomSheet(
                             .weight(1f, fill = false)
                             .verticalScroll(rememberScrollState())
                     ) {
-                        // [Reverted] Back to standard Text
                         Text(
                             text = updateInfo.releaseNotes,
                             style = MaterialTheme.typography.bodyMedium,
@@ -311,7 +310,7 @@ fun UpdateBottomSheet(
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         )
                     ) {
-                        Text(text = "Download Update", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text(text = stringResource(R.string.update_download), fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

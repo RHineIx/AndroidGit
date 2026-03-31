@@ -7,6 +7,7 @@ import android.os.Environment
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -21,6 +22,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.android.git.data.PreferencesManager
+import com.android.git.data.ThemeMode
 import com.android.git.navigation.AppNavGraph
 import com.android.git.ui.components.UpdateBottomSheet
 import com.android.git.ui.screens.PermissionScreen
@@ -35,12 +37,10 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
-            AndroidGitTheme {
-                MainAppContent(
-                    checkPermission = { checkPermission() },
-                    requestPermission = { requestPermission() }
-                )
-            }
+            MainAppContent(
+                checkPermission = { checkPermission() },
+                requestPermission = { requestPermission() }
+            )
         }
     }
 
@@ -50,7 +50,6 @@ class MainActivity : ComponentActivity() {
     private fun requestPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             try {
-                // [Refactor] Used KTX extension .toUri() for cleaner syntax
                 startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, "package:$packageName".toUri()))
             } catch (_: Exception) {
                 startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
@@ -71,7 +70,15 @@ fun MainAppContent(
 
     var hasPermission by remember { mutableStateOf(checkPermission()) }
 
-    // Auto-open logic
+    // Observe theme mode from ViewModel
+    val themeMode = viewModel.themeMode
+    val isSystemDark = isSystemInDarkTheme()
+    val isDarkTheme = when (themeMode) {
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+        ThemeMode.SYSTEM -> isSystemDark
+    }
+
     LaunchedEffect(Unit) {
         if (hasPermission && prefs.isAutoOpenEnabled() && viewModel.currentRepoFile == null) {
             prefs.getLastProjectPath()?.let { path ->
@@ -80,7 +87,6 @@ fun MainAppContent(
         }
     }
 
-    // Lifecycle handling for permissions
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -93,20 +99,20 @@ fun MainAppContent(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        if (!hasPermission) {
-            PermissionScreen { requestPermission() }
-        } else {
-            // Main Navigation Graph
-            AppNavGraph(navController = navController, viewModel = viewModel)
-            
-            // [New] Global Update Sheet Overlay
-            // This sits at the root level, so it covers any screen in the NavGraph
-            if (viewModel.showUpdateSheet && viewModel.updateInfo != null) {
-                UpdateBottomSheet(
-                    updateInfo = viewModel.updateInfo!!,
-                    onDismiss = { viewModel.dismissUpdateSheet() }
-                )
+    // Apply the Theme dynamically
+    AndroidGitTheme(darkTheme = isDarkTheme) {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            if (!hasPermission) {
+                PermissionScreen { requestPermission() }
+            } else {
+                AppNavGraph(navController = navController, viewModel = viewModel)
+
+                if (viewModel.showUpdateSheet && viewModel.updateInfo != null) {
+                    UpdateBottomSheet(
+                        updateInfo = viewModel.updateInfo!!,
+                        onDismiss = { viewModel.dismissUpdateSheet() }
+                    )
+                }
             }
         }
     }

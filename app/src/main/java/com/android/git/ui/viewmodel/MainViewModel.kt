@@ -10,21 +10,22 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.android.git.R
 import com.android.git.data.GitHubUpdateManager
 import com.android.git.data.GitManager
 import com.android.git.data.PreferencesManager
+import com.android.git.data.ThemeMode
 import com.android.git.model.BranchModel
 import com.android.git.model.CommitItem
 import com.android.git.model.DashboardState
 import com.android.git.model.GitFile
 import com.android.git.model.UpdateInfo
 import com.android.git.ui.components.SnackbarType
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 
 class MainViewModel(application: Application, private val savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
-    
+
     private val prefs = PreferencesManager(application)
 
     var gitManager: GitManager? = null
@@ -33,41 +34,45 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     // UI State Properties
     var currentRepoFile: File? by mutableStateOf(null)
         private set
-    
+
     var dashboardState: DashboardState by mutableStateOf(DashboardState.NotInitialized)
         private set
-        
+
     var branchList: List<BranchModel> by mutableStateOf(emptyList())
         private set
-        
+
     var changedFiles: List<GitFile> by mutableStateOf(emptyList())
         private set
-        
+
     var isLoading: Boolean by mutableStateOf(false)
         private set
-        
+
     var statusMessage: String by mutableStateOf("")
         private set
-        
+
     var statusType: SnackbarType by mutableStateOf(SnackbarType.INFO)
         private set
 
-    // --- Log / Pagination State ---
+    // Log & Pagination State
     var logList: List<CommitItem> by mutableStateOf(emptyList())
         private set
-        
+
     var isLogLoading: Boolean by mutableStateOf(false)
         private set
-        
+
     private var logCurrentOffset = 0
     private var logHasMore = true
-    private val LOG_PAGE_SIZE = 50 
+    private val LOG_PAGE_SIZE = 50
 
-    // --- Update System State ---
+    // Update System State
     var updateInfo: UpdateInfo? by mutableStateOf(null)
         private set
 
     var showUpdateSheet: Boolean by mutableStateOf(false)
+        private set
+
+    // Theme Management State
+    var themeMode: ThemeMode by mutableStateOf(prefs.getThemeMode())
         private set
 
     init {
@@ -80,15 +85,24 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         checkForUpdates(isManual = false)
     }
 
-    // [Update Logic]
+    // --- Theme Management ---
+
+    fun updateThemeMode(mode: ThemeMode) {
+        themeMode = mode
+        prefs.setThemeMode(mode)
+    }
+
+    // --- Update Logic ---
+
     fun checkForUpdates(isManual: Boolean = false) {
         viewModelScope.launch {
+            val context = getApplication<Application>()
+
             if (isManual) {
-                showStatus("Checking for updates...", SnackbarType.INFO)
+                showStatus(context.getString(R.string.update_checking), SnackbarType.INFO)
             }
 
             // Get current version
-            val context = getApplication<Application>()
             val packageInfo = try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
@@ -100,7 +114,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
             val currentVersion = packageInfo?.versionName ?: "1.0.0"
 
             val updateManager = GitHubUpdateManager(
-                repoOwner = "RHineix", 
+                repoOwner = "RHineIx",
                 repoName = "AndroidGit",
                 currentVersionName = currentVersion
             )
@@ -113,7 +127,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
                 if (isManual) clearStatus()
             } else {
                 if (isManual) {
-                    showStatus("You are using the latest version", SnackbarType.SUCCESS)
+                    showStatus(context.getString(R.string.update_latest), SnackbarType.SUCCESS)
                 }
             }
         }
@@ -123,8 +137,8 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         showUpdateSheet = false
     }
 
-    // --- Existing Git Logic ---
-    
+    // --- Core Git Logic ---
+
     fun openProject(file: File) {
         if (currentRepoFile?.absolutePath == file.absolutePath && gitManager != null) return
         closeProject()
@@ -159,7 +173,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
             }
         }
     }
-    
+
     fun initRepo() {
         val manager = gitManager ?: return
         viewModelScope.launch {
@@ -173,12 +187,13 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     fun cloneRepository(url: String, folderName: String, token: String, onSuccess: (File) -> Unit) {
         if (isLoading) return
         viewModelScope.launch {
+            val context = getApplication<Application>()
             isLoading = true
-            showStatus("Cloning...", SnackbarType.INFO)
+            showStatus(context.getString(R.string.clone_progress), SnackbarType.INFO)
             val result = GitManager.cloneRepo(url, Environment.getExternalStorageDirectory(), folderName, token)
             isLoading = false
             if (result.first != null) {
-                showStatus("Cloned successfully!", SnackbarType.SUCCESS)
+                showStatus(context.getString(R.string.clone_success), SnackbarType.SUCCESS)
                 onSuccess(result.first!!)
             } else {
                 showStatus(result.second, SnackbarType.ERROR)
@@ -189,8 +204,9 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     fun pullChanges() {
         val manager = gitManager ?: return
         viewModelScope.launch {
+            val context = getApplication<Application>()
             if (prefs.getToken().isEmpty()) {
-                showStatus("Set Token in Settings", SnackbarType.ERROR)
+                showStatus(context.getString(R.string.error_set_token), SnackbarType.ERROR)
                 return@launch
             }
             isLoading = true
@@ -204,8 +220,9 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     fun pushChanges(force: Boolean = false) {
         val manager = gitManager ?: return
         viewModelScope.launch {
+            val context = getApplication<Application>()
             if (prefs.getToken().isEmpty()) {
-                showStatus("Set Token in Settings", SnackbarType.ERROR)
+                showStatus(context.getString(R.string.error_set_token), SnackbarType.ERROR)
                 return@launch
             }
             isLoading = true
@@ -270,7 +287,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
             isLoading = false
         }
     }
-    
+
     fun mergeBranch(name: String) {
         val manager = gitManager ?: return
         viewModelScope.launch {
@@ -298,13 +315,14 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     fun fetchAll() {
         val manager = gitManager ?: return
         viewModelScope.launch {
+            val context = getApplication<Application>()
             if (prefs.getToken().isNotEmpty()) {
                 isLoading = true
                 showStatus(manager.fetchAll(prefs.getToken()), SnackbarType.SUCCESS)
                 loadBranches()
                 isLoading = false
             } else {
-                showStatus("Set Token in Settings!", SnackbarType.ERROR)
+                showStatus(context.getString(R.string.error_set_token), SnackbarType.ERROR)
             }
         }
     }
@@ -338,13 +356,13 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     fun loadLogs(reset: Boolean = false) {
         val manager = gitManager ?: return
         if (isLogLoading) return
-        
+
         if (reset) {
             logCurrentOffset = 0
             logHasMore = true
             logList = emptyList()
         }
-        
+
         if (!logHasMore) return
 
         viewModelScope.launch {
@@ -360,7 +378,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     }
 
     fun clearStatus() { statusMessage = "" }
-    
+
     private fun showStatus(message: String, type: SnackbarType) {
         statusMessage = message
         statusType = type

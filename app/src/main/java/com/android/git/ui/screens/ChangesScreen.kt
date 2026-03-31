@@ -4,12 +4,15 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -17,6 +20,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -31,8 +35,7 @@ import com.android.git.ui.viewmodel.MainViewModel
 @Composable
 fun ChangesScreen(
     viewModel: MainViewModel,
-    onBack: () -> Unit,
-    onViewDiff: (String) -> Unit
+    onBack: () -> Unit
 ) {
     val files = viewModel.changedFiles
     val isLoading = viewModel.isLoading
@@ -45,10 +48,22 @@ fun ChangesScreen(
     var showFilterMenu by remember { mutableStateOf(false) }
     var showExtensionDialog by remember { mutableStateOf(false) }
 
-    BackHandler(enabled = !isLoading) { onBack() }
+    // State to handle the full-screen text editor
+    var isMessageExpanded by remember { mutableStateOf(false) }
+
+    val commonShape = RoundedCornerShape(16.dp)
+
+    // Handle back press gracefully
+    BackHandler(enabled = !isLoading || isMessageExpanded) {
+        if (isMessageExpanded) {
+            isMessageExpanded = false
+        } else if (!isLoading) {
+            onBack()
+        }
+    }
 
     LaunchedEffect(Unit) { viewModel.loadChangedFiles() }
-    
+
     LaunchedEffect(files) {
         if (selectedFiles.isEmpty() && files.isNotEmpty()) {
             selectedFiles = files.map { it.path }.toSet()
@@ -65,121 +80,264 @@ fun ChangesScreen(
         val extensions = files.map { it.path.substringAfterLast('.', "") }.filter { it.isNotEmpty() }.distinct()
         AlertDialog(
             onDismissRequest = { showExtensionDialog = false },
-            title = { Text(stringResource(R.string.changes_filter_extension)) },
+            shape = RoundedCornerShape(24.dp),
+            title = { Text(stringResource(R.string.changes_filter_extension), fontWeight = FontWeight.Bold) },
             text = {
                 Column {
-                    extensions.forEach { ext ->
-                        TextButton(
-                            onClick = {
-                                val matching = files.filter { it.path.endsWith(".$ext") }.map { it.path }
-                                selectedFiles = selectedFiles + matching
-                                showExtensionDialog = false
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text(".$ext") }
+                    if (extensions.isEmpty()) {
+                        Text(stringResource(R.string.changes_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        extensions.forEach { ext ->
+                            TextButton(
+                                onClick = {
+                                    val matching = files.filter { it.path.endsWith(".$ext") }.map { it.path }
+                                    selectedFiles = selectedFiles + matching
+                                    showExtensionDialog = false
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text(".$ext") }
+                        }
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showExtensionDialog = false }) { Text(stringResource(R.string.action_cancel)) } }
+            confirmButton = {
+                TextButton(onClick = { showExtensionDialog = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { 
-                    Column {
-                        Text(stringResource(R.string.changes_title))
-                        Text(stringResource(R.string.changes_selected_count, selectedFiles.size, files.size), style = MaterialTheme.typography.labelMedium)
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack, enabled = !isLoading) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
-                },
-                actions = {
-                    Box {
-                        IconButton(onClick = { showFilterMenu = true }) { Icon(Icons.Default.FilterList, "Filter") }
-                        DropdownMenu(expanded = showFilterMenu, onDismissRequest = { showFilterMenu = false }) {
-                            DropdownMenuItem(text = { Text(stringResource(R.string.changes_filter_select_all)) }, onClick = { selectedFiles = files.map { it.path }.toSet(); showFilterMenu = false })
-                            DropdownMenuItem(text = { Text(stringResource(R.string.changes_filter_deselect_all)) }, onClick = { selectedFiles = emptySet(); showFilterMenu = false })
-                            DropdownMenuItem(text = { Text(stringResource(R.string.changes_filter_invert)) }, onClick = { selectedFiles = files.map { it.path }.toSet() - selectedFiles; showFilterMenu = false })
-                            HorizontalDivider()
-                            DropdownMenuItem(text = { Text(stringResource(R.string.changes_filter_extension)) }, onClick = { showFilterMenu = false; showExtensionDialog = true })
+    // Wrap the entire screen in a Box to allow the overlay (expanded editor) to cover everything
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(stringResource(R.string.changes_title), fontWeight = FontWeight.Bold)
+                            Text(
+                                text = stringResource(R.string.changes_selected_count, selectedFiles.size, files.size),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack, enabled = !isLoading) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        }
+                    },
+                    actions = {
+                        Box {
+                            IconButton(onClick = { showFilterMenu = true }) {
+                                Icon(Icons.Default.FilterList, contentDescription = null)
+                            }
+                            DropdownMenu(
+                                expanded = showFilterMenu,
+                                onDismissRequest = { showFilterMenu = false },
+                                shape = commonShape
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.changes_filter_select_all)) },
+                                    onClick = { selectedFiles = files.map { it.path }.toSet(); showFilterMenu = false }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.changes_filter_deselect_all)) },
+                                    onClick = { selectedFiles = emptySet(); showFilterMenu = false }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.changes_filter_invert)) },
+                                    onClick = { selectedFiles = files.map { it.path }.toSet() - selectedFiles; showFilterMenu = false }
+                                )
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.changes_filter_extension)) },
+                                    onClick = { showFilterMenu = false; showExtensionDialog = true }
+                                )
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+                )
+            },
+            bottomBar = {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                    shadowElevation = 8.dp
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .imePadding()
+                            .padding(horizontal = 20.dp, vertical = 16.dp)
+                            .animateContentSize()
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 12.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable(enabled = !isLoading) { isAmend = !isAmend }
+                        ) {
+                            Checkbox(checked = isAmend, onCheckedChange = null, enabled = !isLoading)
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(R.string.changes_amend_checkbox),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        OutlinedTextField(
+                            value = commitMessage,
+                            onValueChange = { commitMessage = it },
+                            label = { Text(if(isAmend) stringResource(R.string.changes_amend_msg_label) else stringResource(R.string.changes_commit_msg_label)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            maxLines = 4,
+                            shape = commonShape,
+                            enabled = !isLoading,
+                            trailingIcon = {
+                                IconButton(onClick = { isMessageExpanded = true }) {
+                                    Icon(Icons.Default.Fullscreen, contentDescription = "Expand to fullscreen")
+                                }
+                            }
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = {
+                                viewModel.commitChanges(commitMessage, isAmend, selectedFiles)
+                                commitMessage = ""
+                                isAmend = false
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = commonShape,
+                            enabled = (selectedFiles.isNotEmpty() || isAmend) && commitMessage.isNotBlank() && !isLoading
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    strokeWidth = 2.5.dp
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Text(stringResource(R.string.changes_status_committing), style = MaterialTheme.typography.titleMedium)
+                            } else {
+                                Icon(Icons.Default.Check, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = if (isAmend) stringResource(R.string.changes_btn_amend) else stringResource(R.string.changes_btn_commit),
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            }
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
-            )
-        },
-        bottomBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceContainer)
-                    .imePadding() // [Fix] إضافة imePadding لرفع المحتوى عند فتح الكيبورد
-                    .padding(16.dp)
-                    .animateContentSize()
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
-                    Checkbox(checked = isAmend, onCheckedChange = { isAmend = it }, enabled = !isLoading)
-                    Text(stringResource(R.string.changes_amend_checkbox))
                 }
-
-                OutlinedTextField(
-                    value = commitMessage,
-                    onValueChange = { commitMessage = it },
-                    label = { Text(if(isAmend) stringResource(R.string.changes_amend_msg_label) else stringResource(R.string.changes_commit_msg_label)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 3,
-                    enabled = !isLoading
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = {
-                        viewModel.commitChanges(commitMessage, isAmend, selectedFiles)
-                        commitMessage = ""
-                        isAmend = false
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = (selectedFiles.isNotEmpty() || isAmend) && commitMessage.isNotBlank() && !isLoading
+            }
+        ) { padding ->
+            if (isLoading && files.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(vertical = 12.dp)
                 ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary)
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.changes_status_committing))
-                    } else {
-                        Icon(Icons.Default.Check, null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(if (isAmend) stringResource(R.string.changes_btn_amend) else stringResource(R.string.changes_btn_commit))
+                    items(files, key = { it.path }) { file ->
+                        val isSelected = selectedFiles.contains(file.path)
+                        AnimatedVisibility(
+                            visible = true,
+                            enter = fadeIn() + slideInVertically()
+                        ) {
+                            FileChangeItem(
+                                file = file,
+                                isSelected = isSelected,
+                                onToggle = {
+                                    selectedFiles = if (isSelected) selectedFiles - file.path else selectedFiles + file.path
+                                }
+                            )
+                        }
+                    }
+                }
+                if (files.isEmpty() && !isLoading) {
+                    Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircleOutline,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(stringResource(R.string.changes_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (statusMessage.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(statusMessage, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
                     }
                 }
             }
         }
-    ) { padding ->
-        if (isLoading && files.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+
+        // Full-screen distraction-free editor
+        AnimatedVisibility(
+            visible = isMessageExpanded,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background
             ) {
-                items(files) { file ->
-                    val isSelected = selectedFiles.contains(file.path)
-                    AnimatedVisibility(visible = true, enter = fadeIn() + slideInVertically()) {
-                        FileChangeItem(file = file, isSelected = isSelected, onToggle = { selectedFiles = if (isSelected) selectedFiles - file.path else selectedFiles + file.path }, onViewDiff = { onViewDiff(file.path) })
-                    }
-                }
-                item { Spacer(modifier = Modifier.height(16.dp)) }
-            }
-            if (files.isEmpty() && !isLoading) {
-                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(stringResource(R.string.changes_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        if (statusMessage.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(statusMessage, color = MaterialTheme.colorScheme.primary)
-                        }
-                    }
+                Column(modifier = Modifier.fillMaxSize()) {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                text = if(isAmend) stringResource(R.string.changes_amend_msg_label) else stringResource(R.string.changes_commit_msg_label),
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = { isMessageExpanded = false }) {
+                                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.action_close))
+                            }
+                        },
+                        actions = {
+                            TextButton(onClick = { isMessageExpanded = false }) {
+                                Text(stringResource(R.string.action_save), fontWeight = FontWeight.Bold)
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                    )
+
+                    TextField(
+                        value = commitMessage,
+                        onValueChange = { commitMessage = it },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        placeholder = { Text(stringResource(R.string.changes_commit_msg_label)) },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent
+                        )
+                    )
                 }
             }
         }
@@ -187,20 +345,47 @@ fun ChangesScreen(
 }
 
 @Composable
-fun FileChangeItem(file: GitFile, isSelected: Boolean, onToggle: () -> Unit, onViewDiff: () -> Unit) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceContainer),
-        modifier = Modifier.fillMaxWidth().clickable { onToggle() }.animateContentSize()
+fun FileChangeItem(file: GitFile, isSelected: Boolean, onToggle: () -> Unit) {
+    ElevatedCard(
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = if (isSelected) 2.dp else 0.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = if (isSelected)
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+            else
+                MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .clickable { onToggle() }
+            .animateContentSize()
     ) {
-        Row(modifier = Modifier.padding(8.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = isSelected, onCheckedChange = { onToggle() })
+        Row(
+            modifier = Modifier.padding(12.dp).fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = isSelected,
+                onCheckedChange = null,
+                modifier = Modifier.padding(end = 8.dp)
+            )
             StatusIcon(file.type)
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = file.path, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                Text(text = getFriendlyStatusName(file.type), style = MaterialTheme.typography.labelSmall, color = getStatusColor(file.type))
+                Text(
+                    text = file.path,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = getFriendlyStatusName(file.type),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = getStatusColor(file.type),
+                    modifier = Modifier.padding(top = 2.dp)
+                )
             }
-            IconButton(onClick = onViewDiff) { Icon(imageVector = Icons.Default.Visibility, contentDescription = "View Diff", tint = MaterialTheme.colorScheme.primary) }
         }
     }
 }
@@ -226,8 +411,20 @@ fun StatusIcon(type: ChangeType) {
         ChangeType.MISSING -> Icons.Default.Delete
     }
     val color = getStatusColor(type)
-    Surface(color = color.copy(alpha = 0.1f), shape = MaterialTheme.shapes.small, modifier = Modifier.size(32.dp)) {
-        Box(contentAlignment = Alignment.Center) { Icon(icon, null, tint = color, modifier = Modifier.size(16.dp)) }
+
+    Surface(
+        color = color.copy(alpha = 0.15f),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.size(36.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(20.dp)
+            )
+        }
     }
 }
 
