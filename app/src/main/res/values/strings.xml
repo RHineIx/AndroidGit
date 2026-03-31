@@ -115,7 +115,6 @@
     <string name="log_btn_reset">Reset to Commit</string>
     <string name="log_empty">No commits found.</string>
     <string name="log_time_now">Just now</string>
-<<<<<<< HEAD
     <string name="log_copied_hash">Commit hash copied!</string>
     <string name="log_title">Commit History</string>
     <string name="log_subtitle">Viewing logs for current branch</string>
@@ -136,12 +135,6 @@
     <string name="conflict_instruction">Choose which version to keep for this file.</string>
 
     <string name="ignore_title">Edit .gitignore</string>
-=======
-
-    <string name="conflict_title">Merge Conflicts</string>
-    <string name="conflict_none">No conflicts found.</string>
-    <string name="conflict_list_header">Conflicting Files</string>
->>>>>>> branch 'Lite' of https://github.com/RHineIx/AndroidGit
 
     <string name="perm_title">Storage Permission Required</string>
     <string name="perm_desc">This app requires all files access to manage Git repositories on your device.</string>
