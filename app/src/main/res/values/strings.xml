@@ -10,9 +10,21 @@
     <string name="action_clear_all">Clear All</string>
     <string name="action_back">Back</string>
     <string name="action_dismiss">Dismiss</string>
+    <string name="action_save">Save</string>
+    <string name="action_saving">Saving...</string>
+    <string name="action_refresh">Refresh</string>
+    <string name="action_copy">Copy</string>
+    <string name="action_loading">Loading...</string>
 
     <string name="settings_title">Settings</string>
     <string name="error_set_token">Set Token in Settings</string>
+    <string name="settings_section_app">App Settings</string>
+    <string name="settings_auto_open">Auto-open last project</string>
+    <string name="settings_auto_open_desc">Automatically open the last viewed repository on launch</string>
+    <string name="settings_version_fmt">Version %1$s</string>
+    <string name="settings_developer_by">Developed by</string>
+    <string name="settings_social_github">GitHub</string>
+    <string name="settings_social_telegram">Telegram</string>
 
     <string name="selection_title">Select Repository</string>
     <string name="selection_open_local">Open Local</string>
@@ -25,6 +37,15 @@
     <string name="update_latest">You are using the latest version</string>
     <string name="clone_progress">Cloning...</string>
     <string name="clone_success">Cloned successfully!</string>
+    <string name="clone_title">Clone Repository</string>
+    <string name="clone_url_label">Repository URL</string>
+    <string name="clone_url_placeholder">https://github.com/user/repo.git</string>
+    <string name="clone_folder_label">Folder Name</string>
+    <string name="clone_folder_hint">Leave empty to use repo name</string>
+    <string name="clone_token_label">Access Token (Optional for public)</string>
+    <string name="clone_remember_token">Remember Token</string>
+    <string name="clone_status_running">Cloning...</string>
+    <string name="clone_btn_action">Clone</string>
 
     <string name="about_developed_by">Developed by</string>
     <string name="update_new_version">New Version Available</string>
@@ -94,10 +115,33 @@
     <string name="log_btn_reset">Reset to Commit</string>
     <string name="log_empty">No commits found.</string>
     <string name="log_time_now">Just now</string>
+<<<<<<< HEAD
+    <string name="log_copied_hash">Commit hash copied!</string>
+    <string name="log_title">Commit History</string>
+    <string name="log_subtitle">Viewing logs for current branch</string>
+    <string name="log_details_title">Commit Details</string>
+    <string name="log_label_author">Author</string>
+    <string name="log_label_hash">Hash</string>
+    <string name="log_label_date">Date</string>
+    <string name="log_label_status">Status</string>
+    <string name="log_status_pushed">Pushed</string>
+    <string name="log_status_local">Local only</string>
 
     <string name="conflict_title">Merge Conflicts</string>
     <string name="conflict_none">No conflicts found.</string>
     <string name="conflict_list_header">Conflicting Files</string>
+    <string name="conflict_resolver_title">Resolve Conflict</string>
+    <string name="conflict_btn_ours">Keep Ours</string>
+    <string name="conflict_btn_theirs">Keep Theirs</string>
+    <string name="conflict_instruction">Choose which version to keep for this file.</string>
+
+    <string name="ignore_title">Edit .gitignore</string>
+=======
+
+    <string name="conflict_title">Merge Conflicts</string>
+    <string name="conflict_none">No conflicts found.</string>
+    <string name="conflict_list_header">Conflicting Files</string>
+>>>>>>> branch 'Lite' of https://github.com/RHineIx/AndroidGit
 
     <string name="perm_title">Storage Permission Required</string>
     <string name="perm_desc">This app requires all files access to manage Git repositories on your device.</string>
