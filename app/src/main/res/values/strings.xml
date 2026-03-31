@@ -25,6 +25,11 @@
     <string name="settings_developer_by">Developed by</string>
     <string name="settings_social_github">GitHub</string>
     <string name="settings_social_telegram">Telegram</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_theme_title">Theme</string>
+    <string name="settings_theme_system">System Default</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
 
     <string name="selection_title">Select Repository</string>
     <string name="selection_open_local">Open Local</string>

@@ -16,11 +16,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color // [Fix] Added missing import
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -28,9 +30,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp // [Fix] Added missing import
+import androidx.compose.ui.unit.sp
 import com.android.git.R
 import com.android.git.data.PreferencesManager
+import com.android.git.data.ThemeMode
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.viewmodel.MainViewModel
 
@@ -43,12 +46,13 @@ fun GeneralSettingsScreen(
 ) {
     val context = LocalContext.current
     val prefs = remember { PreferencesManager(context) }
-    
+
     // UI State from ViewModel
     val statusMessage = viewModel.statusMessage
     val statusType = viewModel.statusType
-    
+
     var autoOpen by remember { mutableStateOf(prefs.isAutoOpenEnabled()) }
+    var themeExpanded by remember { mutableStateOf(false) }
 
     BackHandler(enabled = true) { onBack() }
 
@@ -77,7 +81,75 @@ fun GeneralSettingsScreen(
                         .padding(top = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
+
+                    // --- App Settings Section ---
                     SettingsSection(title = stringResource(R.string.settings_section_app)) {
+
+                        // 1. Theme Selection
+                        val themeNames = listOf(
+                            stringResource(R.string.settings_theme_system),
+                            stringResource(R.string.settings_theme_light),
+                            stringResource(R.string.settings_theme_dark)
+                        )
+                        val currentThemeName = when (viewModel.themeMode) {
+                            ThemeMode.SYSTEM -> themeNames[0]
+                            ThemeMode.LIGHT -> themeNames[1]
+                            ThemeMode.DARK -> themeNames[2]
+                        }
+
+                        Box {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { themeExpanded = true }
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text(
+                                        stringResource(R.string.settings_theme_title),
+                                        fontWeight = FontWeight.SemiBold,
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    Text(
+                                        currentThemeName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+
+                            DropdownMenu(
+                                expanded = themeExpanded,
+                                onDismissRequest = { themeExpanded = false },
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                ThemeMode.entries.forEachIndexed { index, mode ->
+                                    DropdownMenuItem(
+                                        text = { Text(themeNames[index]) },
+                                        onClick = {
+                                            viewModel.updateThemeMode(mode)
+                                            themeExpanded = false
+                                        },
+                                        trailingIcon = {
+                                            if (viewModel.themeMode == mode) {
+                                                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 16.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        )
+
+                        // 2. Auto Open Toggle
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
@@ -85,8 +157,8 @@ fun GeneralSettingsScreen(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    stringResource(R.string.settings_auto_open), 
-                                    fontWeight = FontWeight.SemiBold, 
+                                    stringResource(R.string.settings_auto_open),
+                                    fontWeight = FontWeight.SemiBold,
                                     style = MaterialTheme.typography.bodyLarge
                                 )
                                 Text(
@@ -97,7 +169,7 @@ fun GeneralSettingsScreen(
                             }
                             Switch(
                                 checked = autoOpen,
-                                onCheckedChange = { 
+                                onCheckedChange = {
                                     autoOpen = it
                                     prefs.setAutoOpenEnabled(it)
                                 },
@@ -109,8 +181,9 @@ fun GeneralSettingsScreen(
                         }
                     }
 
+                    // --- Developer Section ---
                     DeveloperSection(context)
-                    
+
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
@@ -123,8 +196,8 @@ fun GeneralSettingsScreen(
 
             Box(modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)) {
                 AppSnackbar(
-                    message = statusMessage, 
-                    type = statusType, 
+                    message = statusMessage,
+                    type = statusType,
                     onDismiss = { viewModel.clearStatus() }
                 )
             }
@@ -134,7 +207,7 @@ fun GeneralSettingsScreen(
 
 @Composable
 fun AppVersionFooter(
-    context: Context, 
+    context: Context,
     bottomPadding: androidx.compose.ui.unit.Dp,
     onCheckUpdate: () -> Unit
 ) {
@@ -210,9 +283,9 @@ fun DeveloperSection(context: Context) {
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.secondary
             )
-           
+
             Spacer(Modifier.height(12.dp))
-             
+
             Surface(
                 modifier = Modifier.size(80.dp),
                 shape = CircleShape,
@@ -226,39 +299,39 @@ fun DeveloperSection(context: Context) {
                     modifier = Modifier.fillMaxSize()
                 )
             }
-            
+
             Spacer(Modifier.height(16.dp))
-        
+
             Text(
                 text = "RHineix",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            
+
             Text(
                 text = "@RHineix",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary
             )
-            
+
             Spacer(Modifier.height(24.dp))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 SocialButton(
-                    iconRes = R.drawable.ic_github, 
+                    iconRes = R.drawable.ic_github,
                     label = stringResource(R.string.settings_social_github),
                     onClick = { openUrl(context, "https://github.com/RHineix") }
                 )
-                
+
                 Spacer(Modifier.width(16.dp))
-                
+
                 SocialButton(
-                    iconRes = R.drawable.ic_telegram, 
+                    iconRes = R.drawable.ic_telegram,
                     label = stringResource(R.string.settings_social_telegram),
                     onClick = { openUrl(context, "https://t.me/RHineix") }
                 )

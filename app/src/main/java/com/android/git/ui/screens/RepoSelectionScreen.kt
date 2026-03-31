@@ -7,7 +7,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -29,6 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.android.git.R
 import com.android.git.data.PreferencesManager
 import kotlinx.coroutines.Dispatchers
@@ -46,7 +48,7 @@ fun RepoSelectionScreen(
     val context = LocalContext.current
     val prefs = remember { PreferencesManager(context) }
     val scope = rememberCoroutineScope()
-    
+
     var recentProjects by remember { mutableStateOf<List<String>>(emptyList()) }
 
     LaunchedEffect(Unit) {
@@ -55,12 +57,12 @@ fun RepoSelectionScreen(
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
+    ) { uri: Uri? ->
         if (uri != null) {
             try {
                 val takeFlags: Int = (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                 context.contentResolver.takePersistableUriPermission(uri, takeFlags)
-            } catch (e: Exception) { 
+            } catch (e: Exception) {
                 // Ignore if permission persistence fails
             }
             onRepoSelected(uri)
@@ -70,7 +72,7 @@ fun RepoSelectionScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { 
+                title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             painter = painterResource(id = R.drawable.icon),
@@ -78,7 +80,7 @@ fun RepoSelectionScreen(
                             tint = Color.Unspecified,
                             modifier = Modifier.size(38.dp)
                         )
-                        Spacer(Modifier.width(4.dp))
+                        Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.selection_title), fontWeight = FontWeight.Bold)
                     }
                 },
@@ -87,7 +89,7 @@ fun RepoSelectionScreen(
                         Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
             )
@@ -110,7 +112,7 @@ fun RepoSelectionScreen(
                     modifier = Modifier.weight(1f),
                     onClick = { launcher.launch(null) }
                 )
-                
+
                 ActionCard(
                     title = stringResource(R.string.selection_clone_repo),
                     icon = Icons.Default.Download,
@@ -118,32 +120,37 @@ fun RepoSelectionScreen(
                     onClick = onCloneRequest
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(32.dp))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = stringResource(R.string.selection_recent_projects),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(Modifier.weight(1f))
                 if (recentProjects.isNotEmpty()) {
-                    TextButton(onClick = { 
-                        scope.launch {
-                            recentProjects.forEach { prefs.removeRecentProject(it) }
-                            recentProjects = emptyList()
-                        }
-                    }) {
-                        Text(stringResource(R.string.action_clear_all), color = MaterialTheme.colorScheme.error)
-                    }
+                    Text(
+                        text = stringResource(R.string.action_clear_all),
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                scope.launch {
+                                    recentProjects.forEach { prefs.removeRecentProject(it) }
+                                    recentProjects = emptyList()
+                                }
+                            }
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelMedium
+                    )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
 
             if (recentProjects.isEmpty()) {
@@ -157,9 +164,8 @@ fun RepoSelectionScreen(
                         )
                         Spacer(Modifier.height(16.dp))
                         Text(
-                            stringResource(R.string.selection_no_recent),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.secondary
+                            text = stringResource(R.string.selection_no_recent),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -191,58 +197,69 @@ fun RepoSelectionScreen(
 
 @Composable
 fun ActionCard(title: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Card(
+    ElevatedCard(
         modifier = modifier.height(100.dp).clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(icon, null, modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(32.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
             Spacer(Modifier.height(8.dp))
-            Text(title, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+            Text(title, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
         }
     }
 }
 
 @Composable
 fun RecentProjectItem(file: File, isMissing: Boolean = false, onClick: () -> Unit, onRemove: () -> Unit) {
-    Card(
+    ElevatedCard(
         modifier = Modifier.fillMaxWidth().clickable(enabled = !isMissing, onClick = onClick),
-        colors = CardDefaults.cardColors(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.elevatedCardColors(
             containerColor = if (isMissing) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        shape = RoundedCornerShape(12.dp),
-        border = if(isMissing) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = if (isMissing) 0.dp else 2.dp)
     ) {
         Row(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             ProjectIcon(projectDir = file, isMissing = isMissing)
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = file.name,
-                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
                     color = if(isMissing) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
                 )
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = if(isMissing) stringResource(R.string.selection_dir_not_found) else file.absolutePath,
-                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
             IconButton(onClick = onRemove) {
-                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.action_delete), tint = MaterialTheme.colorScheme.outline)
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.action_delete),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -259,7 +276,7 @@ fun ProjectIcon(projectDir: File, isMissing: Boolean) {
         if (!isMissing) {
             withContext(Dispatchers.IO) {
                 val fileNames = projectDir.list()?.toList() ?: emptyList()
-                
+
                 if (fileNames.contains("pubspec.yaml")) {
                     projectTypeIcon = Icons.Default.Smartphone
                     iconTint = Color(0xFF02569B)
@@ -275,20 +292,10 @@ fun ProjectIcon(projectDir: File, isMissing: Boolean) {
                 }
 
                 val extensions = listOf("webp", "png", "jpg", "jpeg", "ico")
-                
-                val androidBaseDirs = listOf(
-                    "app/src/main/res",
-                    "android/app/src/main/res",
-                    "src/main/res"
-                )
-                
-                val densities = listOf(
-                    "mipmap-xxxhdpi", "mipmap-xxhdpi", "mipmap-xhdpi", 
-                    "drawable-xxxhdpi", "drawable-xxhdpi", "drawable"
-                )
-                
+                val androidBaseDirs = listOf("app/src/main/res", "android/app/src/main/res", "src/main/res")
+                val densities = listOf("mipmap-xxxhdpi", "mipmap-xxhdpi", "mipmap-xhdpi", "drawable-xxxhdpi", "drawable-xxhdpi", "drawable")
                 val iconNames = listOf("ic_launcher", "ic_launcher_round", "app_icon")
-                
+
                 val searchPaths = mutableListOf<String>()
 
                 for (base in androidBaseDirs) {
@@ -303,7 +310,7 @@ fun ProjectIcon(projectDir: File, isMissing: Boolean) {
 
                 val storeIconNames = listOf("ic_launcher-playstore", "playstore-icon")
                 val storeBaseDirs = listOf("app/src/main", "android/app/src/main", "src/main", ".")
-                
+
                 for (base in storeBaseDirs) {
                     for (name in storeIconNames) {
                         for (ext in extensions) {
@@ -338,11 +345,12 @@ fun ProjectIcon(projectDir: File, isMissing: Boolean) {
         }
     }
 
-    Surface(
-        modifier = Modifier.size(48.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = if (isMissing) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceContainerHigh,
-        border = if (projectBitmap == null) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)) else null
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (isMissing) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceContainerHigh),
+        contentAlignment = Alignment.Center
     ) {
         if (projectBitmap != null && !isMissing) {
             Image(
@@ -352,14 +360,12 @@ fun ProjectIcon(projectDir: File, isMissing: Boolean) {
                 modifier = Modifier.fillMaxSize()
             )
         } else {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = if (isMissing) Icons.Default.CloudOff else projectTypeIcon,
-                    contentDescription = null,
-                    tint = if (isMissing) MaterialTheme.colorScheme.onSurfaceVariant else if (iconTint != Color.Unspecified) iconTint else MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
+            Icon(
+                imageVector = if (isMissing) Icons.Default.CloudOff else projectTypeIcon,
+                contentDescription = null,
+                tint = if (isMissing) MaterialTheme.colorScheme.onSurfaceVariant else if (iconTint != Color.Unspecified) iconTint else MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(28.dp)
+            )
         }
     }
 }

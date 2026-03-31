@@ -7,6 +7,7 @@ import android.os.Environment
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -21,6 +22,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.android.git.data.PreferencesManager
+import com.android.git.data.ThemeMode
 import com.android.git.navigation.AppNavGraph
 import com.android.git.ui.components.UpdateBottomSheet
 import com.android.git.ui.screens.PermissionScreen
@@ -35,12 +37,10 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
-            AndroidGitTheme {
-                MainAppContent(
-                    checkPermission = { checkPermission() },
-                    requestPermission = { requestPermission() }
-                )
-            }
+            MainAppContent(
+                checkPermission = { checkPermission() },
+                requestPermission = { requestPermission() }
+            )
         }
     }
 
@@ -70,6 +70,15 @@ fun MainAppContent(
 
     var hasPermission by remember { mutableStateOf(checkPermission()) }
 
+    // Observe theme mode from ViewModel
+    val themeMode = viewModel.themeMode
+    val isSystemDark = isSystemInDarkTheme()
+    val isDarkTheme = when (themeMode) {
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+        ThemeMode.SYSTEM -> isSystemDark
+    }
+
     LaunchedEffect(Unit) {
         if (hasPermission && prefs.isAutoOpenEnabled() && viewModel.currentRepoFile == null) {
             prefs.getLastProjectPath()?.let { path ->
@@ -90,17 +99,20 @@ fun MainAppContent(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        if (!hasPermission) {
-            PermissionScreen { requestPermission() }
-        } else {
-            AppNavGraph(navController = navController, viewModel = viewModel)
-            
-            if (viewModel.showUpdateSheet && viewModel.updateInfo != null) {
-                UpdateBottomSheet(
-                    updateInfo = viewModel.updateInfo!!,
-                    onDismiss = { viewModel.dismissUpdateSheet() }
-                )
+    // Apply the Theme dynamically
+    AndroidGitTheme(darkTheme = isDarkTheme) {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            if (!hasPermission) {
+                PermissionScreen { requestPermission() }
+            } else {
+                AppNavGraph(navController = navController, viewModel = viewModel)
+
+                if (viewModel.showUpdateSheet && viewModel.updateInfo != null) {
+                    UpdateBottomSheet(
+                        updateInfo = viewModel.updateInfo!!,
+                        onDismiss = { viewModel.dismissUpdateSheet() }
+                    )
+                }
             }
         }
     }
