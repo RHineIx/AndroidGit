@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.android.git.R
 import com.android.git.data.GitHubUpdateManager
 import com.android.git.data.GitManager
 import com.android.git.data.PreferencesManager
@@ -83,12 +84,13 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     // [Update Logic]
     fun checkForUpdates(isManual: Boolean = false) {
         viewModelScope.launch {
+            val context = getApplication<Application>()
+            
             if (isManual) {
-                showStatus("Checking for updates...", SnackbarType.INFO)
+                showStatus(context.getString(R.string.update_checking), SnackbarType.INFO)
             }
 
             // Get current version
-            val context = getApplication<Application>()
             val packageInfo = try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
@@ -113,7 +115,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
                 if (isManual) clearStatus()
             } else {
                 if (isManual) {
-                    showStatus("You are using the latest version", SnackbarType.SUCCESS)
+                    showStatus(context.getString(R.string.update_latest), SnackbarType.SUCCESS)
                 }
             }
         }
@@ -173,12 +175,13 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     fun cloneRepository(url: String, folderName: String, token: String, onSuccess: (File) -> Unit) {
         if (isLoading) return
         viewModelScope.launch {
+            val context = getApplication<Application>()
             isLoading = true
-            showStatus("Cloning...", SnackbarType.INFO)
+            showStatus(context.getString(R.string.clone_progress), SnackbarType.INFO)
             val result = GitManager.cloneRepo(url, Environment.getExternalStorageDirectory(), folderName, token)
             isLoading = false
             if (result.first != null) {
-                showStatus("Cloned successfully!", SnackbarType.SUCCESS)
+                showStatus(context.getString(R.string.clone_success), SnackbarType.SUCCESS)
                 onSuccess(result.first!!)
             } else {
                 showStatus(result.second, SnackbarType.ERROR)
@@ -189,8 +192,9 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     fun pullChanges() {
         val manager = gitManager ?: return
         viewModelScope.launch {
+            val context = getApplication<Application>()
             if (prefs.getToken().isEmpty()) {
-                showStatus("Set Token in Settings", SnackbarType.ERROR)
+                showStatus(context.getString(R.string.error_set_token), SnackbarType.ERROR)
                 return@launch
             }
             isLoading = true
@@ -204,8 +208,9 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     fun pushChanges(force: Boolean = false) {
         val manager = gitManager ?: return
         viewModelScope.launch {
+            val context = getApplication<Application>()
             if (prefs.getToken().isEmpty()) {
-                showStatus("Set Token in Settings", SnackbarType.ERROR)
+                showStatus(context.getString(R.string.error_set_token), SnackbarType.ERROR)
                 return@launch
             }
             isLoading = true
@@ -298,13 +303,14 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     fun fetchAll() {
         val manager = gitManager ?: return
         viewModelScope.launch {
+            val context = getApplication<Application>()
             if (prefs.getToken().isNotEmpty()) {
                 isLoading = true
                 showStatus(manager.fetchAll(prefs.getToken()), SnackbarType.SUCCESS)
                 loadBranches()
                 isLoading = false
             } else {
-                showStatus("Set Token in Settings!", SnackbarType.ERROR)
+                showStatus(context.getString(R.string.error_set_token), SnackbarType.ERROR)
             }
         }
     }

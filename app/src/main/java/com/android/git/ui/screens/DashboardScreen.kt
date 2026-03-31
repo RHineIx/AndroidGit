@@ -75,7 +75,7 @@ fun DashboardScreen(
     if (showForcePushDialog) {
         AlertDialog(
             onDismissRequest = { showForcePushDialog = false },
-            icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) },
+            icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
             title = { Text(stringResource(R.string.dashboard_force_push_title)) },
             text = { Text(stringResource(R.string.dashboard_force_push_msg)) },
             confirmButton = {
@@ -100,7 +100,6 @@ fun DashboardScreen(
                 .navigationBarsPadding()
                 .padding(16.dp)
         ) {
-            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -112,9 +111,9 @@ fun DashboardScreen(
                 }
 
                 Row {
-                    IconButton(onClick = onSettings) { Icon(Icons.Default.Settings, "Settings") }
+                    IconButton(onClick = onSettings) { Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title)) }
                     Box {
-                        IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, "More Options") }
+                        IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.dashboard_tools_title)) }
                         DropdownMenu(
                             expanded = showMenu,
                             onDismissRequest = { showMenu = false },
@@ -132,22 +131,22 @@ fun DashboardScreen(
                             )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.dashboard_tool_stash)) },
-                                leadingIcon = { Icon(Icons.Default.Archive, null) },
+                                leadingIcon = { Icon(Icons.Default.Archive, contentDescription = null) },
                                 onClick = { showMenu = false; onOpenStash() }
                             )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.dashboard_tool_merge)) },
-                                leadingIcon = { Icon(Icons.Default.Warning, null) },
+                                leadingIcon = { Icon(Icons.Default.Warning, contentDescription = null) },
                                 onClick = { showMenu = false; onMergeConflicts() }
                             )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.dashboard_tool_gitignore)) },
-                                leadingIcon = { Icon(Icons.Default.Code, null) },
+                                leadingIcon = { Icon(Icons.Default.Code, contentDescription = null) },
                                 onClick = { showMenu = false; onIgnoreEditor() }
                             )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.dashboard_tool_fetch)) },
-                                leadingIcon = { Icon(Icons.Default.Sync, null) },
+                                leadingIcon = { Icon(Icons.Default.Sync, contentDescription = null) },
                                 onClick = { showMenu = false; viewModel.fetchAll() }
                             )
                         }
@@ -182,7 +181,7 @@ fun DashboardScreen(
                                 Spacer(Modifier.height(8.dp))
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Button(onClick = { viewModel.pullChanges() }, modifier = Modifier.weight(1f), enabled = !isLoading) {
-                                        Icon(Icons.Default.CloudDownload, null, Modifier.size(18.dp))
+                                        Icon(Icons.Default.CloudDownload, contentDescription = null, Modifier.size(18.dp))
                                         Spacer(Modifier.width(8.dp))
                                         Text(stringResource(R.string.dashboard_action_pull))
                                     }
@@ -192,7 +191,7 @@ fun DashboardScreen(
                                         colors = ButtonDefaults.buttonColors(containerColor = if (isForcePushChecked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary),
                                         enabled = !isLoading
                                     ) {
-                                        Icon(Icons.Default.CloudUpload, null, Modifier.size(18.dp))
+                                        Icon(Icons.Default.CloudUpload, contentDescription = null, Modifier.size(18.dp))
                                         Spacer(Modifier.width(8.dp))
                                         Text(if (isForcePushChecked) stringResource(R.string.dashboard_action_force) else stringResource(R.string.dashboard_action_push))
                                     }
@@ -216,7 +215,7 @@ fun DashboardScreen(
                                 colors = CardDefaults.cardColors(containerColor = Color(0xFF1F6FEB).copy(alpha = 0.2f))
                             ) {
                                 Column(Modifier.padding(16.dp)) {
-                                    Icon(Icons.AutoMirrored.Filled.CallSplit, null, tint = Color(0xFF1F6FEB))
+                                    Icon(Icons.AutoMirrored.Filled.CallSplit, contentDescription = null, tint = Color(0xFF1F6FEB))
                                     Text(stringResource(R.string.dashboard_card_branch), fontSize = 12.sp)
                                     Text(dashboardState.branch, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 1)
                                 }
@@ -226,7 +225,7 @@ fun DashboardScreen(
                                 colors = CardDefaults.cardColors(containerColor = Color(0xFF238636).copy(alpha = 0.2f))
                             ) {
                                 Column(Modifier.padding(16.dp)) {
-                                    Icon(Icons.Default.Refresh, null, tint = Color(0xFF238636))
+                                    Icon(Icons.Default.Refresh, contentDescription = null, tint = Color(0xFF238636))
                                     Text(stringResource(R.string.dashboard_card_changes), fontSize = 12.sp)
                                     Text("${dashboardState.changes} ${stringResource(R.string.dashboard_card_changes_suffix)}", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                                 }
@@ -238,7 +237,7 @@ fun DashboardScreen(
                             colors = CardDefaults.cardColors(containerColor = Color(0xFF8957E5).copy(alpha = 0.2f))
                         ) {
                             Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.History, null, tint = Color(0xFF8957E5))
+                                Icon(Icons.Default.History, contentDescription = null, tint = Color(0xFF8957E5))
                                 Spacer(Modifier.width(12.dp))
                                 Column {
                                     Text(stringResource(R.string.dashboard_card_history), fontWeight = FontWeight.Bold)
@@ -250,7 +249,7 @@ fun DashboardScreen(
                         if (dashboardState.unpushedCount > 0) {
                             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer), modifier = Modifier.fillMaxWidth()) {
                                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Upload, null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    Icon(Icons.Default.Upload, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
                                     Spacer(Modifier.width(12.dp))
                                     Text(stringResource(R.string.dashboard_unpushed_commits, dashboardState.unpushedCount), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
                                 }
@@ -258,7 +257,7 @@ fun DashboardScreen(
                         }
                     }
                 }
-                is DashboardState.Error -> Text("Error: ${dashboardState.message}", color = MaterialTheme.colorScheme.error)
+                is DashboardState.Error -> Text(dashboardState.message, color = MaterialTheme.colorScheme.error)
             }
         }
 

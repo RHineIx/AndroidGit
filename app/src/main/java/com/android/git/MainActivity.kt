@@ -50,7 +50,6 @@ class MainActivity : ComponentActivity() {
     private fun requestPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             try {
-                // [Refactor] Used KTX extension .toUri() for cleaner syntax
                 startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, "package:$packageName".toUri()))
             } catch (_: Exception) {
                 startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
@@ -71,7 +70,6 @@ fun MainAppContent(
 
     var hasPermission by remember { mutableStateOf(checkPermission()) }
 
-    // Auto-open logic
     LaunchedEffect(Unit) {
         if (hasPermission && prefs.isAutoOpenEnabled() && viewModel.currentRepoFile == null) {
             prefs.getLastProjectPath()?.let { path ->
@@ -80,7 +78,6 @@ fun MainAppContent(
         }
     }
 
-    // Lifecycle handling for permissions
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -97,11 +94,8 @@ fun MainAppContent(
         if (!hasPermission) {
             PermissionScreen { requestPermission() }
         } else {
-            // Main Navigation Graph
             AppNavGraph(navController = navController, viewModel = viewModel)
             
-            // [New] Global Update Sheet Overlay
-            // This sits at the root level, so it covers any screen in the NavGraph
             if (viewModel.showUpdateSheet && viewModel.updateInfo != null) {
                 UpdateBottomSheet(
                     updateInfo = viewModel.updateInfo!!,

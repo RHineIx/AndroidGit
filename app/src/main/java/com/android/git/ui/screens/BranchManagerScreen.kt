@@ -202,7 +202,7 @@ private fun BranchListContent(
             onValueChange = onSearchChange,
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             placeholder = { Text(stringResource(R.string.branch_search_hint)) },
-            leadingIcon = { Icon(Icons.Default.Search, null) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             shape = RoundedCornerShape(12.dp),
             singleLine = true
         )
@@ -212,13 +212,13 @@ private fun BranchListContent(
                 selected = selectedTab == 0,
                 onClick = { onTabChange(0) },
                 text = { Text(stringResource(R.string.branch_tab_local)) },
-                icon = { Icon(Icons.Default.Computer, null) }
+                icon = { Icon(Icons.Default.Computer, contentDescription = null) }
             )
             Tab(
                 selected = selectedTab == 1,
                 onClick = { onTabChange(1) },
                 text = { Text(stringResource(R.string.branch_tab_remote)) },
-                icon = { Icon(Icons.Default.Cloud, null) }
+                icon = { Icon(Icons.Default.Cloud, contentDescription = null) }
             )
         }
 
@@ -293,7 +293,7 @@ fun BranchItemRich(
         }
 
         IconButton(onClick = { showMenu = true }) {
-            Icon(Icons.Default.MoreVert, "Actions", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.Default.MoreVert, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         BranchActionMenu(
@@ -328,17 +328,17 @@ private fun BranchActionMenu(
         if (!branch.isCurrent) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.branch_menu_checkout)) },
-                leadingIcon = { Icon(Icons.Default.Check, null) },
+                leadingIcon = { Icon(Icons.Default.Check, contentDescription = null) },
                 onClick = { onDismiss(); onAction(BranchAction.CHECKOUT) }
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.branch_menu_merge)) },
-                leadingIcon = { Icon(Icons.AutoMirrored.Filled.CallMerge, null) },
+                leadingIcon = { Icon(Icons.AutoMirrored.Filled.CallMerge, contentDescription = null) },
                 onClick = { onDismiss(); onAction(BranchAction.MERGE) }
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.branch_menu_rebase)) },
-                leadingIcon = { Icon(Icons.Default.SyncAlt, null) },
+                leadingIcon = { Icon(Icons.Default.SyncAlt, contentDescription = null) },
                 onClick = { onDismiss(); onAction(BranchAction.REBASE) }
             )
         }
@@ -346,7 +346,7 @@ private fun BranchActionMenu(
         if (!isRemote && branch.isCurrent) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.action_rename)) },
-                leadingIcon = { Icon(Icons.Default.Edit, null) },
+                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
                 onClick = { onDismiss(); onAction(BranchAction.RENAME) }
             )
         }
@@ -355,7 +355,7 @@ private fun BranchActionMenu(
             HorizontalDivider()
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error) },
-                leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
+                leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                 onClick = { onDismiss(); onAction(BranchAction.DELETE) }
             )
         }

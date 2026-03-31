@@ -49,7 +49,6 @@ fun RepoSelectionScreen(
     
     var recentProjects by remember { mutableStateOf<List<String>>(emptyList()) }
 
-    // Load recent projects on start
     LaunchedEffect(Unit) {
         recentProjects = prefs.getRecentProjects()
     }
@@ -73,7 +72,6 @@ fun RepoSelectionScreen(
             CenterAlignedTopAppBar(
                 title = { 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // App Icon (Drawable resource)
                         Icon(
                             painter = painterResource(id = R.drawable.icon),
                             contentDescription = null,
@@ -102,7 +100,6 @@ fun RepoSelectionScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Top Action Cards
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -124,7 +121,6 @@ fun RepoSelectionScreen(
             
             Spacer(modifier = Modifier.height(32.dp))
             
-            // Recent Projects Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -150,7 +146,6 @@ fun RepoSelectionScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Recent Projects List
             if (recentProjects.isEmpty()) {
                 Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -265,38 +260,28 @@ fun ProjectIcon(projectDir: File, isMissing: Boolean) {
             withContext(Dispatchers.IO) {
                 val fileNames = projectDir.list()?.toList() ?: emptyList()
                 
-                // 1. Determine Project Type
                 if (fileNames.contains("pubspec.yaml")) {
-                    // Flutter
                     projectTypeIcon = Icons.Default.Smartphone
-                    iconTint = Color(0xFF02569B) // Flutter Blue
+                    iconTint = Color(0xFF02569B)
                 } else if (fileNames.any { it.contains("build.gradle") }) {
-                    // Android
                     projectTypeIcon = Icons.Default.Android
-                    iconTint = Color(0xFF3DDC84) // Android Green
+                    iconTint = Color(0xFF3DDC84)
                 } else if (fileNames.contains("package.json")) {
-                    // Web / Node
                     projectTypeIcon = Icons.Default.Language
-                    iconTint = Color(0xFFF7DF1E) // JS Yellow
+                    iconTint = Color(0xFFF7DF1E)
                 } else if (fileNames.contains(".git")) {
-                    // Generic Git
                     projectTypeIcon = Icons.Default.Code
                     iconTint = primaryColor
                 }
 
-                // 2. Comprehensive Icon Search Strategy
-                // Priority: High Res Android/Flutter -> Playstore Icon -> Web Root Icons
-                
                 val extensions = listOf("webp", "png", "jpg", "jpeg", "ico")
                 
-                // Common Android paths (supports Native & Flutter structure)
                 val androidBaseDirs = listOf(
-                    "app/src/main/res",             // Native Android
-                    "android/app/src/main/res",     // Flutter / React Native
-                    "src/main/res"                  // Older structures
+                    "app/src/main/res",
+                    "android/app/src/main/res",
+                    "src/main/res"
                 )
                 
-                // Densities from highest to lowest quality
                 val densities = listOf(
                     "mipmap-xxxhdpi", "mipmap-xxhdpi", "mipmap-xhdpi", 
                     "drawable-xxxhdpi", "drawable-xxhdpi", "drawable"
@@ -306,7 +291,6 @@ fun ProjectIcon(projectDir: File, isMissing: Boolean) {
                 
                 val searchPaths = mutableListOf<String>()
 
-                // A. Add Android/Flutter Paths
                 for (base in androidBaseDirs) {
                     for (density in densities) {
                         for (name in iconNames) {
@@ -317,7 +301,6 @@ fun ProjectIcon(projectDir: File, isMissing: Boolean) {
                     }
                 }
 
-                // B. Add Playstore/Store Icons (often in src/main or root)
                 val storeIconNames = listOf("ic_launcher-playstore", "playstore-icon")
                 val storeBaseDirs = listOf("app/src/main", "android/app/src/main", "src/main", ".")
                 
@@ -330,7 +313,6 @@ fun ProjectIcon(projectDir: File, isMissing: Boolean) {
                     }
                 }
 
-                // C. Add Web/Root Icons
                 val rootIconNames = listOf("icon", "logo", "favicon", "assets/icon/icon", "assets/logo")
                 for (name in rootIconNames) {
                     for (ext in extensions) {
@@ -338,19 +320,17 @@ fun ProjectIcon(projectDir: File, isMissing: Boolean) {
                     }
                 }
 
-                // 3. Execute Search
                 for (path in searchPaths) {
                     val iconFile = File(projectDir, path)
                     if (iconFile.exists()) {
                         try {
-                            // Decode file (supports png, jpg, webp)
                             val decoded = BitmapFactory.decodeFile(iconFile.absolutePath)
                             if (decoded != null) {
                                 projectBitmap = decoded
-                                break // Stop at first valid high-priority icon
+                                break
                             }
                         } catch (e: Exception) {
-                            // Continue searching if decoding fails
+                            // Ignore
                         }
                     }
                 }
@@ -367,7 +347,7 @@ fun ProjectIcon(projectDir: File, isMissing: Boolean) {
         if (projectBitmap != null && !isMissing) {
             Image(
                 bitmap = projectBitmap!!.asImageBitmap(),
-                contentDescription = "App Icon",
+                contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )

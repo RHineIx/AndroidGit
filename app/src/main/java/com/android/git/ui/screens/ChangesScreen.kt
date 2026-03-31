@@ -93,11 +93,15 @@ fun ChangesScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack, enabled = !isLoading) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+                    IconButton(onClick = onBack, enabled = !isLoading) { 
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back)) 
+                    }
                 },
                 actions = {
                     Box {
-                        IconButton(onClick = { showFilterMenu = true }) { Icon(Icons.Default.FilterList, "Filter") }
+                        IconButton(onClick = { showFilterMenu = true }) { 
+                            Icon(Icons.Default.FilterList, contentDescription = null) 
+                        }
                         DropdownMenu(expanded = showFilterMenu, onDismissRequest = { showFilterMenu = false }) {
                             DropdownMenuItem(text = { Text(stringResource(R.string.changes_filter_select_all)) }, onClick = { selectedFiles = files.map { it.path }.toSet(); showFilterMenu = false })
                             DropdownMenuItem(text = { Text(stringResource(R.string.changes_filter_deselect_all)) }, onClick = { selectedFiles = emptySet(); showFilterMenu = false })
@@ -147,7 +151,7 @@ fun ChangesScreen(
                         Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.changes_status_committing))
                     } else {
-                        Icon(Icons.Default.Check, null)
+                        Icon(Icons.Default.Check, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(if (isAmend) stringResource(R.string.changes_btn_amend) else stringResource(R.string.changes_btn_commit))
                     }
@@ -229,7 +233,7 @@ fun StatusIcon(type: ChangeType) {
     }
     val color = getStatusColor(type)
     Surface(color = color.copy(alpha = 0.1f), shape = MaterialTheme.shapes.small, modifier = Modifier.size(32.dp)) {
-        Box(contentAlignment = Alignment.Center) { Icon(icon, null, tint = color, modifier = Modifier.size(16.dp)) }
+        Box(contentAlignment = Alignment.Center) { Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(16.dp)) }
     }
 }
 
