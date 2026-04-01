@@ -21,6 +21,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -61,7 +62,6 @@ fun CloneScreen(
     val statusMessage = viewModel.statusMessage
     val statusType = viewModel.statusType
     
-    // Progress tracking states from ViewModel
     val cloneProgress = viewModel.cloneProgress
     val cloneTaskName = viewModel.cloneTaskName
     val cloneTaskDetails = viewModel.cloneTaskDetails
@@ -279,7 +279,6 @@ fun CloneScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            // RESTRUCTURED: Status Monitoring Card (Miuix Style)
             AnimatedVisibility(
                 visible = isLoading || statusMessage.isNotEmpty(),
                 enter = fadeIn() + slideInVertically(initialOffsetY = { 40 }),

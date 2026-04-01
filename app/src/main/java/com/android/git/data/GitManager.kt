@@ -507,6 +507,9 @@ class GitManager(private val rootDir: File) : Closeable {
                     onProgress(currentTask, 1f, "")
                 }
                 override fun isCancelled(): Boolean = false
+                
+                // Added to satisfy JGit 7+ interface requirements
+                override fun showDuration(enabled: Boolean) {}
             }
 
             try {
