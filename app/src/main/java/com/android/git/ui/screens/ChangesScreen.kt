@@ -30,6 +30,8 @@ import com.android.git.R
 import com.android.git.model.ChangeType
 import com.android.git.model.GitFile
 import com.android.git.ui.viewmodel.MainViewModel
+// Explicitly import Miuix Checkbox to override Material 3 Checkbox
+import top.yukonga.miuix.kmp.basic.Checkbox
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -175,15 +177,23 @@ fun ChangesScreen(
                             .padding(horizontal = 20.dp, vertical = 16.dp)
                             .animateContentSize()
                     ) {
+                        // Fixed: Removed clickable from the Row, isolated interaction to the Checkbox
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(bottom = 12.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable(enabled = !isLoading) { isAmend = !isAmend }
                         ) {
-                            Checkbox(checked = isAmend, onCheckedChange = null, enabled = !isLoading)
+                            Box(
+                                modifier = Modifier.size(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Checkbox(
+                                    checked = isAmend,
+                                    onCheckedChange = { isAmend = it }, // Interaction isolated here
+                                    enabled = !isLoading
+                                )
+                            }
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 text = stringResource(R.string.changes_amend_checkbox),
@@ -358,18 +368,22 @@ fun FileChangeItem(file: GitFile, isSelected: Boolean, onToggle: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .clickable { onToggle() }
             .animateContentSize()
     ) {
         Row(
             modifier = Modifier.padding(12.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Checkbox(
-                checked = isSelected,
-                onCheckedChange = null,
-                modifier = Modifier.padding(end = 8.dp)
-            )
+            Box(
+                modifier = Modifier.size(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { _ -> onToggle() }
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
             StatusIcon(file.type)
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {

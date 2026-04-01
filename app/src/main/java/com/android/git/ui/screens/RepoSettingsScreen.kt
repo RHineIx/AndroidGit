@@ -40,11 +40,12 @@ fun RepoSettingsScreen(
     val prefs = remember { PreferencesManager(context) }
     val scope = rememberCoroutineScope()
 
-    // Load initial values from preferences
-    val lastUsedToken = remember { prefs.getToken() }
+    val activeToken = remember { prefs.getToken() }
+    val lastUsedToken = remember { prefs.getLastValidToken() }
+
     var userName by remember { mutableStateOf(prefs.getUserName()) }
     var userEmail by remember { mutableStateOf(prefs.getUserEmail()) }
-    var token by remember { mutableStateOf(lastUsedToken) }
+    var token by remember { mutableStateOf(activeToken) }
 
     var isSaving by remember { mutableStateOf(false) }
 

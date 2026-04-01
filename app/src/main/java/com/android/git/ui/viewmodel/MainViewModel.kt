@@ -85,6 +85,18 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         checkForUpdates(isManual = false)
     }
 
+    // --- Token Management ---
+
+    fun getToken(): String = prefs.getToken()
+
+    fun saveToken(token: String) = prefs.saveToken(token)
+
+    fun clearToken() = prefs.clearToken()
+
+    fun getLastValidToken(): String = prefs.getLastValidToken()
+
+    fun restoreLastToken(): String = prefs.restoreLastToken()
+
     // --- Theme Management ---
 
     fun updateThemeMode(mode: ThemeMode) {
@@ -163,6 +175,10 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
 
     fun loadDashboard() {
         val manager = gitManager ?: return
+
+        // Prevent UI flicker by immediately setting state to Loading before background thread starts
+        dashboardState = DashboardState.Loading
+
         viewModelScope.launch {
             if (manager.isGitRepo()) {
                 manager.configureUser(prefs.getUserName(), prefs.getUserEmail())
