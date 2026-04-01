@@ -53,6 +53,14 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     var statusType: SnackbarType by mutableStateOf(SnackbarType.INFO)
         private set
 
+    // New Progress Tracking States
+    var cloneProgress: Float by mutableStateOf(0f)
+        private set
+    var cloneTaskName: String by mutableStateOf("")
+        private set
+    var cloneTaskDetails: String by mutableStateOf("")
+        private set
+
     // Log & Pagination State
     var logList: List<CommitItem> by mutableStateOf(emptyList())
         private set
@@ -86,15 +94,15 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     }
 
     // --- Token Management ---
-
+    
     fun getToken(): String = prefs.getToken()
-
+    
     fun saveToken(token: String) = prefs.saveToken(token)
-
+    
     fun clearToken() = prefs.clearToken()
-
+    
     fun getLastValidToken(): String = prefs.getLastValidToken()
-
+    
     fun restoreLastToken(): String = prefs.restoreLastToken()
 
     // --- Theme Management ---
@@ -175,10 +183,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
 
     fun loadDashboard() {
         val manager = gitManager ?: return
-
-        // Prevent UI flicker by immediately setting state to Loading before background thread starts
-        dashboardState = DashboardState.Loading
-
+        dashboardState = DashboardState.Loading 
         viewModelScope.launch {
             if (manager.isGitRepo()) {
                 manager.configureUser(prefs.getUserName(), prefs.getUserEmail())
@@ -205,8 +210,18 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         viewModelScope.launch {
             val context = getApplication<Application>()
             isLoading = true
+            cloneProgress = 0f
+            cloneTaskName = context.getString(R.string.clone_progress)
+            cloneTaskDetails = ""
+            
             showStatus(context.getString(R.string.clone_progress), SnackbarType.INFO)
-            val result = GitManager.cloneRepo(url, Environment.getExternalStorageDirectory(), folderName, token)
+            
+            val result = GitManager.cloneRepo(url, Environment.getExternalStorageDirectory(), folderName, token) { task, progress, details ->
+                cloneTaskName = task
+                cloneProgress = progress
+                cloneTaskDetails = details
+            }
+            
             isLoading = false
             if (result.first != null) {
                 showStatus(context.getString(R.string.clone_success), SnackbarType.SUCCESS)
