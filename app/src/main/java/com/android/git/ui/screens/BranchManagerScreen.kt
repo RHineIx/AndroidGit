@@ -189,7 +189,7 @@ private fun InputBranchDialog(
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun BranchListContent(
     branches: List<BranchModel>,
@@ -211,7 +211,8 @@ private fun BranchListContent(
             singleLine = true
         )
 
-        TabRow(selectedTabIndex = selectedTab) {
+        // Updated to PrimaryTabRow to fix deprecation warning
+        PrimaryTabRow(selectedTabIndex = selectedTab) {
             Tab(
                 selected = selectedTab == 0,
                 onClick = { onTabChange(0) },
@@ -268,7 +269,6 @@ fun BranchItemRich(
     var showMenu by remember { mutableStateOf(false) }
     val isRemote = branch.type == BranchType.REMOTE
 
-    // Replaced Row with Miuix Card and Sink effect
     Card(
         modifier = Modifier.fillMaxWidth(),
         insideMargin = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
@@ -307,7 +307,6 @@ fun BranchItemRich(
                 }
             }
 
-            // IconButton uses its own interaction, separate from the Card's Sink effect
             IconButton(onClick = { showMenu = true }) {
                 Icon(Icons.Default.MoreVert, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
