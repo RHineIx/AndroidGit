@@ -13,6 +13,7 @@ import kotlinx.coroutines.withContext
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.ResetCommand
 import org.eclipse.jgit.api.errors.NoHeadException
+import org.eclipse.jgit.lib.ProgressMonitor
 import org.eclipse.jgit.transport.RemoteRefUpdate
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
 import java.io.Closeable
@@ -472,13 +473,51 @@ class GitManager(private val rootDir: File) : Closeable {
     }
 
     companion object {
-        suspend fun cloneRepo(url: String, parentDir: File, folderName: String, token: String): Pair<File?, String> = withContext(Dispatchers.IO) {
+        suspend fun cloneRepo(
+            url: String, 
+            parentDir: File, 
+            folderName: String, 
+            token: String,
+            onProgress: (String, Float, String) -> Unit
+        ): Pair<File?, String> = withContext(Dispatchers.IO) {
             val destDir = File(parentDir, folderName)
             if (destDir.exists() && destDir.listFiles()?.isNotEmpty() == true) {
                 return@withContext Pair(null, "Error: Folder exists.")
             }
+
+            val monitor = object : ProgressMonitor {
+                private var totalTasks = 0
+                private var completedTasks = 0
+                private var currentTask = ""
+
+                override fun start(totalTasks: Int) {}
+                override fun beginTask(title: String?, totalWork: Int) {
+                    currentTask = title ?: ""
+                    totalTasks = totalWork
+                    completedTasks = 0
+                    onProgress(currentTask, 0f, "")
+                }
+                override fun update(completed: Int) {
+                    completedTasks += completed
+                    val progress = if (totalTasks > 0) completedTasks.toFloat() / totalTasks else 0f
+                    val details = if (totalTasks > 0) "$completedTasks / $totalTasks" else "$completedTasks"
+                    onProgress(currentTask, progress, details)
+                }
+                override fun endTask() {
+                    onProgress(currentTask, 1f, "")
+                }
+                override fun isCancelled(): Boolean = false
+                
+                // Added to satisfy JGit 7+ interface requirements
+                override fun showDuration(enabled: Boolean) {}
+            }
+
             try {
-                val cmd = Git.cloneRepository().setURI(url).setDirectory(destDir)
+                val cmd = Git.cloneRepository()
+                    .setURI(url)
+                    .setDirectory(destDir)
+                    .setProgressMonitor(monitor)
+
                 if (token.isNotEmpty()) {
                     cmd.setCredentialsProvider(UsernamePasswordCredentialsProvider(token, ""))
                 }
