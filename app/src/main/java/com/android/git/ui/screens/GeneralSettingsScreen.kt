@@ -5,7 +5,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -25,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -46,15 +46,27 @@ fun GeneralSettingsScreen(
 ) {
     val context = LocalContext.current
     val prefs = remember { PreferencesManager(context) }
+    val focusManager = LocalFocusManager.current
 
-    // UI State from ViewModel
     val statusMessage = viewModel.statusMessage
     val statusType = viewModel.statusType
+    val isLoading = viewModel.isLoading
 
     var autoOpen by remember { mutableStateOf(prefs.isAutoOpenEnabled()) }
     var themeExpanded by remember { mutableStateOf(false) }
 
-    BackHandler(enabled = true) { onBack() }
+    var geminiApiKey by remember { mutableStateOf(prefs.getGeminiApiKey()) }
+    var geminiModel by remember { mutableStateOf(prefs.getGeminiModel()) }
+    var geminiPrompt by remember { mutableStateOf(prefs.getGeminiPrompt()) }
+    var aiModelExpanded by remember { mutableStateOf(false) }
+    
+    val aiModels = listOf(
+        "gemini-2.5-flash", 
+        "gemini-2.5-pro", 
+        "gemini-flash-latest", 
+        "gemini-3.1-flash-preview",
+        "gemma-3-27b-it"
+    )
 
     Scaffold(
         topBar = {
@@ -82,10 +94,8 @@ fun GeneralSettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
 
-                    // --- App Settings Section ---
                     SettingsSection(title = stringResource(R.string.settings_section_app)) {
 
-                        // 1. Theme Selection
                         val themeNames = listOf(
                             stringResource(R.string.settings_theme_system),
                             stringResource(R.string.settings_theme_light),
@@ -149,7 +159,6 @@ fun GeneralSettingsScreen(
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                         )
 
-                        // 2. Auto Open Toggle
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
@@ -181,7 +190,92 @@ fun GeneralSettingsScreen(
                         }
                     }
 
-                    // --- Developer Section ---
+                    SettingsSection(title = "AI Features (Gemini)") {
+                        
+                        OutlinedTextField(
+                            value = geminiApiKey,
+                            onValueChange = { geminiApiKey = it },
+                            label = { Text("Gemini API Key") },
+                            leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            singleLine = true
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        ExposedDropdownMenuBox(
+                            expanded = aiModelExpanded,
+                            onExpandedChange = { aiModelExpanded = it }
+                        ) {
+                            OutlinedTextField(
+                                value = geminiModel,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("AI Model") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = aiModelExpanded) },
+                                modifier = Modifier.menuAnchor().fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            
+                            ExposedDropdownMenu(
+                                expanded = aiModelExpanded,
+                                onDismissRequest = { aiModelExpanded = false },
+                                modifier = Modifier.fillMaxWidth(0.85f)
+                            ) {
+                                aiModels.forEach { model ->
+                                    DropdownMenuItem(
+                                        text = { Text(model) },
+                                        onClick = {
+                                            geminiModel = model
+                                            aiModelExpanded = false
+                                        },
+                                        trailingIcon = {
+                                            if (geminiModel == model) {
+                                                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        OutlinedTextField(
+                            value = geminiPrompt,
+                            onValueChange = { geminiPrompt = it },
+                            label = { Text("Custom Prompt (Optional)") },
+                            placeholder = { Text("Leave empty for default Conventional Commits rules.") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            minLines = 3,
+                            maxLines = 6
+                        )
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        Button(
+                            onClick = { 
+                                focusManager.clearFocus()
+                                viewModel.verifyGeminiSettings(geminiApiKey, geminiModel, geminiPrompt) 
+                            },
+                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            enabled = !isLoading
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Verifying...")
+                            } else {
+                                Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Verify & Save Settings", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
                     DeveloperSection(context)
 
                     Spacer(modifier = Modifier.height(16.dp))

@@ -1,6 +1,5 @@
 package com.android.git.ui.screens
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -45,8 +44,6 @@ fun StashScreen(
     
     var showActionDialog by remember { mutableStateOf(false) }
     var selectedStash by remember { mutableStateOf<StashItem?>(null) }
-
-    BackHandler(enabled = true) { onBack() }
 
     fun loadStashes() {
         scope.launch {

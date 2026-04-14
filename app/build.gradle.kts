@@ -81,6 +81,9 @@ dependencies {
     implementation(libs.bcprov)
     implementation(libs.bcpkix)
 
+    // Gemini AI
+    implementation(libs.generativeai)
+
     implementation(libs.slf4j.simple)
     implementation(libs.miuix)
 

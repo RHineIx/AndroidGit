@@ -1,6 +1,5 @@
 package com.android.git.ui.screens
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -29,8 +28,6 @@ fun ConflictResolverScreen(
     val scope = rememberCoroutineScope()
     
     var fileContent by remember { mutableStateOf("") } // Init empty, load in LaunchedEffect
-
-    BackHandler(enabled = true) { onBack() }
 
     LaunchedEffect(filePath) {
         fileContent = gitManager.readFileContent(filePath)

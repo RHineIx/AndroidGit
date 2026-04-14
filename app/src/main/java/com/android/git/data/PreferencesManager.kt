@@ -10,26 +10,25 @@ class PreferencesManager(context: Context) {
 
     companion object {
         private const val KEY_TOKEN = "github_token"
-        private const val KEY_LAST_VALID_TOKEN = "last_valid_github_token" // Backup key for restoration
+        private const val KEY_LAST_VALID_TOKEN = "last_valid_github_token"
         private const val KEY_USERNAME = "git_username"
         private const val KEY_EMAIL = "git_email"
-        private const val KEY_THEME_DARK = "app_theme_dark" // Legacy key
+        private const val KEY_THEME_DARK = "app_theme_dark"
 
-        // New Keys
         private const val KEY_AUTO_OPEN = "auto_open_last_project"
         private const val KEY_LAST_PROJECT_PATH = "last_project_path"
-        private const val KEY_RECENT_PROJECTS = "recent_projects_list" // Stored as path|path|path
+        private const val KEY_RECENT_PROJECTS = "recent_projects_list"
 
-        // Added for modern theme management
         private const val KEY_THEME_MODE = "theme_mode"
-    }
 
-    // --- Git Config ---
+        private const val KEY_GEMINI_API_KEY = "gemini_api_key"
+        private const val KEY_GEMINI_MODEL = "gemini_model"
+        private const val KEY_GEMINI_PROMPT = "gemini_prompt"
+    }
 
     fun saveToken(token: String) {
         val editor = prefs.edit()
         editor.putString(KEY_TOKEN, token)
-        // Only update the backup token if the new token is not empty
         if (token.isNotEmpty()) {
             editor.putString(KEY_LAST_VALID_TOKEN, token)
         }
@@ -38,7 +37,6 @@ class PreferencesManager(context: Context) {
 
     fun getToken(): String = prefs.getString(KEY_TOKEN, "") ?: ""
 
-    // Clears only the active token, leaving the backup intact for restoration
     fun clearToken() = prefs.edit().remove(KEY_TOKEN).apply()
 
     fun getLastValidToken(): String = prefs.getString(KEY_LAST_VALID_TOKEN, "") ?: ""
@@ -58,37 +56,27 @@ class PreferencesManager(context: Context) {
             .apply()
     }
 
-    // Added for compatibility with modern UI screens
     fun setUserName(name: String) = prefs.edit().putString(KEY_USERNAME, name).apply()
     fun setUserEmail(email: String) = prefs.edit().putString(KEY_EMAIL, email).apply()
 
     fun getUserName(): String = prefs.getString(KEY_USERNAME, "") ?: ""
     fun getUserEmail(): String = prefs.getString(KEY_EMAIL, "") ?: ""
 
-    // --- App Preferences ---
-
     fun isAutoOpenEnabled(): Boolean = prefs.getBoolean(KEY_AUTO_OPEN, false)
     fun setAutoOpenEnabled(enabled: Boolean) = prefs.edit().putBoolean(KEY_AUTO_OPEN, enabled).apply()
 
     fun getLastProjectPath(): String? = prefs.getString(KEY_LAST_PROJECT_PATH, null)
 
-    // Added for compatibility with ViewModel
     fun setLastProjectPath(path: String) = prefs.edit().putString(KEY_LAST_PROJECT_PATH, path).apply()
 
-    // Logic to add a project to recent list (and set as last opened)
     fun addRecentProject(path: String) {
-        // 1. Set as last opened
         prefs.edit().putString(KEY_LAST_PROJECT_PATH, path).apply()
 
-        // 2. Add to recent list (Max 5, Unique)
         val currentListString = prefs.getString(KEY_RECENT_PROJECTS, "") ?: ""
         val currentList = if (currentListString.isEmpty()) mutableListOf() else currentListString.split("|").toMutableList()
 
-        // Remove if exists to move it to top
         currentList.remove(path)
-        // Add to top
         currentList.add(0, path)
-        // Keep only top 5
         if (currentList.size > 5) {
             currentList.removeAt(currentList.size - 1)
         }
@@ -109,13 +97,11 @@ class PreferencesManager(context: Context) {
             list.remove(path)
             prefs.edit().putString(KEY_RECENT_PROJECTS, list.joinToString("|")).apply()
         }
-        // If it was the last project, clear it
         if (getLastProjectPath() == path) {
             prefs.edit().remove(KEY_LAST_PROJECT_PATH).apply()
         }
     }
 
-    // --- Theme Settings ---
     fun getThemeMode(): ThemeMode {
         val modeOrdinal = prefs.getInt(KEY_THEME_MODE, ThemeMode.SYSTEM.ordinal)
         return ThemeMode.entries.getOrElse(modeOrdinal) { ThemeMode.SYSTEM }
@@ -124,4 +110,13 @@ class PreferencesManager(context: Context) {
     fun setThemeMode(mode: ThemeMode) {
         prefs.edit().putInt(KEY_THEME_MODE, mode.ordinal).apply()
     }
+
+    fun getGeminiApiKey(): String = prefs.getString(KEY_GEMINI_API_KEY, "") ?: ""
+    fun setGeminiApiKey(key: String) = prefs.edit().putString(KEY_GEMINI_API_KEY, key).apply()
+
+    fun getGeminiModel(): String = prefs.getString(KEY_GEMINI_MODEL, "gemini-2.5-flash") ?: "gemini-2.5-flash"
+    fun setGeminiModel(model: String) = prefs.edit().putString(KEY_GEMINI_MODEL, model).apply()
+
+    fun getGeminiPrompt(): String = prefs.getString(KEY_GEMINI_PROMPT, "") ?: ""
+    fun setGeminiPrompt(prompt: String) = prefs.edit().putString(KEY_GEMINI_PROMPT, prompt).apply()
 }

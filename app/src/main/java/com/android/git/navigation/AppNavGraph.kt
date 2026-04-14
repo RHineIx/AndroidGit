@@ -1,9 +1,10 @@
 package com.android.git.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
@@ -43,13 +44,35 @@ fun AppNavGraph(
         }
     }
 
+    // Using slideIntoContainer and slideOutOfContainer ensures seamless integration 
+    // with Android's Predictive Back Gestures when enableOnBackInvokedCallback is true.
     NavHost(
         navController = navController,
         startDestination = startDestination,
-        enterTransition = { slideInHorizontally { it } + fadeIn() },
-        exitTransition = { slideOutHorizontally { -it } + fadeOut() },
-        popEnterTransition = { slideInHorizontally { -it } + fadeIn() },
-        popExitTransition = { slideOutHorizontally { it } + fadeOut() }
+        enterTransition = {
+            slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+            ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
+        },
+        exitTransition = {
+            slideOutOfContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+            ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
+        },
+        popEnterTransition = {
+            slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+            ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
+        },
+        popExitTransition = {
+            slideOutOfContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+            ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
+        }
     ) {
         
         composable(Screen.Selection.route) {

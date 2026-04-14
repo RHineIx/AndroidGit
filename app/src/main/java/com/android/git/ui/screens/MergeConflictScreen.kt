@@ -1,6 +1,5 @@
 package com.android.git.ui.screens
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -35,8 +34,6 @@ fun MergeConflictScreen(
     var conflicts by remember { mutableStateOf<List<String>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var statusMessage by remember { mutableStateOf("") }
-    
-    BackHandler(enabled = true) { onBack() }
 
     LaunchedEffect(gitManager) {
         scope.launch {

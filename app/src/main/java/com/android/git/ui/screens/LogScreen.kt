@@ -3,7 +3,6 @@ package com.android.git.ui.screens
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -73,8 +72,6 @@ fun LogScreen(
 
     // Safely extract string resources here (State Hoisting) to avoid Lint errors
     val copiedHashMsg = stringResource(R.string.log_copied_hash)
-
-    BackHandler(enabled = true) { onBack() }
 
     LaunchedEffect(Unit) {
         if (commits.isEmpty()) {

@@ -13,9 +13,14 @@ import kotlinx.coroutines.withContext
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.ResetCommand
 import org.eclipse.jgit.api.errors.NoHeadException
+import org.eclipse.jgit.diff.DiffFormatter
 import org.eclipse.jgit.lib.ProgressMonitor
 import org.eclipse.jgit.transport.RemoteRefUpdate
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
+import org.eclipse.jgit.treewalk.CanonicalTreeParser
+import org.eclipse.jgit.treewalk.EmptyTreeIterator
+import org.eclipse.jgit.treewalk.FileTreeIterator
+import java.io.ByteArrayOutputStream
 import java.io.Closeable
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
@@ -133,6 +138,45 @@ class GitManager(private val rootDir: File) : Closeable {
         }
     }
 
+    suspend fun getDiff(selectedPaths: Set<String>): String = withContext(Dispatchers.IO) {
+        runSafeRead {
+            val repo = git?.repository ?: return@runSafeRead ""
+            val out = ByteArrayOutputStream()
+            val df = DiffFormatter(out)
+            df.setRepository(repo)
+            
+            try {
+                val headId = repo.resolve("HEAD^{tree}")
+                val headTree = if (headId != null) {
+                    CanonicalTreeParser(null, repo.newObjectReader(), headId)
+                } else {
+                    EmptyTreeIterator()
+                }
+                
+                val workTree = FileTreeIterator(repo)
+                val diffEntries = df.scan(headTree, workTree)
+                
+                for (entry in diffEntries) {
+                    if (selectedPaths.contains(entry.newPath) || selectedPaths.contains(entry.oldPath)) {
+                        df.format(entry)
+                    }
+                }
+                
+                val fullDiff = out.toString("UTF-8")
+                // Truncate to ~6000 characters to prevent API limits while providing enough context
+                if (fullDiff.length > 6000) {
+                    fullDiff.take(6000) + "\n\n... [Diff truncated to save tokens]"
+                } else {
+                    fullDiff
+                }
+            } catch (e: Exception) {
+                "Error extracting diff: ${e.message}"
+            } finally {
+                df.close()
+            }
+        }
+    }
+
     suspend fun getRichBranches(): List<BranchModel> = withContext(Dispatchers.IO) {
         runSafeRead { branchManager?.getRichBranches() ?: emptyList() }
     }
@@ -204,12 +248,12 @@ class GitManager(private val rootDir: File) : Closeable {
                 val isPushed = isSynced
 
                commits.add(CommitItem(
-                    message = rev.fullMessage.trim(),
-                    author = rev.authorIdent.name ?: "Unknown",
-                    date = java.util.Date.from(rev.authorIdent.whenAsInstant),
-                    hash = hash.substring(0, 7),
-                    isPushed = isPushed
-                ))
+                   message = rev.fullMessage.trim(),
+                   author = rev.authorIdent.name ?: "Unknown",
+                   date = java.util.Date.from(rev.authorIdent.whenAsInstant),
+                   hash = hash.substring(0, 7),
+                   isPushed = isPushed
+               ))
             }
             commits
         }

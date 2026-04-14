@@ -51,7 +51,8 @@ fun BranchManagerScreen(
         viewModel.loadBranches()
     }
 
-    BackHandler(enabled = !isLoading) { onBack() }
+    // Only intercept back if it's currently loading, otherwise let predictive back work
+    BackHandler(enabled = isLoading) { }
 
     BranchDialogs(
         showCreateDialog = showCreateDialog,

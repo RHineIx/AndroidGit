@@ -1,11 +1,9 @@
 package com.android.git.ui.screens
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material3.*
@@ -34,8 +32,6 @@ fun IgnoreEditorScreen(
     var isLoading by remember { mutableStateOf(true) }
     var statusMessage by remember { mutableStateOf("") }
     var showTemplateMenu by remember { mutableStateOf(false) }
-
-    BackHandler(enabled = true) { onBack() }
 
     LaunchedEffect(gitManager) {
         content = gitManager.readGitIgnore()

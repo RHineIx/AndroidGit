@@ -79,9 +79,12 @@ fun CloneScreen(
         }
     }
 
-    BackHandler(enabled = !isLoading) {
-        viewModel.clearStatus()
-        onBack()
+    // Only intercept and block back press if loading is true
+    BackHandler(enabled = isLoading) { }
+
+    // Clear state smoothly when leaving the screen naturally
+    DisposableEffect(Unit) {
+        onDispose { viewModel.clearStatus() }
     }
 
     Scaffold(
