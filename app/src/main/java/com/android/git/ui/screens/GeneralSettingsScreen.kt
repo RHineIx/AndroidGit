@@ -81,211 +81,206 @@ fun GeneralSettingsScreen(
             )
         }
     ) { padding ->
-        Box(modifier = Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             Column(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp)
-                        .padding(top = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
-                ) {
 
-                    SettingsSection(title = stringResource(R.string.settings_section_app)) {
+                SettingsSection(title = stringResource(R.string.settings_section_app)) {
 
-                        val themeNames = listOf(
-                            stringResource(R.string.settings_theme_system),
-                            stringResource(R.string.settings_theme_light),
-                            stringResource(R.string.settings_theme_dark)
-                        )
-                        val currentThemeName = when (viewModel.themeMode) {
-                            ThemeMode.SYSTEM -> themeNames[0]
-                            ThemeMode.LIGHT -> themeNames[1]
-                            ThemeMode.DARK -> themeNames[2]
-                        }
+                    val themeNames = listOf(
+                        stringResource(R.string.settings_theme_system),
+                        stringResource(R.string.settings_theme_light),
+                        stringResource(R.string.settings_theme_dark)
+                    )
+                    val currentThemeName = when (viewModel.themeMode) {
+                        ThemeMode.SYSTEM -> themeNames[0]
+                        ThemeMode.LIGHT -> themeNames[1]
+                        ThemeMode.DARK -> themeNames[2]
+                    }
 
-                        Box {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable { themeExpanded = true }
-                                    .padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column {
-                                    Text(
-                                        stringResource(R.string.settings_theme_title),
-                                        fontWeight = FontWeight.SemiBold,
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                    Text(
-                                        currentThemeName,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-
-                            DropdownMenu(
-                                expanded = themeExpanded,
-                                onDismissRequest = { themeExpanded = false },
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                ThemeMode.entries.forEachIndexed { index, mode ->
-                                    DropdownMenuItem(
-                                        text = { Text(themeNames[index]) },
-                                        onClick = {
-                                            viewModel.updateThemeMode(mode)
-                                            themeExpanded = false
-                                        },
-                                        trailingIcon = {
-                                            if (viewModel.themeMode == mode) {
-                                                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                        }
-
-                        HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 16.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                        )
-
+                    Box {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { themeExpanded = true }
+                                .padding(vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
+                            Column {
                                 Text(
-                                    stringResource(R.string.settings_auto_open),
+                                    stringResource(R.string.settings_theme_title),
                                     fontWeight = FontWeight.SemiBold,
                                     style = MaterialTheme.typography.bodyLarge
                                 )
                                 Text(
-                                    stringResource(R.string.settings_auto_open_desc),
+                                    currentThemeName,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            Switch(
-                                checked = autoOpen,
-                                onCheckedChange = {
-                                    autoOpen = it
-                                    prefs.setAutoOpenEnabled(it)
-                                },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = MaterialTheme.colorScheme.background,
-                                    checkedTrackColor = MaterialTheme.colorScheme.primary
-                                )
-                            )
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                    }
 
-                    SettingsSection(title = "AI Features (Gemini)") {
-                        
-                        OutlinedTextField(
-                            value = geminiApiKey,
-                            onValueChange = { geminiApiKey = it },
-                            label = { Text("Gemini API Key") },
-                            leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            singleLine = true
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        ExposedDropdownMenuBox(
-                            expanded = aiModelExpanded,
-                            onExpandedChange = { aiModelExpanded = it }
+                        DropdownMenu(
+                            expanded = themeExpanded,
+                            onDismissRequest = { themeExpanded = false },
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            OutlinedTextField(
-                                value = geminiModel,
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("AI Model") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = aiModelExpanded) },
-                                modifier = Modifier.menuAnchor().fillMaxWidth(),
-                                shape = RoundedCornerShape(16.dp)
-                            )
-                            
-                            ExposedDropdownMenu(
-                                expanded = aiModelExpanded,
-                                onDismissRequest = { aiModelExpanded = false },
-                                modifier = Modifier.fillMaxWidth(0.85f)
-                            ) {
-                                aiModels.forEach { model ->
-                                    DropdownMenuItem(
-                                        text = { Text(model) },
-                                        onClick = {
-                                            geminiModel = model
-                                            aiModelExpanded = false
-                                        },
-                                        trailingIcon = {
-                                            if (geminiModel == model) {
-                                                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                            }
+                            ThemeMode.entries.forEachIndexed { index, mode ->
+                                DropdownMenuItem(
+                                    text = { Text(themeNames[index]) },
+                                    onClick = {
+                                        viewModel.updateThemeMode(mode)
+                                        themeExpanded = false
+                                    },
+                                    trailingIcon = {
+                                        if (viewModel.themeMode == mode) {
+                                            Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                                         }
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        OutlinedTextField(
-                            value = geminiPrompt,
-                            onValueChange = { geminiPrompt = it },
-                            label = { Text("Custom Prompt (Optional)") },
-                            placeholder = { Text("Leave empty for default Conventional Commits rules.") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            minLines = 3,
-                            maxLines = 6
-                        )
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        Button(
-                            onClick = { 
-                                focusManager.clearFocus()
-                                viewModel.verifyGeminiSettings(geminiApiKey, geminiModel, geminiPrompt) 
-                            },
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            enabled = !isLoading
-                        ) {
-                            if (isLoading) {
-                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Verifying...")
-                            } else {
-                                Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(20.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Verify & Save Settings", fontWeight = FontWeight.Bold)
+                                    }
+                                )
                             }
                         }
                     }
 
-                    DeveloperSection(context)
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 16.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                stringResource(R.string.settings_auto_open),
+                                fontWeight = FontWeight.SemiBold,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                stringResource(R.string.settings_auto_open_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = autoOpen,
+                            onCheckedChange = {
+                                autoOpen = it
+                                prefs.setAutoOpenEnabled(it)
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.background,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                    }
+                }
+
+                SettingsSection(title = "AI Features (Gemini)") {
+                    
+                    OutlinedTextField(
+                        value = geminiApiKey,
+                        onValueChange = { geminiApiKey = it },
+                        label = { Text("Gemini API Key") },
+                        leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        singleLine = true
+                    )
 
                     Spacer(modifier = Modifier.height(16.dp))
+
+                    ExposedDropdownMenuBox(
+                        expanded = aiModelExpanded,
+                        onExpandedChange = { aiModelExpanded = it }
+                    ) {
+                        OutlinedTextField(
+                            value = geminiModel,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("AI Model") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = aiModelExpanded) },
+                            modifier = Modifier.menuAnchor().fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        
+                        ExposedDropdownMenu(
+                            expanded = aiModelExpanded,
+                            onDismissRequest = { aiModelExpanded = false },
+                            modifier = Modifier.fillMaxWidth(0.85f)
+                        ) {
+                            aiModels.forEach { model ->
+                                DropdownMenuItem(
+                                    text = { Text(model) },
+                                    onClick = {
+                                        geminiModel = model
+                                        aiModelExpanded = false
+                                    },
+                                    trailingIcon = {
+                                        if (geminiModel == model) {
+                                            Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    OutlinedTextField(
+                        value = geminiPrompt,
+                        onValueChange = { geminiPrompt = it },
+                        label = { Text("Custom Prompt (Optional)") },
+                        placeholder = { Text("Leave empty for default Conventional Commits rules.") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        minLines = 3,
+                        maxLines = 6
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Button(
+                        onClick = { 
+                            focusManager.clearFocus()
+                            viewModel.verifyGeminiSettings(geminiApiKey, geminiModel, geminiPrompt) 
+                        },
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = !isLoading
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Verifying...")
+                        } else {
+                            Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Verify & Save Settings", fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
+
+                DeveloperSection(context)
 
                 AppVersionFooter(
                     context = context,
-                    bottomPadding = padding.calculateBottomPadding(),
                     onCheckUpdate = onCheckUpdate
                 )
+
+                Spacer(modifier = Modifier.height(8.dp))
             }
 
             Box(modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)) {
@@ -302,7 +297,6 @@ fun GeneralSettingsScreen(
 @Composable
 fun AppVersionFooter(
     context: Context,
-    bottomPadding: androidx.compose.ui.unit.Dp,
     onCheckUpdate: () -> Unit
 ) {
     val packageInfo = remember {
@@ -328,8 +322,7 @@ fun AppVersionFooter(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = bottomPadding)
-            .padding(bottom = 16.dp),
+            .padding(top = 16.dp, bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Surface(

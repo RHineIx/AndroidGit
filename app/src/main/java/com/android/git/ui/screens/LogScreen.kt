@@ -70,7 +70,6 @@ fun LogScreen(
 
     val listState = rememberLazyListState()
 
-    // Safely extract string resources here (State Hoisting) to avoid Lint errors
     val copiedHashMsg = stringResource(R.string.log_copied_hash)
 
     LaunchedEffect(Unit) {
@@ -216,7 +215,6 @@ fun TimelineCommitItem(
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.Top
     ) {
-        // Timeline Column
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.width(24.dp).fillMaxHeight()
@@ -250,7 +248,6 @@ fun TimelineCommitItem(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        // Commit Content Card
         ElevatedCard(
             modifier = Modifier
                 .weight(1f)
@@ -344,6 +341,80 @@ fun CommitDetailsSheet(
     val scope = rememberCoroutineScope()
     val fullDateFormat = SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss", Locale.getDefault())
 
+    var showRevertDialog by remember { mutableStateOf(false) }
+    var showResetDialog by remember { mutableStateOf(false) }
+
+    if (showRevertDialog) {
+        AlertDialog(
+            onDismissRequest = { showRevertDialog = false },
+            title = { Text("Revert Commit") },
+            text = { Text("Are you sure you want to revert this commit? This will create a new commit that undoes the changes made in ${commit.hash}.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showRevertDialog = false
+                        scope.launch(Dispatchers.IO) {
+                            val res = gitManager.revertCommit(commit.hash)
+                            withContext(Dispatchers.Main) {
+                                val type = if (res.contains("failed", true)) SnackbarType.ERROR else SnackbarType.SUCCESS
+                                onAction(res, type)
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Revert")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRevertDialog = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+            icon = { Icon(Icons.AutoMirrored.Filled.Undo, null, tint = MaterialTheme.colorScheme.error) }
+        )
+    }
+
+    if (showResetDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetDialog = false },
+            title = { Text("Reset to Commit") },
+            text = { Text("You are about to reset the current branch to ${commit.hash}. How would you like to handle your current working directory changes?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showResetDialog = false
+                        scope.launch(Dispatchers.IO) {
+                            val res = gitManager.resetToCommit(commit.hash, hard = true)
+                            withContext(Dispatchers.Main) {
+                                onAction(res, SnackbarType.WARNING)
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Hard Reset (Discard All)")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        showResetDialog = false
+                        scope.launch(Dispatchers.IO) {
+                            val res = gitManager.resetToCommit(commit.hash, hard = false)
+                            withContext(Dispatchers.Main) {
+                                onAction(res, SnackbarType.SUCCESS)
+                            }
+                        }
+                    }
+                ) {
+                    Text("Mixed Reset (Keep Changes)")
+                }
+            },
+            icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) }
+        )
+    }
+
     Column(
         modifier = Modifier
             .padding(24.dp)
@@ -411,15 +482,7 @@ fun CommitDetailsSheet(
         )
 
         OutlinedButton(
-            onClick = {
-                scope.launch(Dispatchers.IO) {
-                    val res = gitManager.revertCommit(commit.hash)
-                    withContext(Dispatchers.Main) {
-                        val type = if (res.contains("failed", true)) SnackbarType.ERROR else SnackbarType.SUCCESS
-                        onAction(res, type)
-                    }
-                }
-            },
+            onClick = { showRevertDialog = true },
             modifier = Modifier.fillMaxWidth().height(50.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
@@ -432,14 +495,7 @@ fun CommitDetailsSheet(
         Spacer(Modifier.height(12.dp))
 
         Button(
-            onClick = {
-                scope.launch(Dispatchers.IO) {
-                    val res = gitManager.resetToCommit(commit.hash, hard = false)
-                    withContext(Dispatchers.Main) {
-                        onAction(res, SnackbarType.WARNING)
-                    }
-                }
-            },
+            onClick = { showResetDialog = true },
             modifier = Modifier.fillMaxWidth().height(50.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer)
