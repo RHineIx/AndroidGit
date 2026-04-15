@@ -31,7 +31,9 @@ class GitManager(private val rootDir: File) : Closeable {
     private var branchManager: GitBranchManager? = null
     private var stashManager: GitStashManager? = null
 
-    private val gitMutex = Mutex()
+    // Segregated Mutexes to prevent read/write bottlenecks
+    private val writeMutex = Mutex()
+    private val lifecycleMutex = Mutex()
     private val isClosed = AtomicBoolean(false)
 
     val authManager = GitAuthManager(rootDir.parentFile ?: rootDir)
@@ -39,7 +41,7 @@ class GitManager(private val rootDir: File) : Closeable {
     fun isGitRepo(): Boolean = File(rootDir, ".git").exists()
 
     suspend fun initRepo(): String = withContext(Dispatchers.IO) {
-        gitMutex.withLock {
+        lifecycleMutex.withLock {
             runCatching {
                 Git.init().setDirectory(rootDir).call()
                 openRepoInternal()
@@ -49,7 +51,7 @@ class GitManager(private val rootDir: File) : Closeable {
     }
 
     suspend fun openRepo(): String = withContext(Dispatchers.IO) {
-        gitMutex.withLock {
+        lifecycleMutex.withLock {
             runCatching {
                 openRepoInternal()
                 "Repository opened successfully!"
@@ -82,9 +84,8 @@ class GitManager(private val rootDir: File) : Closeable {
 
     suspend fun getDashboardStats(): DashboardState = withContext(Dispatchers.IO) {
         try {
-            gitMutex.withLock {
-                ensureOpen()
-                val repo = git?.repository ?: return@withLock DashboardState.Error("Repo closed")
+            runSafeRead {
+                val repo = git?.repository ?: return@runSafeRead DashboardState.Error("Repo closed")
                 
                 val status = git?.status()?.call()
                 val changedCount = (status?.untracked?.size ?: 0) + 
@@ -121,11 +122,10 @@ class GitManager(private val rootDir: File) : Closeable {
     }
 
     suspend fun getChangedFiles(): List<GitFile> = withContext(Dispatchers.IO) {
-        gitMutex.withLock {
+        runSafeRead {
             val list = mutableListOf<GitFile>()
             try {
-                ensureOpen()
-                val status = git?.status()?.call() ?: return@withLock emptyList()
+                val status = git?.status()?.call() ?: return@runSafeRead emptyList()
                 status.added.forEach { list.add(GitFile(it, ChangeType.ADDED)) }
                 status.modified.forEach { list.add(GitFile(it, ChangeType.MODIFIED)) }
                 status.changed.forEach { list.add(GitFile(it, ChangeType.MODIFIED)) }
@@ -488,17 +488,23 @@ class GitManager(private val rootDir: File) : Closeable {
         }
     }
 
-    private fun ensureOpen() {
+    private suspend fun ensureOpen() {
         if (isClosed.get()) throw IllegalStateException("Manager is closed")
         if (git == null) {
-            openRepoInternal()
+            // Double-checked locking to prevent multiple initializations
+            lifecycleMutex.withLock {
+                if (git == null && !isClosed.get()) {
+                    openRepoInternal()
+                }
+            }
         }
     }
 
     private suspend inline fun runGitOperation(crossinline block: suspend () -> String): String {
         return try {
-            gitMutex.withLock {
-                ensureOpen()
+            ensureOpen()
+            // Write operations are exclusively locked
+            writeMutex.withLock {
                 block()
             }
         } catch (e: Exception) {
@@ -508,14 +514,13 @@ class GitManager(private val rootDir: File) : Closeable {
     }
     
     private suspend inline fun <T> runSafeRead(crossinline block: suspend () -> T): T {
-        return gitMutex.withLock {
-            ensureOpen()
-            try {
-                block()
-            } catch (e: Exception) {
-                e.printStackTrace()
-                throw e
-            }
+        ensureOpen()
+        // Read operations can happen concurrently, bypassing the writeMutex
+        try {
+            return block()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            throw e
         }
     }
 
