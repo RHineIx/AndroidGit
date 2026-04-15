@@ -2,11 +2,25 @@ package com.android.git.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
 class PreferencesManager(context: Context) {
-    private val prefs: SharedPreferences = context.getSharedPreferences("git_prefs", Context.MODE_PRIVATE)
+    
+    // Use EncryptedSharedPreferences to securely store sensitive data (Tokens & API Keys)
+    private val masterKey = MasterKey.Builder(context)
+        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+        .build()
+
+    private val prefs: SharedPreferences = EncryptedSharedPreferences.create(
+        context,
+        "git_secure_prefs", // Switched namespace to ensure clean secure state
+        masterKey,
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+    )
 
     companion object {
         private const val KEY_TOKEN = "github_token"

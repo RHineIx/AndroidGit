@@ -156,14 +156,19 @@ class GitManager(private val rootDir: File) : Closeable {
                 val workTree = FileTreeIterator(repo)
                 val diffEntries = df.scan(headTree, workTree)
                 
+                val maxDiffSize = 100 * 1024 // Increased limit to 100KB, but strictly bounded in memory
+                
                 for (entry in diffEntries) {
                     if (selectedPaths.contains(entry.newPath) || selectedPaths.contains(entry.oldPath)) {
                         df.format(entry)
+                        if (out.size() > maxDiffSize) {
+                            break // Memory optimization: Halt appending if diff becomes uncontrollably large
+                        }
                     }
                 }
                 
                 val fullDiff = out.toString("UTF-8")
-                // Truncate to ~6000 characters to prevent API limits while providing enough context
+                // Truncate safely before sending to AI to prevent token limits
                 if (fullDiff.length > 6000) {
                     fullDiff.take(6000) + "\n\n... [Diff truncated to save tokens]"
                 } else {
@@ -425,12 +430,21 @@ class GitManager(private val rootDir: File) : Closeable {
                  return@withContext "Binary file detected (Image/PDF/Exec). \nCannot display content."
              }
 
-             val maxLength = 50 * 1024 // 50KB limit for preview
-             if (file.length() > maxLength) {
-                 val content = file.reader().use { it.readText().take(maxLength) }
-                 "$content\n\n... [File truncated because it is too large] ..."
-             } else {
-                 file.readText()
+             val maxLength = 50 * 1024 // 50KB limit to prevent Memory exhaustion
+             // Memory optimization: using BufferedReader to read chunk by chunk instead of file.readText()
+             file.bufferedReader().use { reader ->
+                 val buffer = CharArray(maxLength)
+                 val charsRead = reader.read(buffer, 0, maxLength)
+                 
+                 if (charsRead == -1) return@withContext ""
+                 
+                 val content = String(buffer, 0, charsRead)
+                 // Check if there is still more content to read
+                 if (reader.ready() || file.length() > maxLength) {
+                     "$content\n\n... [File truncated because it is too large] ..."
+                 } else {
+                     content
+                 }
              }
          } catch (e: Exception) { 
              "Error reading file: ${e.message}" 

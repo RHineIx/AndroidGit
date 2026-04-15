@@ -160,8 +160,16 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
                 }
 
                 val customPrompt = prefs.getGeminiPrompt()
+                
+                // Improved prompt: Requests strict brevity and lists all changes concisely
                 val basePrompt = if (customPrompt.isNotBlank()) customPrompt else 
-                    "You are an expert developer. Generate a concise, standard Conventional Commit message based on the following git diff. Output ONLY the commit message (e.g., feat: ..., fix: ..., chore: ...) without any markdown formatting, explanations, or quotes."
+                    "You are an expert developer. Generate a Conventional Commit message based on the following git diff.\n" +
+                    "Format requirements:\n" +
+                    "1. A concise subject line (e.g., feat: ..., fix: ...).\n" +
+                    "2. A blank line.\n" +
+                    "3. A concise bulleted list summarizing ALL notable changes.\n" +
+                    "Keep the bullet points strictly short and to the point.\n" +
+                    "Output ONLY the commit message without any markdown formatting like ```."
                 
                 val finalPrompt = "$basePrompt\n\nGit Diff:\n$diff"
 
@@ -169,7 +177,8 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
                     modelName = prefs.getGeminiModel(),
                     apiKey = apiKey,
                     generationConfig = generationConfig {
-                        temperature = 0.2f
+                        temperature = 0.3f 
+                        maxOutputTokens = 2048 // Increased to prevent 'MAX_TOKENS' error on large diffs
                     }
                 )
 

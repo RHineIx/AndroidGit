@@ -26,9 +26,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.android.git.R
 import com.android.git.model.ChangeType
 import com.android.git.model.GitFile
+import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.viewmodel.MainViewModel
 import top.yukonga.miuix.kmp.basic.Checkbox
 
@@ -41,6 +44,7 @@ fun ChangesScreen(
     val files = viewModel.changedFiles
     val isLoading = viewModel.isLoading
     val statusMessage = viewModel.statusMessage
+    val statusType = viewModel.statusType // Added to support local snackbar
     val isAIGenerating = viewModel.isAIGenerating
 
     var selectedFiles by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -310,10 +314,6 @@ fun ChangesScreen(
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(stringResource(R.string.changes_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            if (statusMessage.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(statusMessage, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
-                            }
                         }
                     }
                 }
@@ -389,6 +389,20 @@ fun ChangesScreen(
                     )
                 }
             }
+        }
+
+        // AppSnackbar is now correctly placed in the screen's main Box
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp, start = 16.dp, end = 16.dp)
+                .zIndex(10f)
+        ) {
+            AppSnackbar(
+                message = statusMessage,
+                type = statusType,
+                onDismiss = { viewModel.clearStatus() }
+            )
         }
     }
 }
