@@ -54,7 +54,11 @@ fun AndroidGitTheme(
         SideEffect {
             val window = (view.context as Activity).window
 
+            // Suppress deprecation warnings as Edge-to-Edge is handled via WindowCompat
+            @Suppress("DEPRECATION")
             window.statusBarColor = Color.Transparent.toArgb()
+
+            @Suppress("DEPRECATION")
             window.navigationBarColor = Color.Transparent.toArgb()
 
             val insetsController = WindowCompat.getInsetsController(window, view)

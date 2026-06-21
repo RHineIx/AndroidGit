@@ -5,14 +5,14 @@ plugins {
 
 android {
     namespace = "com.android.git"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.android.git"
         minSdk = 26
-        targetSdk = 36
-        versionCode = 61
-        versionName = "5.1.0-stable"
+        targetSdk = 37
+        versionCode = 50200
+        versionName = "5.2.0-stable"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -40,7 +40,7 @@ android {
     }
 
     compileOptions {
-        // JGit 7 requires Java 17, ensuring compatibility here
+        // JGit 7.6.0 requires Java 17, ensuring compatibility here
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -66,6 +66,9 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+    
+    // EncryptedSharedPreferences for secure token/API key storage
+    implementation(libs.androidx.security.crypto)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
@@ -76,9 +79,17 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.material.icons.extended)
 
+    // JGit & Required Crypto Dependencies for modern SSH support
     implementation(libs.jgit)
+    implementation(libs.bcprov)
+    implementation(libs.bcpkix)
+
+    // Gemini AI
+    implementation(libs.generativeai)
+
     implementation(libs.slf4j.simple)
     implementation(libs.miuix)
+
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }

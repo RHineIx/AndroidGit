@@ -7,12 +7,10 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -20,6 +18,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -32,11 +31,13 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -125,8 +126,6 @@ fun AppSnackbar(
     }
 }
 
-// --- Update Bottom Sheet Component ---
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UpdateBottomSheet(
@@ -161,8 +160,6 @@ fun UpdateBottomSheet(
                 .padding(bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            
-            // Header Shield (Protects against drag-to-dismiss in empty areas)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -175,72 +172,44 @@ fun UpdateBottomSheet(
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = stringResource(R.string.about_developed_by),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    Icon(
+                        imageVector = Icons.Default.SystemUpdate,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.primary
                     )
                     
                     Spacer(modifier = Modifier.height(16.dp))
-
-                    Surface(
-                        modifier = Modifier.size(80.dp),
-                        shape = CircleShape,
-                        border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
-                        color = MaterialTheme.colorScheme.surface
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.me),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(12.dp))
                     
                     Text(
-                        text = "RHineix",
+                        text = stringResource(R.string.update_new_version),
                         style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     
-                    Text(
-                        text = "@RHineix",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        SocialChip(
-                            iconRes = R.drawable.ic_github, 
-                            label = stringResource(R.string.social_github),
-                            onClick = { openLink(context, "https://github.com/RHineix") }
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        SocialChip(
-                            iconRes = R.drawable.ic_telegram, 
-                            label = stringResource(R.string.social_telegram),
-                            onClick = { openLink(context, "https://t.me/RHineix") }
-                        )
+                    val versionLabel = remember(updateInfo) {
+                        if (updateInfo.versionCode > 0) "v${updateInfo.versionName} (Build ${updateInfo.versionCode})"
+                        else "v${updateInfo.versionName}"
                     }
+                    
+                    Text(
+                        text = versionLabel,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Sliding Window (Update Info)
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                 shape = RoundedCornerShape(24.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 300.dp)
+                    .heightIn(max = 350.dp)
                     .nestedScroll(nestedScrollConnection)
                     .pointerInput(Unit) {
                         detectDragGestures { change, _ -> change.consume() }
@@ -249,48 +218,26 @@ fun UpdateBottomSheet(
                 Column(
                     modifier = Modifier.padding(24.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.update_new_version),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            
-                            val versionLabel = remember(updateInfo) {
-                                if (updateInfo.versionCode > 0) "v${updateInfo.versionName} (Build ${updateInfo.versionCode})"
-                                else "v${updateInfo.versionName}"
-                            }
-                            
-                            Text(
-                                text = versionLabel,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        
-                        Surface(
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
-                            shape = RoundedCornerShape(2.dp),
-                            modifier = Modifier.width(40.dp).height(4.dp)
-                        ) {}
-                    }
+                    Text(
+                        text = "Changelog",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     
-                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
                     
                     Column(
                         modifier = Modifier
                             .weight(1f, fill = false)
                             .verticalScroll(rememberScrollState())
                     ) {
-                        Text(
+                        MarkdownText(
                             text = updateInfo.releaseNotes,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                            lineHeight = 22.sp
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
                         )
                     }
                     
@@ -319,29 +266,85 @@ fun UpdateBottomSheet(
 }
 
 @Composable
-private fun SocialChip(iconRes: Int, label: String, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = Modifier
-            .height(40.dp)
-            .pointerInput(Unit) {
-                detectDragGestures { change, _ -> change.consume() }
+fun MarkdownText(text: String, color: Color) {
+    val annotatedString = remember(text) { parseMarkdown(text, color) }
+    Text(
+        text = annotatedString,
+        style = MaterialTheme.typography.bodyMedium,
+        lineHeight = 22.sp
+    )
+}
+
+fun parseMarkdown(text: String, defaultColor: Color): AnnotatedString {
+    return buildAnnotatedString {
+        val lines = text.split("\n")
+        var isFirstLine = true
+
+        for (line in lines) {
+            if (!isFirstLine) {
+                append("\n")
             }
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        ) {
-            Icon(
-                painter = painterResource(id = iconRes),
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(text = label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium)
+            isFirstLine = false
+
+            var currentLine = line.trim()
+
+            // Headers
+            if (currentLine.startsWith("### ")) {
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, fontSize = 18.sp, color = defaultColor)) {
+                    append(currentLine.removePrefix("### "))
+                }
+                continue
+            } else if (currentLine.startsWith("## ")) {
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, fontSize = 20.sp, color = defaultColor)) {
+                    append(currentLine.removePrefix("## "))
+                }
+                continue
+            } else if (currentLine.startsWith("# ")) {
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, fontSize = 22.sp, color = defaultColor)) {
+                    append(currentLine.removePrefix("# "))
+                }
+                continue
+            }
+
+            // Bullet points
+            if (currentLine.startsWith("- ") || currentLine.startsWith("* ")) {
+                append("• ")
+                currentLine = currentLine.substring(2)
+            }
+
+            // Inline formatting (Bold **text**)
+            var i = 0
+            while (i < currentLine.length) {
+                if (i + 1 < currentLine.length && currentLine[i] == '*' && currentLine[i + 1] == '*') {
+                    val endBold = currentLine.indexOf("**", i + 2)
+                    if (endBold != -1) {
+                        withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = defaultColor)) {
+                            append(currentLine.substring(i + 2, endBold))
+                        }
+                        i = endBold + 2
+                    } else {
+                        append(currentLine[i].toString())
+                        i++
+                    }
+                } else if (currentLine[i] == '`') {
+                    // Simple inline code
+                    val endCode = currentLine.indexOf('`', i + 1)
+                    if (endCode != -1) {
+                        withStyle(style = SpanStyle(background = Color.Gray.copy(alpha = 0.2f), color = defaultColor)) {
+                            append(currentLine.substring(i + 1, endCode))
+                        }
+                        i = endCode + 1
+                    } else {
+                        append(currentLine[i].toString())
+                        i++
+                    }
+                } else {
+                    withStyle(style = SpanStyle(color = defaultColor)) {
+                        append(currentLine[i].toString())
+                    }
+                    i++
+                }
+            }
         }
     }
 }

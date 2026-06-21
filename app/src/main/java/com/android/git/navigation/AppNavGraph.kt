@@ -1,11 +1,15 @@
 package com.android.git.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -27,29 +31,58 @@ fun AppNavGraph(
     val context = LocalContext.current
     val manager = viewModel.gitManager
 
+    // SINGLE SOURCE OF TRUTH: التوجيه المبني على الحالة
     LaunchedEffect(viewModel.currentRepoFile) {
-        val currentRoute = navController.currentBackStackEntry?.destination?.route
+        val currentRoute = navController.currentBackStackEntry?.destination?.route ?: return@LaunchedEffect
         
-        if (viewModel.currentRepoFile != null && currentRoute == Screen.Selection.route) {
-            navController.navigate(Screen.Dashboard.route) {
-                popUpTo(Screen.Selection.route) { inclusive = true }
+        if (viewModel.currentRepoFile != null) {
+            // الانتقال للوحة القيادة فقط إذا كنا في شاشة الاختيار أو الاستنساخ
+            if (currentRoute == Screen.Selection.route || currentRoute == Screen.Clone.route) {
+                navController.navigate(Screen.Dashboard.route) {
+                    popUpTo(0) { inclusive = true } // تنظيف المكدس بالكامل
+                    launchSingleTop = true
+                }
             }
-        } else if (viewModel.currentRepoFile == null) {
-            if (currentRoute != Screen.Clone.route && currentRoute != Screen.GeneralSettings.route) {
+        } else {
+            // العودة لشاشة الاختيار عند إغلاق المشروع
+            if (currentRoute != Screen.Selection.route && currentRoute != Screen.Clone.route && currentRoute != Screen.GeneralSettings.route) {
                 navController.navigate(Screen.Selection.route) {
-                    popUpTo(0) { inclusive = true }
+                    popUpTo(0) { inclusive = true } // تنظيف المكدس لمنع الشاشات الشبحية
+                    launchSingleTop = true
                 }
             }
         }
     }
 
+    // Using slideIntoContainer and slideOutOfContainer ensures seamless integration 
+    // with Android's Predictive Back Gestures when enableOnBackInvokedCallback is true.
     NavHost(
         navController = navController,
         startDestination = startDestination,
-        enterTransition = { slideInHorizontally { it } + fadeIn() },
-        exitTransition = { slideOutHorizontally { -it } + fadeOut() },
-        popEnterTransition = { slideInHorizontally { -it } + fadeIn() },
-        popExitTransition = { slideOutHorizontally { it } + fadeOut() }
+        enterTransition = {
+            slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+            ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
+        },
+        exitTransition = {
+            slideOutOfContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+            ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
+        },
+        popEnterTransition = {
+            slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+            ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
+        },
+        popExitTransition = {
+            slideOutOfContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+            ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
+        }
     ) {
         
         composable(Screen.Selection.route) {
@@ -57,8 +90,16 @@ fun AppNavGraph(
                 onRepoSelected = { uri ->
                     FileUtils.getFileFromUri(uri)?.let { viewModel.openProject(it) }
                 },
-                onCloneRequest = { navController.navigate(Screen.Clone.route) },
-                onGeneralSettingsClick = { navController.navigate(Screen.GeneralSettings.route) }
+                onCloneRequest = { 
+                    navController.navigate(Screen.Clone.route) {
+                        launchSingleTop = true // منع فتح الشاشة مرتين
+                    }
+                },
+                onGeneralSettingsClick = { 
+                    navController.navigate(Screen.GeneralSettings.route) {
+                        launchSingleTop = true
+                    }
+                }
             )
         }
 
@@ -67,10 +108,8 @@ fun AppNavGraph(
                 viewModel = viewModel,
                 onBack = { navController.popBackStack() },
                 onCloneSuccess = { file ->
+                    // تم إزالة التوجيه اليدوي لتجنب التضارب، الـ LaunchedEffect سيتكفل بالباقي
                     viewModel.openProject(file)
-                    navController.navigate(Screen.Dashboard.route) {
-                        popUpTo(Screen.Selection.route) { inclusive = true }
-                    }
                 }
             )
         }
@@ -91,17 +130,18 @@ fun AppNavGraph(
                     viewModel = viewModel,
                     dashboardState = viewModel.dashboardState,
                     onRefresh = { viewModel.loadDashboard() },
-                    onViewChanges = { navController.navigate(Screen.ChangesList.route) },
-                    onSettings = { navController.navigate(Screen.RepoSettings.route) },
-                    onViewLog = { navController.navigate(Screen.Log.route) },
-                    onManageBranches = { navController.navigate(Screen.BranchManager.route) },
-                    onOpenStash = { navController.navigate(Screen.Stash.route) },
-                    onIgnoreEditor = { navController.navigate(Screen.IgnoreEditor.route) },
+                    onViewChanges = { navController.navigate(Screen.ChangesList.route) { launchSingleTop = true } },
+                    onSettings = { navController.navigate(Screen.RepoSettings.route) { launchSingleTop = true } },
+                    onViewLog = { navController.navigate(Screen.Log.route) { launchSingleTop = true } },
+                    onManageBranches = { navController.navigate(Screen.BranchManager.route) { launchSingleTop = true } },
+                    onOpenStash = { navController.navigate(Screen.Stash.route) { launchSingleTop = true } },
+                    onIgnoreEditor = { navController.navigate(Screen.IgnoreEditor.route) { launchSingleTop = true } },
                     onCloseProject = { viewModel.closeProject() },
-                    onMergeConflicts = { navController.navigate(Screen.MergeConflicts.route) }
+                    onMergeConflicts = { navController.navigate(Screen.MergeConflicts.route) { launchSingleTop = true } }
                 )
             } else {
-                LaunchedEffect(Unit) { navController.navigate(Screen.Selection.route) }
+                // تم إزالة الـ LaunchedEffect المتعارض من هنا
+                Box(modifier = Modifier.fillMaxSize())
             }
         }
 
@@ -175,7 +215,7 @@ fun AppNavGraph(
                         navController.popBackStack()
                     },
                     onResolveFile = { path ->
-                        navController.navigate(Screen.ConflictResolver.createRoute(path))
+                        navController.navigate(Screen.ConflictResolver.createRoute(path)) { launchSingleTop = true }
                     }
                 )
             }

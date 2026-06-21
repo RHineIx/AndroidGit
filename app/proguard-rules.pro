@@ -9,6 +9,9 @@
 -keep class org.slf4j.** { *; }
 -dontwarn org.slf4j.**
 
+# Tink/Security Crypto Rules
+-dontwarn com.google.errorprone.annotations.**
+
 # Keep Enum values
 -keepclassmembers enum * {
     public static **[] values();

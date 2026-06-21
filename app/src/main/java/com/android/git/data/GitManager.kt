@@ -13,9 +13,14 @@ import kotlinx.coroutines.withContext
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.ResetCommand
 import org.eclipse.jgit.api.errors.NoHeadException
+import org.eclipse.jgit.diff.DiffFormatter
 import org.eclipse.jgit.lib.ProgressMonitor
 import org.eclipse.jgit.transport.RemoteRefUpdate
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
+import org.eclipse.jgit.treewalk.CanonicalTreeParser
+import org.eclipse.jgit.treewalk.EmptyTreeIterator
+import org.eclipse.jgit.treewalk.FileTreeIterator
+import java.io.ByteArrayOutputStream
 import java.io.Closeable
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
@@ -26,7 +31,9 @@ class GitManager(private val rootDir: File) : Closeable {
     private var branchManager: GitBranchManager? = null
     private var stashManager: GitStashManager? = null
 
-    private val gitMutex = Mutex()
+    // Segregated Mutexes to prevent read/write bottlenecks
+    private val writeMutex = Mutex()
+    private val lifecycleMutex = Mutex()
     private val isClosed = AtomicBoolean(false)
 
     val authManager = GitAuthManager(rootDir.parentFile ?: rootDir)
@@ -34,7 +41,7 @@ class GitManager(private val rootDir: File) : Closeable {
     fun isGitRepo(): Boolean = File(rootDir, ".git").exists()
 
     suspend fun initRepo(): String = withContext(Dispatchers.IO) {
-        gitMutex.withLock {
+        lifecycleMutex.withLock {
             runCatching {
                 Git.init().setDirectory(rootDir).call()
                 openRepoInternal()
@@ -44,7 +51,7 @@ class GitManager(private val rootDir: File) : Closeable {
     }
 
     suspend fun openRepo(): String = withContext(Dispatchers.IO) {
-        gitMutex.withLock {
+        lifecycleMutex.withLock {
             runCatching {
                 openRepoInternal()
                 "Repository opened successfully!"
@@ -77,9 +84,8 @@ class GitManager(private val rootDir: File) : Closeable {
 
     suspend fun getDashboardStats(): DashboardState = withContext(Dispatchers.IO) {
         try {
-            gitMutex.withLock {
-                ensureOpen()
-                val repo = git?.repository ?: return@withLock DashboardState.Error("Repo closed")
+            runSafeRead {
+                val repo = git?.repository ?: return@runSafeRead DashboardState.Error("Repo closed")
                 
                 val status = git?.status()?.call()
                 val changedCount = (status?.untracked?.size ?: 0) + 
@@ -116,11 +122,10 @@ class GitManager(private val rootDir: File) : Closeable {
     }
 
     suspend fun getChangedFiles(): List<GitFile> = withContext(Dispatchers.IO) {
-        gitMutex.withLock {
+        runSafeRead {
             val list = mutableListOf<GitFile>()
             try {
-                ensureOpen()
-                val status = git?.status()?.call() ?: return@withLock emptyList()
+                val status = git?.status()?.call() ?: return@runSafeRead emptyList()
                 status.added.forEach { list.add(GitFile(it, ChangeType.ADDED)) }
                 status.modified.forEach { list.add(GitFile(it, ChangeType.MODIFIED)) }
                 status.changed.forEach { list.add(GitFile(it, ChangeType.MODIFIED)) }
@@ -130,6 +135,50 @@ class GitManager(private val rootDir: File) : Closeable {
                 status.conflicting.forEach { list.add(GitFile(it, ChangeType.MODIFIED)) }
                 list.sortedBy { it.path }
             } catch (e: Exception) { emptyList() }
+        }
+    }
+
+    suspend fun getDiff(selectedPaths: Set<String>): String = withContext(Dispatchers.IO) {
+        runSafeRead {
+            val repo = git?.repository ?: return@runSafeRead ""
+            val out = ByteArrayOutputStream()
+            val df = DiffFormatter(out)
+            df.setRepository(repo)
+            
+            try {
+                val headId = repo.resolve("HEAD^{tree}")
+                val headTree = if (headId != null) {
+                    CanonicalTreeParser(null, repo.newObjectReader(), headId)
+                } else {
+                    EmptyTreeIterator()
+                }
+                
+                val workTree = FileTreeIterator(repo)
+                val diffEntries = df.scan(headTree, workTree)
+                
+                val maxDiffSize = 100 * 1024 // Increased limit to 100KB, but strictly bounded in memory
+                
+                for (entry in diffEntries) {
+                    if (selectedPaths.contains(entry.newPath) || selectedPaths.contains(entry.oldPath)) {
+                        df.format(entry)
+                        if (out.size() > maxDiffSize) {
+                            break // Memory optimization: Halt appending if diff becomes uncontrollably large
+                        }
+                    }
+                }
+                
+                val fullDiff = out.toString("UTF-8")
+                // Truncate safely before sending to AI to prevent token limits
+                if (fullDiff.length > 6000) {
+                    fullDiff.take(6000) + "\n\n... [Diff truncated to save tokens]"
+                } else {
+                    fullDiff
+                }
+            } catch (e: Exception) {
+                "Error extracting diff: ${e.message}"
+            } finally {
+                df.close()
+            }
         }
     }
 
@@ -204,12 +253,12 @@ class GitManager(private val rootDir: File) : Closeable {
                 val isPushed = isSynced
 
                commits.add(CommitItem(
-                    message = rev.fullMessage.trim(),
-                    author = rev.authorIdent.name ?: "Unknown",
-                    date = java.util.Date.from(rev.authorIdent.whenAsInstant),
-                    hash = hash.substring(0, 7),
-                    isPushed = isPushed
-                ))
+                   message = rev.fullMessage.trim(),
+                   author = rev.authorIdent.name ?: "Unknown",
+                   date = java.util.Date.from(rev.authorIdent.whenAsInstant),
+                   hash = hash.substring(0, 7),
+                   isPushed = isPushed
+               ))
             }
             commits
         }
@@ -381,12 +430,21 @@ class GitManager(private val rootDir: File) : Closeable {
                  return@withContext "Binary file detected (Image/PDF/Exec). \nCannot display content."
              }
 
-             val maxLength = 50 * 1024 // 50KB limit for preview
-             if (file.length() > maxLength) {
-                 val content = file.reader().use { it.readText().take(maxLength) }
-                 "$content\n\n... [File truncated because it is too large] ..."
-             } else {
-                 file.readText()
+             val maxLength = 50 * 1024 // 50KB limit to prevent Memory exhaustion
+             // Memory optimization: using BufferedReader to read chunk by chunk instead of file.readText()
+             file.bufferedReader().use { reader ->
+                 val buffer = CharArray(maxLength)
+                 val charsRead = reader.read(buffer, 0, maxLength)
+                 
+                 if (charsRead == -1) return@withContext ""
+                 
+                 val content = String(buffer, 0, charsRead)
+                 // Check if there is still more content to read
+                 if (reader.ready() || file.length() > maxLength) {
+                     "$content\n\n... [File truncated because it is too large] ..."
+                 } else {
+                     content
+                 }
              }
          } catch (e: Exception) { 
              "Error reading file: ${e.message}" 
@@ -430,17 +488,23 @@ class GitManager(private val rootDir: File) : Closeable {
         }
     }
 
-    private fun ensureOpen() {
+    private suspend fun ensureOpen() {
         if (isClosed.get()) throw IllegalStateException("Manager is closed")
         if (git == null) {
-            openRepoInternal()
+            // Double-checked locking to prevent multiple initializations
+            lifecycleMutex.withLock {
+                if (git == null && !isClosed.get()) {
+                    openRepoInternal()
+                }
+            }
         }
     }
 
     private suspend inline fun runGitOperation(crossinline block: suspend () -> String): String {
         return try {
-            gitMutex.withLock {
-                ensureOpen()
+            ensureOpen()
+            // Write operations are exclusively locked
+            writeMutex.withLock {
                 block()
             }
         } catch (e: Exception) {
@@ -450,14 +514,13 @@ class GitManager(private val rootDir: File) : Closeable {
     }
     
     private suspend inline fun <T> runSafeRead(crossinline block: suspend () -> T): T {
-        return gitMutex.withLock {
-            ensureOpen()
-            try {
-                block()
-            } catch (e: Exception) {
-                e.printStackTrace()
-                throw e
-            }
+        ensureOpen()
+        // Read operations can happen concurrently, bypassing the writeMutex
+        try {
+            return block()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            throw e
         }
     }
 

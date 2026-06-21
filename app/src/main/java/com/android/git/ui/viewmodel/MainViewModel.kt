@@ -21,6 +21,9 @@ import com.android.git.model.DashboardState
 import com.android.git.model.GitFile
 import com.android.git.model.UpdateInfo
 import com.android.git.ui.components.SnackbarType
+import com.google.ai.client.generativeai.GenerativeModel
+import com.google.ai.client.generativeai.type.generationConfig
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -31,7 +34,6 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     var gitManager: GitManager? = null
         private set
 
-    // UI State Properties
     var currentRepoFile: File? by mutableStateOf(null)
         private set
 
@@ -47,13 +49,15 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     var isLoading: Boolean by mutableStateOf(false)
         private set
 
+    var isAIGenerating: Boolean by mutableStateOf(false)
+        private set
+
     var statusMessage: String by mutableStateOf("")
         private set
 
     var statusType: SnackbarType by mutableStateOf(SnackbarType.INFO)
         private set
 
-    // New Progress Tracking States
     var cloneProgress: Float by mutableStateOf(0f)
         private set
     var cloneTaskName: String by mutableStateOf("")
@@ -61,7 +65,6 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     var cloneTaskDetails: String by mutableStateOf("")
         private set
 
-    // Log & Pagination State
     var logList: List<CommitItem> by mutableStateOf(emptyList())
         private set
 
@@ -72,29 +75,22 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     private var logHasMore = true
     private val LOG_PAGE_SIZE = 50
 
-    // Update System State
     var updateInfo: UpdateInfo? by mutableStateOf(null)
         private set
 
     var showUpdateSheet: Boolean by mutableStateOf(false)
         private set
 
-    // Theme Management State
     var themeMode: ThemeMode by mutableStateOf(prefs.getThemeMode())
         private set
 
     init {
-        // Restore session
         savedStateHandle.get<String>("current_repo_path")?.let { path ->
             File(path).takeIf { it.exists() }?.let { openProject(it) }
         }
-
-        // Auto check for updates on startup
         checkForUpdates(isManual = false)
     }
 
-    // --- Token Management ---
-    
     fun getToken(): String = prefs.getToken()
     
     fun saveToken(token: String) = prefs.saveToken(token)
@@ -105,14 +101,105 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     
     fun restoreLastToken(): String = prefs.restoreLastToken()
 
-    // --- Theme Management ---
-
     fun updateThemeMode(mode: ThemeMode) {
         themeMode = mode
         prefs.setThemeMode(mode)
     }
 
-    // --- Update Logic ---
+    fun verifyGeminiSettings(apiKey: String, modelName: String, prompt: String) {
+        viewModelScope.launch {
+            isLoading = true
+            try {
+                if (apiKey.isBlank()) throw Exception("API Key cannot be empty.")
+                
+                prefs.setGeminiApiKey(apiKey)
+                prefs.setGeminiModel(modelName)
+                prefs.setGeminiPrompt(prompt)
+
+                val model = GenerativeModel(
+                    modelName = modelName, 
+                    apiKey = apiKey,
+                    generationConfig = generationConfig { temperature = 0.1f }
+                )
+                
+                model.generateContent("Hello, respond with exactly 'OK'")
+                showStatus("Gemini Configuration Saved and Verified!", SnackbarType.SUCCESS)
+            } catch (e: Exception) {
+                val errorMsg = if (e.message?.contains("MissingFieldException") == true) {
+                    "Verification Failed: Invalid API Key, Unsupported Region, or Model Not Found."
+                } else {
+                    "Verification Failed: ${e.localizedMessage}"
+                }
+                showStatus(errorMsg, SnackbarType.ERROR)
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+    
+    fun generateAICommitMessage(selectedPaths: Set<String>, onSuccess: (String) -> Unit) {
+        if (selectedPaths.isEmpty()) {
+            showStatus("Please select files first to generate a commit message.", SnackbarType.WARNING)
+            return
+        }
+        
+        val apiKey = prefs.getGeminiApiKey()
+        if (apiKey.isEmpty()) {
+            showStatus("Gemini API Key is missing. Please set it in General Settings.", SnackbarType.ERROR)
+            return
+        }
+
+        viewModelScope.launch {
+            isAIGenerating = true
+            try {
+                val diff = gitManager?.getDiff(selectedPaths) ?: ""
+                if (diff.isEmpty() || diff.startsWith("Error")) {
+                    showStatus("Could not extract diff for AI processing.", SnackbarType.ERROR)
+                    isAIGenerating = false
+                    return@launch
+                }
+
+                val customPrompt = prefs.getGeminiPrompt()
+                
+                // Improved prompt: Requests strict brevity and lists all changes concisely
+                val basePrompt = if (customPrompt.isNotBlank()) customPrompt else 
+                    "You are an expert developer. Generate a Conventional Commit message based on the following git diff.\n" +
+                    "Format requirements:\n" +
+                    "1. A concise subject line (e.g., feat: ..., fix: ...).\n" +
+                    "2. A blank line.\n" +
+                    "3. A concise bulleted list summarizing ALL notable changes.\n" +
+                    "Keep the bullet points strictly short and to the point.\n" +
+                    "Output ONLY the commit message without any markdown formatting like ```."
+                
+                val finalPrompt = "$basePrompt\n\nGit Diff:\n$diff"
+
+                val generativeModel = GenerativeModel(
+                    modelName = prefs.getGeminiModel(),
+                    apiKey = apiKey,
+                    generationConfig = generationConfig {
+                        temperature = 0.3f 
+                        maxOutputTokens = 2048 // Increased to prevent 'MAX_TOKENS' error on large diffs
+                    }
+                )
+
+                val response = generativeModel.generateContent(finalPrompt)
+                val generatedText = response.text?.trim() ?: ""
+                val cleanText = generatedText.removePrefix("```").removeSuffix("```").trim()
+
+                onSuccess(cleanText)
+                showStatus("Commit message generated successfully!", SnackbarType.SUCCESS)
+            } catch (e: Exception) {
+                val errorMsg = if (e.message?.contains("MissingFieldException") == true) {
+                    "AI Error: Invalid Key, Unsupported Region, or Model Not Found."
+                } else {
+                    "AI Error: ${e.localizedMessage}"
+                }
+                showStatus(errorMsg, SnackbarType.ERROR)
+            } finally {
+                isAIGenerating = false
+            }
+        }
+    }
 
     fun checkForUpdates(isManual: Boolean = false) {
         viewModelScope.launch {
@@ -122,7 +209,6 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
                 showStatus(context.getString(R.string.update_checking), SnackbarType.INFO)
             }
 
-            // Get current version
             val packageInfo = try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
@@ -156,8 +242,6 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     fun dismissUpdateSheet() {
         showUpdateSheet = false
     }
-
-    // --- Core Git Logic ---
 
     fun openProject(file: File) {
         if (currentRepoFile?.absolutePath == file.absolutePath && gitManager != null) return

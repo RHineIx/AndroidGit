@@ -26,11 +26,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.android.git.R
 import com.android.git.model.ChangeType
 import com.android.git.model.GitFile
+import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.viewmodel.MainViewModel
-// Explicitly import Miuix Checkbox to override Material 3 Checkbox
 import top.yukonga.miuix.kmp.basic.Checkbox
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,6 +44,8 @@ fun ChangesScreen(
     val files = viewModel.changedFiles
     val isLoading = viewModel.isLoading
     val statusMessage = viewModel.statusMessage
+    val statusType = viewModel.statusType // Added to support local snackbar
+    val isAIGenerating = viewModel.isAIGenerating
 
     var selectedFiles by remember { mutableStateOf<Set<String>>(emptySet()) }
     var commitMessage by remember { mutableStateOf("") }
@@ -50,17 +54,13 @@ fun ChangesScreen(
     var showFilterMenu by remember { mutableStateOf(false) }
     var showExtensionDialog by remember { mutableStateOf(false) }
 
-    // State to handle the full-screen text editor
     var isMessageExpanded by remember { mutableStateOf(false) }
 
     val commonShape = RoundedCornerShape(16.dp)
 
-    // Handle back press gracefully
-    BackHandler(enabled = !isLoading || isMessageExpanded) {
+    BackHandler(enabled = isLoading || isMessageExpanded || isAIGenerating) {
         if (isMessageExpanded) {
             isMessageExpanded = false
-        } else if (!isLoading) {
-            onBack()
         }
     }
 
@@ -110,7 +110,6 @@ fun ChangesScreen(
         )
     }
 
-    // Wrap the entire screen in a Box to allow the overlay (expanded editor) to cover everything
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             topBar = {
@@ -126,7 +125,7 @@ fun ChangesScreen(
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = onBack, enabled = !isLoading) {
+                        IconButton(onClick = onBack, enabled = !isLoading && !isAIGenerating) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                         }
                     },
@@ -177,7 +176,6 @@ fun ChangesScreen(
                             .padding(horizontal = 20.dp, vertical = 16.dp)
                             .animateContentSize()
                     ) {
-                        // Fixed: Removed clickable from the Row, isolated interaction to the Checkbox
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -190,8 +188,8 @@ fun ChangesScreen(
                             ) {
                                 Checkbox(
                                     checked = isAmend,
-                                    onCheckedChange = { isAmend = it }, // Interaction isolated here
-                                    enabled = !isLoading
+                                    onCheckedChange = { isAmend = it }, 
+                                    enabled = !isLoading && !isAIGenerating
                                 )
                             }
                             Spacer(Modifier.width(8.dp))
@@ -209,10 +207,34 @@ fun ChangesScreen(
                             modifier = Modifier.fillMaxWidth(),
                             maxLines = 4,
                             shape = commonShape,
-                            enabled = !isLoading,
+                            enabled = !isLoading && !isAIGenerating,
                             trailingIcon = {
-                                IconButton(onClick = { isMessageExpanded = true }) {
-                                    Icon(Icons.Default.Fullscreen, contentDescription = "Expand to fullscreen")
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (isAIGenerating) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(20.dp).padding(end = 4.dp), 
+                                            strokeWidth = 2.dp,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    } else {
+                                        IconButton(
+                                            onClick = { 
+                                                viewModel.generateAICommitMessage(selectedFiles) { message -> 
+                                                    commitMessage = message 
+                                                }
+                                            },
+                                            enabled = selectedFiles.isNotEmpty()
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.AutoAwesome, 
+                                                contentDescription = "Generate with AI", 
+                                                tint = if (selectedFiles.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                            )
+                                        }
+                                    }
+                                    IconButton(onClick = { isMessageExpanded = true }) {
+                                        Icon(Icons.Default.Fullscreen, contentDescription = "Expand to fullscreen")
+                                    }
                                 }
                             }
                         )
@@ -229,7 +251,7 @@ fun ChangesScreen(
                                 .fillMaxWidth()
                                 .height(56.dp),
                             shape = commonShape,
-                            enabled = (selectedFiles.isNotEmpty() || isAmend) && commitMessage.isNotBlank() && !isLoading
+                            enabled = (selectedFiles.isNotEmpty() || isAmend) && commitMessage.isNotBlank() && !isLoading && !isAIGenerating
                         ) {
                             if (isLoading) {
                                 CircularProgressIndicator(
@@ -292,17 +314,12 @@ fun ChangesScreen(
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(stringResource(R.string.changes_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            if (statusMessage.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(statusMessage, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
-                            }
                         }
                     }
                 }
             }
         }
 
-        // Full-screen distraction-free editor
         AnimatedVisibility(
             visible = isMessageExpanded,
             enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
@@ -327,6 +344,28 @@ fun ChangesScreen(
                             }
                         },
                         actions = {
+                            if (isAIGenerating) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp).padding(end = 16.dp), 
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            } else {
+                                IconButton(
+                                    onClick = { 
+                                        viewModel.generateAICommitMessage(selectedFiles) { message -> 
+                                            commitMessage = message 
+                                        }
+                                    },
+                                    enabled = selectedFiles.isNotEmpty()
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome, 
+                                        contentDescription = "Generate with AI", 
+                                        tint = if (selectedFiles.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                    )
+                                }
+                            }
                             TextButton(onClick = { isMessageExpanded = false }) {
                                 Text(stringResource(R.string.action_save), fontWeight = FontWeight.Bold)
                             }
@@ -350,6 +389,20 @@ fun ChangesScreen(
                     )
                 }
             }
+        }
+
+        // AppSnackbar is now correctly placed in the screen's main Box
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp, start = 16.dp, end = 16.dp)
+                .zIndex(10f)
+        ) {
+            AppSnackbar(
+                message = statusMessage,
+                type = statusType,
+                onDismiss = { viewModel.clearStatus() }
+            )
         }
     }
 }
