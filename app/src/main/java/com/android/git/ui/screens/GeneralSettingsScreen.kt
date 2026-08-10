@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -28,6 +29,9 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,6 +63,9 @@ fun GeneralSettingsScreen(
     var geminiModel by remember { mutableStateOf(prefs.getGeminiModel()) }
     var geminiPrompt by remember { mutableStateOf(prefs.getGeminiPrompt()) }
     var aiModelExpanded by remember { mutableStateOf(false) }
+    
+    // State to track API key visibility
+    var apiKeyVisible by remember { mutableStateOf(false) }
     
     val aiModels = listOf(
         "gemini-2.5-flash", 
@@ -194,8 +201,18 @@ fun GeneralSettingsScreen(
                         onValueChange = { geminiApiKey = it },
                         label = { Text("Gemini API Key") },
                         leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null) },
+                        trailingIcon = {
+                            val image = if (apiKeyVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
+                            val description = if (apiKeyVisible) "Hide API Key" else "Show API Key"
+
+                            IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
+                                Icon(imageVector = image, contentDescription = description)
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
+                        visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         singleLine = true
                     )
 

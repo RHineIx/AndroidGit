@@ -21,6 +21,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.git.R
@@ -46,6 +48,9 @@ fun RepoSettingsScreen(
     var userName by remember { mutableStateOf(prefs.getUserName()) }
     var userEmail by remember { mutableStateOf(prefs.getUserEmail()) }
     var token by remember { mutableStateOf(activeToken) }
+    
+    // State to track token visibility
+    var tokenVisible by remember { mutableStateOf(false) }
 
     var isSaving by remember { mutableStateOf(false) }
 
@@ -125,10 +130,20 @@ fun RepoSettingsScreen(
                         onValueChange = { token = it },
                         label = { Text(stringResource(R.string.repo_settings_label_token)) },
                         leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null) },
+                        trailingIcon = {
+                            val image = if (tokenVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
+                            val description = if (tokenVisible) "Hide token" else "Show token"
+
+                            IconButton(onClick = { tokenVisible = !tokenVisible }) {
+                                Icon(imageVector = image, contentDescription = description)
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         shape = textFieldShape,
-                        enabled = !isSaving,
-                        maxLines = Int.MAX_VALUE
+                        visualTransformation = if (tokenVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        singleLine = true,
+                        enabled = !isSaving
                     )
 
                     // Token Recovery Suggestion
