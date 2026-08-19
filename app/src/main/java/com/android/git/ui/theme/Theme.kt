@@ -4,6 +4,7 @@ import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -12,6 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -33,6 +36,14 @@ private val LightColorScheme = lightColorScheme(
 
 // A distinct, strong active color for Miuix components (HyperOS Blue)
 private val MiuixActiveColor = Color(0xFF007AFF)
+
+private val AndroidGitShapes = Shapes(
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(16.dp),
+    extraLarge = RoundedCornerShape(20.dp)
+)
 
 @Composable
 fun AndroidGitTheme(
@@ -83,7 +94,8 @@ fun AndroidGitTheme(
     }
 
     MaterialTheme(
-        colorScheme = colorScheme
+        colorScheme = colorScheme,
+        shapes = AndroidGitShapes
     ) {
         MiuixTheme(
             colors = miuixColors,

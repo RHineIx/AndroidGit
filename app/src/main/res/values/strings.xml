@@ -51,8 +51,6 @@
     <string name="clone_url_copy">Copy repository URL</string>
     <string name="clone_url_paste">Paste repository URL</string>
     <string name="clone_url_use_ssh">Use SSH URL</string>
-    <string name="ssh_expand_field">Expand field</string>
-    <string name="ssh_collapse_field">Collapse field</string>
     <string name="ssh_show_value">Show value</string>
     <string name="ssh_hide_value">Hide value</string>
     <string name="clone_folder_label">Folder Name</string>

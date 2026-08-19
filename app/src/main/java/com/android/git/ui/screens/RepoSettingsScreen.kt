@@ -180,8 +180,6 @@ fun RepoSettingsScreen(
                             leadingIcon = Icons.Default.Key,
                             enabled = !isSaving,
                             isSecret = true,
-                            expandDescription = stringResource(R.string.ssh_expand_field),
-                            collapseDescription = stringResource(R.string.ssh_collapse_field),
                             showDescription = stringResource(R.string.ssh_show_value),
                             hideDescription = stringResource(R.string.ssh_hide_value),
                             modifier = Modifier,
@@ -195,8 +193,6 @@ fun RepoSettingsScreen(
                             leadingIcon = Icons.Default.Password,
                             enabled = !isSaving,
                             isSecret = true,
-                            expandDescription = stringResource(R.string.ssh_expand_field),
-                            collapseDescription = stringResource(R.string.ssh_collapse_field),
                             showDescription = stringResource(R.string.ssh_show_value),
                             hideDescription = stringResource(R.string.ssh_hide_value),
                             modifier = Modifier,
@@ -210,8 +206,6 @@ fun RepoSettingsScreen(
                             label = { Text(stringResource(R.string.repo_settings_ssh_public_key)) },
                             leadingIcon = Icons.Default.Key,
                             enabled = !isSaving,
-                            expandDescription = stringResource(R.string.ssh_expand_field),
-                            collapseDescription = stringResource(R.string.ssh_collapse_field),
                             showDescription = stringResource(R.string.ssh_show_value),
                             hideDescription = stringResource(R.string.ssh_hide_value),
                             modifier = Modifier,
@@ -243,7 +237,8 @@ fun RepoSettingsScreen(
                                     }
                                 },
                                 enabled = !isSaving,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                shape = textFieldShape
                             ) {
                                 Icon(Icons.Default.AutoFixHigh, contentDescription = null)
                                 Spacer(Modifier.width(6.dp))
@@ -255,7 +250,8 @@ fun RepoSettingsScreen(
                                     clipboard?.setPrimaryClip(ClipData.newPlainText("AndroidGit SSH public key", sshPublicKey))
                                 },
                                 enabled = !isSaving && sshPublicKey.isNotBlank(),
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                shape = textFieldShape
                             ) {
                                 Icon(Icons.Default.ContentCopy, contentDescription = null)
                                 Spacer(Modifier.width(6.dp))

@@ -355,8 +355,6 @@ fun CloneScreen(
                             leadingIcon = Icons.Default.Key,
                             enabled = !isLoading,
                             isSecret = true,
-                            expandDescription = stringResource(R.string.ssh_expand_field),
-                            collapseDescription = stringResource(R.string.ssh_collapse_field),
                             showDescription = stringResource(R.string.ssh_show_value),
                             hideDescription = stringResource(R.string.ssh_hide_value),
                             modifier = Modifier,
@@ -370,8 +368,6 @@ fun CloneScreen(
                             leadingIcon = Icons.Default.Password,
                             enabled = !isLoading,
                             isSecret = true,
-                            expandDescription = stringResource(R.string.ssh_expand_field),
-                            collapseDescription = stringResource(R.string.ssh_collapse_field),
                             showDescription = stringResource(R.string.ssh_show_value),
                             hideDescription = stringResource(R.string.ssh_hide_value),
                             modifier = Modifier,
@@ -386,8 +382,6 @@ fun CloneScreen(
                                 label = { Text(stringResource(R.string.ssh_public_key_label)) },
                                 leadingIcon = Icons.Default.Key,
                                 enabled = !isLoading,
-                                expandDescription = stringResource(R.string.ssh_expand_field),
-                                collapseDescription = stringResource(R.string.ssh_collapse_field),
                                 showDescription = stringResource(R.string.ssh_show_value),
                                 hideDescription = stringResource(R.string.ssh_hide_value),
                                 modifier = Modifier.weight(1f),
@@ -439,7 +433,8 @@ fun CloneScreen(
                                 }
                             },
                             enabled = !isLoading,
-                            modifier = Modifier.padding(top = 10.dp)
+                            modifier = Modifier.padding(top = 10.dp),
+                            shape = textFieldShape
                         ) {
                             Icon(Icons.Default.AutoFixHigh, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
