@@ -12,11 +12,8 @@ import org.eclipse.jgit.transport.sshd.SshdSessionFactoryBuilder
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.IOException
-import java.security.GeneralSecurityException
 import java.security.KeyPair
 import java.security.KeyPairGenerator
-import java.security.Security
 
 /** Authentication modes supported by GitHub and other Git remotes. */
 enum class GitAuthMode {
@@ -110,7 +107,6 @@ class GitAuthManager(private val contextDir: File) {
     }
 
     fun generateKeyPair(passphrase: String = "", email: String = ""): GeneratedSshKey {
-        ensureBouncyCastle()
         val keyPair = generateEd25519KeyPair()
         val privateKey = ByteArrayOutputStream().use { output ->
             val encryption = if (passphrase.isBlank()) {
@@ -135,16 +131,21 @@ class GitAuthManager(private val contextDir: File) {
     }
 
     private fun generateEd25519KeyPair(): KeyPair {
-        return try {
-            KeyPairGenerator.getInstance("Ed25519", "BC").generateKeyPair()
-        } catch (error: GeneralSecurityException) {
-            throw IllegalStateException("Ed25519 is not available on this device", error)
-        }
-    }
+        val platformFailure = runCatching {
+            // Prefer the Android platform provider. This avoids the reserved BC provider name.
+            KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
+        }.exceptionOrNull()
 
-    private fun ensureBouncyCastle() {
-        if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
-            Security.addProvider(BouncyCastleProvider())
+        return runCatching {
+            // Use a provider instance directly so an existing Android provider named BC cannot interfere.
+            KeyPairGenerator.getInstance("Ed25519", BouncyCastleProvider()).generateKeyPair()
+        }.getOrElse { bouncyCastleFailure ->
+            throw IllegalStateException(
+                "Ed25519 key generation is unavailable on this Android device. " +
+                    "Platform error: ${platformFailure?.message ?: "unknown"}; " +
+                    "Bouncy Castle error: ${bouncyCastleFailure.message ?: "unknown"}",
+                bouncyCastleFailure
+            )
         }
     }
 

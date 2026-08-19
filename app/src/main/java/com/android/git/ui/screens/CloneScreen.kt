@@ -70,6 +70,7 @@ fun CloneScreen(
     var sshPassphrase by remember { mutableStateOf(prefsManager.getSshPassphrase()) }
     var sshPrivateKeyVisible by remember { mutableStateOf(false) }
     var sshPassphraseVisible by remember { mutableStateOf(false) }
+    var sshGenerationError by remember { mutableStateOf("") }
 
     // State to track if the token is visible or hidden
     var tokenVisible by remember { mutableStateOf(false) }
@@ -357,15 +358,19 @@ fun CloneScreen(
                         )
                         OutlinedButton(
                             onClick = {
-                                val generated = runCatching {
+                                val result = runCatching {
                                     authManager.generateKeyPair(
                                         passphrase = sshPassphrase,
                                         email = prefsManager.getUserEmail()
                                     )
-                                }.getOrNull()
-                                if (generated != null) {
+                                }
+                                result.onSuccess { generated ->
                                     sshPrivateKey = generated.privateKey
                                     sshPublicKey = generated.publicKey
+                                    sshGenerationError = ""
+                                }.onFailure { error ->
+                                    sshGenerationError = error.message
+                                        ?: "Unable to generate an Ed25519 key on this device."
                                 }
                             },
                             enabled = !isLoading,
@@ -374,6 +379,14 @@ fun CloneScreen(
                             Icon(Icons.Default.AutoFixHigh, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
                             Text(stringResource(R.string.ssh_generate_key))
+                        }
+                        if (sshGenerationError.isNotBlank()) {
+                            Text(
+                                text = sshGenerationError,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
                         }
                     }
                 }

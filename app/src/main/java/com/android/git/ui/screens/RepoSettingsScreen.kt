@@ -53,6 +53,7 @@ fun RepoSettingsScreen(
     var sshPrivateKeyVisible by remember { mutableStateOf(false) }
     var sshPassphraseVisible by remember { mutableStateOf(false) }
     var isSaving by remember { mutableStateOf(false) }
+    var sshGenerationError by remember { mutableStateOf("") }
 
     val cardShape = RoundedCornerShape(16.dp)
     val textFieldShape = RoundedCornerShape(16.dp)
@@ -231,12 +232,16 @@ fun RepoSettingsScreen(
                         ) {
                             OutlinedButton(
                                 onClick = {
-                                    val generated = runCatching {
+                                    val result = runCatching {
                                         authManager.generateKeyPair(sshPassphrase, userEmail)
-                                    }.getOrNull()
-                                    if (generated != null) {
+                                    }
+                                    result.onSuccess { generated ->
                                         sshPrivateKey = generated.privateKey
                                         sshPublicKey = generated.publicKey
+                                        sshGenerationError = ""
+                                    }.onFailure { error ->
+                                        sshGenerationError = error.message
+                                            ?: "Unable to generate an Ed25519 key on this device."
                                     }
                                 },
                                 enabled = !isSaving,
@@ -258,6 +263,14 @@ fun RepoSettingsScreen(
                                 Spacer(Modifier.width(6.dp))
                                 Text(stringResource(R.string.repo_settings_ssh_copy_public))
                             }
+                        }
+                        if (sshGenerationError.isNotBlank()) {
+                            Text(
+                                text = sshGenerationError,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
                         }
                         TextButton(
                             onClick = {
