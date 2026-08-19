@@ -46,6 +46,7 @@ fun BranchManagerScreen(
     var showCreateDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var branchToRename by remember { mutableStateOf<BranchModel?>(null) }
+    var branchToDelete by remember { mutableStateOf<BranchModel?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.loadBranches()
@@ -63,6 +64,31 @@ fun BranchManagerScreen(
         onCreate = { name -> viewModel.createBranch(name) },
         onRename = { name -> viewModel.renameBranch(name) }
     )
+
+    if (branchToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { if (!isLoading) branchToDelete = null },
+            title = { Text(stringResource(R.string.branch_delete_title)) },
+            text = { Text(stringResource(R.string.branch_delete_msg, branchToDelete!!.name)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val branch = branchToDelete ?: return@Button
+                        branchToDelete = null
+                        viewModel.deleteBranch(branch.name)
+                    },
+                    enabled = !isLoading,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text(stringResource(R.string.branch_delete_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { branchToDelete = null }, enabled = !isLoading) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+            icon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -85,7 +111,7 @@ fun BranchManagerScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showCreateDialog = true }, containerColor = MaterialTheme.colorScheme.primary) {
+            FloatingActionButton(onClick = { if (!isLoading) showCreateDialog = true }, containerColor = MaterialTheme.colorScheme.primary) {
                 Icon(Icons.Default.Add, contentDescription = stringResource(R.string.branch_dialog_create_title))
             }
         }
@@ -101,7 +127,7 @@ fun BranchManagerScreen(
                 onAction = { action, branch ->
                     when (action) {
                         BranchAction.CHECKOUT -> viewModel.checkoutBranch(branch.name)
-                        BranchAction.DELETE -> viewModel.deleteBranch(branch.name)
+                        BranchAction.DELETE -> branchToDelete = branch
                         BranchAction.MERGE -> viewModel.mergeBranch(branch.fullPath)
                         BranchAction.REBASE -> viewModel.rebaseBranch(branch.fullPath)
                         BranchAction.RENAME -> {

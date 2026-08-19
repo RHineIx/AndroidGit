@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -21,6 +22,8 @@ import com.android.git.data.GitManager
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.components.SnackbarType
 import kotlinx.coroutines.launch
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,20 +33,38 @@ fun MergeConflictScreen(
     onResolveFile: (String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     var conflicts by remember { mutableStateOf<List<String>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var statusMessage by remember { mutableStateOf("") }
+    var statusType by remember { mutableStateOf(SnackbarType.INFO) }
+    val lifecycleOwner = LocalLifecycleOwner.current
 
-    LaunchedEffect(gitManager) {
+    fun loadConflicts() {
         scope.launch {
             isLoading = true
-            conflicts = gitManager.getConflictingFiles()
-            isLoading = false
-            if (conflicts.isEmpty()) {
-                statusMessage = "No conflicts found. You are safe!" // Could be string resource too, but logic implies safe state
+            try {
+                conflicts = gitManager.getConflictingFiles()
+                statusMessage = ""
+            } catch (e: Exception) {
+                conflicts = emptyList()
+                statusMessage = context.getString(R.string.conflict_load_error, e.message ?: "Unknown error")
+                statusType = SnackbarType.ERROR
+            } finally {
+                isLoading = false
             }
         }
+    }
+
+    LaunchedEffect(gitManager) { loadConflicts() }
+
+    DisposableEffect(lifecycleOwner, gitManager) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) loadConflicts()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Scaffold(
@@ -99,7 +120,7 @@ fun MergeConflictScreen(
             
             Box(modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)) {
                 if (statusMessage.isNotEmpty()) {
-                    AppSnackbar(message = statusMessage, type = SnackbarType.SUCCESS) { statusMessage = "" }
+                    AppSnackbar(message = statusMessage, type = statusType) { statusMessage = "" }
                 }
             }
         }

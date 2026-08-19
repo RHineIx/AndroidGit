@@ -23,6 +23,7 @@ import com.android.git.model.DashboardState
 import com.android.git.model.GitFile
 import com.android.git.model.UpdateInfo
 import com.android.git.ui.components.SnackbarType
+import com.android.git.utils.isGitFailureMessage
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.generationConfig
 import kotlinx.coroutines.Dispatchers
@@ -71,6 +72,9 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         private set
 
     var isLogLoading: Boolean by mutableStateOf(false)
+        private set
+
+    var logErrorMessage: String by mutableStateOf("")
         private set
 
     private var logCurrentOffset = 0
@@ -280,6 +284,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         branchList = emptyList()
         changedFiles = emptyList()
         logList = emptyList()
+        logErrorMessage = ""
         statusMessage = ""
     }
 
@@ -287,12 +292,16 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         val manager = gitManager ?: return
         dashboardState = DashboardState.Loading 
         viewModelScope.launch {
-            if (manager.isGitRepo()) {
-                manager.configureUser(prefs.getUserName(), prefs.getUserEmail())
-                manager.openRepo()
-                dashboardState = manager.getDashboardStats()
-            } else {
-                dashboardState = DashboardState.NotInitialized
+            try {
+                if (manager.isGitRepo()) {
+                    manager.configureUser(prefs.getUserName(), prefs.getUserEmail())
+                    manager.openRepo()
+                    dashboardState = manager.getDashboardStats()
+                } else {
+                    dashboardState = DashboardState.NotInitialized
+                }
+            } catch (e: Exception) {
+                dashboardState = DashboardState.Error(e.message ?: "Unable to load repository")
             }
         }
     }
@@ -301,7 +310,8 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         val manager = gitManager ?: return
         viewModelScope.launch {
             isLoading = true
-            showStatus(manager.initRepo(), SnackbarType.SUCCESS)
+            val result = manager.initRepo()
+            showStatus(result, resultSnackbarType(result))
             loadDashboard()
             isLoading = false
         }
@@ -356,7 +366,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
             isLoading = true
             val result = manager.pull(auth)
             isLoading = false
-            showStatus(result, if (result.contains("Error") || result.contains("Exception")) SnackbarType.ERROR else SnackbarType.SUCCESS)
+            showStatus(result, resultSnackbarType(result))
             loadDashboard()
         }
     }
@@ -377,7 +387,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
             isLoading = true
             val result = manager.push(auth, force)
             isLoading = false
-            showStatus(result, if (result.contains("Error") || result.contains("Rejected")) SnackbarType.ERROR else SnackbarType.SUCCESS)
+            showStatus(result, resultSnackbarType(result))
             loadDashboard()
         }
     }
@@ -386,8 +396,14 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         val manager = gitManager ?: return
         viewModelScope.launch {
             isLoading = true
-            branchList = manager.getRichBranches()
-            isLoading = false
+            try {
+                branchList = manager.getRichBranches()
+            } catch (e: Exception) {
+                branchList = emptyList()
+                showStatus(e.message ?: "Unable to load branches", SnackbarType.ERROR)
+            } finally {
+                isLoading = false
+            }
         }
     }
 
@@ -395,7 +411,8 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         val manager = gitManager ?: return
         viewModelScope.launch {
             isLoading = true
-            showStatus(manager.checkoutBranch(name), SnackbarType.SUCCESS)
+            val result = manager.checkoutBranch(name)
+            showStatus(result, resultSnackbarType(result))
             loadBranches()
             loadDashboard()
             isLoading = false
@@ -407,8 +424,16 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         viewModelScope.launch {
             isLoading = true
             val result = manager.createBranch(name)
-            manager.checkoutBranch(name)
-            showStatus(result, SnackbarType.SUCCESS)
+            if (!isFailure(result)) {
+                val checkoutResult = manager.checkoutBranch(name)
+                if (isFailure(checkoutResult)) {
+                    showStatus(checkoutResult, resultSnackbarType(checkoutResult))
+                    loadBranches()
+                    isLoading = false
+                    return@launch
+                }
+            }
+            showStatus(result, resultSnackbarType(result))
             loadBranches()
             loadDashboard()
             isLoading = false
@@ -420,7 +445,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         viewModelScope.launch {
             isLoading = true
             val result = manager.deleteBranch(name)
-            showStatus(result, if(result.contains("Error")) SnackbarType.ERROR else SnackbarType.SUCCESS)
+            showStatus(result, resultSnackbarType(result))
             loadBranches()
             isLoading = false
         }
@@ -430,7 +455,8 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         val manager = gitManager ?: return
         viewModelScope.launch {
             isLoading = true
-            showStatus(manager.renameBranch(newName), SnackbarType.SUCCESS)
+            val result = manager.renameBranch(newName)
+            showStatus(result, resultSnackbarType(result))
             loadBranches()
             loadDashboard()
             isLoading = false
@@ -442,7 +468,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         viewModelScope.launch {
             isLoading = true
             val result = manager.mergeBranch(name)
-            showStatus(result, if(result.contains("failed")) SnackbarType.ERROR else SnackbarType.SUCCESS)
+            showStatus(result, resultSnackbarType(result))
             loadBranches()
             loadDashboard()
             isLoading = false
@@ -454,7 +480,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         viewModelScope.launch {
             isLoading = true
             val result = manager.rebaseBranch(name)
-            showStatus(result, if(result.contains("failed")) SnackbarType.ERROR else SnackbarType.SUCCESS)
+            showStatus(result, resultSnackbarType(result))
             loadBranches()
             loadDashboard()
             isLoading = false
@@ -472,8 +498,10 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
             }
             if (configured) {
                 isLoading = true
-                showStatus(manager.fetchAll(auth), SnackbarType.SUCCESS)
+                val result = manager.fetchAll(auth)
+                showStatus(result, resultSnackbarType(result))
                 loadBranches()
+                loadDashboard()
                 isLoading = false
             } else {
                 showStatus(
@@ -489,18 +517,36 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         val manager = gitManager ?: return
         viewModelScope.launch {
             isLoading = true
-            changedFiles = manager.getChangedFiles()
-            isLoading = false
+            try {
+                changedFiles = manager.getChangedFiles()
+            } catch (e: Exception) {
+                changedFiles = emptyList()
+                showStatus(e.message ?: "Unable to load changes", SnackbarType.ERROR)
+            } finally {
+                isLoading = false
+            }
         }
     }
 
-    fun commitChanges(message: String, isAmend: Boolean, selectedPaths: Set<String>) {
+    fun commitChanges(
+        message: String,
+        isAmend: Boolean,
+        selectedPaths: Set<String>,
+        onSuccess: () -> Unit = {}
+    ) {
         val manager = gitManager ?: return
         viewModelScope.launch {
             isLoading = true
-            manager.addToStage(changedFiles.filter { selectedPaths.contains(it.path) })
-            showStatus(manager.commit(message, isAmend), SnackbarType.SUCCESS)
-            loadChangedFiles()
+            val stageResult = manager.addToStage(changedFiles.filter { selectedPaths.contains(it.path) })
+            if (isFailure(stageResult)) {
+                showStatus(stageResult, SnackbarType.ERROR)
+                isLoading = false
+                return@launch
+            }
+            val result = manager.commit(message, isAmend)
+            showStatus(result, resultSnackbarType(result))
+            if (!isFailure(result)) onSuccess()
+            changedFiles = manager.getChangedFiles()
             loadDashboard()
             isLoading = false
         }
@@ -519,23 +565,35 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
             logCurrentOffset = 0
             logHasMore = true
             logList = emptyList()
+            logErrorMessage = ""
         }
 
         if (!logHasMore) return
 
         viewModelScope.launch {
             isLogLoading = true
-            val newLogs = manager.getCommits(limit = LOG_PAGE_SIZE, offset = logCurrentOffset)
-            if (newLogs.size < LOG_PAGE_SIZE) {
-                logHasMore = false
+            try {
+                val newLogs = manager.getCommits(limit = LOG_PAGE_SIZE, offset = logCurrentOffset)
+                if (newLogs.size < LOG_PAGE_SIZE) {
+                    logHasMore = false
+                }
+                logList = if (reset) newLogs else logList + newLogs
+                logCurrentOffset += newLogs.size
+                logErrorMessage = ""
+            } catch (e: Exception) {
+                logErrorMessage = e.message ?: "Unable to load commit history"
+            } finally {
+                isLogLoading = false
             }
-            logList = if (reset) newLogs else logList + newLogs
-            logCurrentOffset += newLogs.size
-            isLogLoading = false
         }
     }
 
     fun clearStatus() { statusMessage = "" }
+
+    private fun isFailure(message: String): Boolean = isGitFailureMessage(message)
+
+    private fun resultSnackbarType(message: String): SnackbarType =
+        if (isFailure(message)) SnackbarType.ERROR else SnackbarType.SUCCESS
 
     private fun showStatus(message: String, type: SnackbarType) {
         statusMessage = message

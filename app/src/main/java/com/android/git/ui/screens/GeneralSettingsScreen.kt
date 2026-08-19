@@ -194,16 +194,16 @@ fun GeneralSettingsScreen(
                     }
                 }
 
-                SettingsSection(title = "AI Features (Gemini)") {
+                    SettingsSection(title = stringResource(R.string.settings_ai_section)) {
                     
                     OutlinedTextField(
                         value = geminiApiKey,
                         onValueChange = { geminiApiKey = it },
-                        label = { Text("Gemini API Key") },
+                        label = { Text(stringResource(R.string.settings_gemini_api_key)) },
                         leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null) },
                         trailingIcon = {
                             val image = if (apiKeyVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
-                            val description = if (apiKeyVisible) "Hide API Key" else "Show API Key"
+                            val description = stringResource(if (apiKeyVisible) R.string.settings_hide_api_key else R.string.settings_show_api_key)
 
                             IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
                                 Icon(imageVector = image, contentDescription = description)
@@ -226,9 +226,9 @@ fun GeneralSettingsScreen(
                             value = geminiModel,
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("AI Model") },
+                            label = { Text(stringResource(R.string.settings_ai_model)) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = aiModelExpanded) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth(),
+                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp)
                         )
                         
@@ -259,8 +259,8 @@ fun GeneralSettingsScreen(
                     OutlinedTextField(
                         value = geminiPrompt,
                         onValueChange = { geminiPrompt = it },
-                        label = { Text("Custom Prompt (Optional)") },
-                        placeholder = { Text("Leave empty for default Conventional Commits rules.") },
+                        label = { Text(stringResource(R.string.settings_custom_prompt)) },
+                        placeholder = { Text(stringResource(R.string.settings_custom_prompt_hint)) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
                         minLines = 3,
@@ -281,11 +281,11 @@ fun GeneralSettingsScreen(
                         if (isLoading) {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Verifying...")
+                            Text(stringResource(R.string.settings_verifying))
                         } else {
                             Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Verify & Save Settings", fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.settings_verify_save), fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -358,8 +358,8 @@ fun AppVersionFooter(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center
                 )
-                Text(
-                    text = "Tap to check for updates",
+                        Text(
+                            text = stringResource(R.string.settings_check_updates_hint),
                     style = MaterialTheme.typography.labelSmall,
                     fontSize = 10.sp,
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
@@ -398,7 +398,7 @@ fun DeveloperSection(context: Context) {
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.me),
-                    contentDescription = "RHineix Developer",
+                    contentDescription = stringResource(R.string.settings_developer_image_desc),
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )

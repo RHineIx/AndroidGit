@@ -90,12 +90,16 @@ class GitManager(
                 val repo = git?.repository ?: return@runSafeRead DashboardState.Error("Repo closed")
                 
                 val status = git?.status()?.call()
-                val changedCount = (status?.untracked?.size ?: 0) + 
-                                   (status?.modified?.size ?: 0) + 
-                                   (status?.added?.size ?: 0) + 
-                                   (status?.missing?.size ?: 0) + 
-                                   (status?.removed?.size ?: 0) +
-                                   (status?.conflicting?.size ?: 0)
+                val changedPaths = linkedSetOf<String>().apply {
+                    addAll(status?.untracked.orEmpty())
+                    addAll(status?.modified.orEmpty())
+                    addAll(status?.changed.orEmpty())
+                    addAll(status?.added.orEmpty())
+                    addAll(status?.missing.orEmpty())
+                    addAll(status?.removed.orEmpty())
+                    addAll(status?.conflicting.orEmpty())
+                }
+                val changedCount = changedPaths.size
                 
                 val branchName = repo.branch ?: "Unknown"
 
@@ -258,7 +262,7 @@ class GitManager(
                    message = rev.fullMessage.trim(),
                    author = rev.authorIdent.name ?: "Unknown",
                    date = java.util.Date.from(rev.authorIdent.whenAsInstant),
-                   hash = hash.substring(0, 7),
+                   hash = hash,
                    isPushed = isPushed
                ))
             }
@@ -314,8 +318,9 @@ class GitManager(
     suspend fun revertCommit(hash: String): String = withContext(Dispatchers.IO) {
         runGitOperation {
             val objId = git?.repository?.resolve(hash) ?: throw Exception("Commit not found")
-            git?.revert()?.include(objId)?.call()
-            "Reverted commit"
+            val revertedCommit = git?.revert()?.include(objId)?.call()
+                ?: throw Exception("Revert produced no commit")
+            "Reverted commit ${revertedCommit.name.take(7)}"
         }
     }
 
@@ -397,10 +402,16 @@ class GitManager(
     suspend fun pull(auth: GitAuthConfig): String = withContext(Dispatchers.IO) {
         runGitOperation {
             withAuth(auth) {
-                val cmd = git?.pull()
+                val cmd = git?.pull() ?: throw Exception("Pull command unavailable")
                 applyCredentials(cmd, auth)
-                cmd?.call()
-                "Pulled!"
+                val pullResult = cmd.call()
+                if (pullResult.isSuccessful) {
+                    "Pulled!"
+                } else {
+                    val mergeStatus = pullResult.mergeResult?.mergeStatus
+                    val rebaseStatus = pullResult.rebaseResult?.status
+                    "Error: Pull incomplete${mergeStatus?.let { ": $it" } ?: rebaseStatus?.let { ": $it" } ?: ""}"
+                }
             }
         }
     }

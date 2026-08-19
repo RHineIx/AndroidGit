@@ -14,7 +14,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.semantics.Role
+
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -115,6 +118,9 @@ fun DashboardScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onRefresh, enabled = !isLoading) {
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh))
+                    }
                     IconButton(onClick = onSettings) {
                         Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
                     }
@@ -207,7 +213,7 @@ fun DashboardScreen(
                         }
 
                         Text(
-                            text = "Repository Status",
+                            text = stringResource(R.string.dashboard_repository_status),
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(bottom = 12.dp, top = 24.dp)
@@ -288,12 +294,14 @@ fun DashboardScreen(
                                 title = stringResource(R.string.dashboard_tool_stash),
                                 icon = Icons.Default.Archive,
                                 modifier = Modifier.weight(1f),
+                                enabled = !isLoading,
                                 onClick = onOpenStash
                             )
                             DashboardToolCard(
                                 title = stringResource(R.string.dashboard_tool_merge),
                                 icon = Icons.Default.Warning,
                                 modifier = Modifier.weight(1f),
+                                enabled = !isLoading,
                                 onClick = onMergeConflicts
                             )
                         }
@@ -305,12 +313,14 @@ fun DashboardScreen(
                                 title = stringResource(R.string.dashboard_tool_gitignore),
                                 icon = Icons.Default.Code,
                                 modifier = Modifier.weight(1f),
+                                enabled = !isLoading,
                                 onClick = onIgnoreEditor
                             )
                             DashboardToolCard(
                                 title = stringResource(R.string.dashboard_tool_fetch),
                                 icon = Icons.Default.Sync,
                                 modifier = Modifier.weight(1f),
+                                enabled = !isLoading,
                                 onClick = { viewModel.fetchAll() }
                             )
                         }
@@ -341,9 +351,18 @@ fun DashboardScreen(
 }
 
 @Composable
-fun DashboardToolCard(title: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun DashboardToolCard(
+    title: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
     ElevatedCard(
-        modifier = modifier.height(90.dp).clickable { onClick() },
+        modifier = modifier
+            .height(90.dp)
+            .alpha(if (enabled) 1f else 0.55f)
+            .clickable(enabled = enabled, role = Role.Button) { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)

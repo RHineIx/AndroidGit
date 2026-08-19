@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
@@ -18,6 +19,8 @@ import androidx.compose.ui.unit.sp
 import com.android.git.R
 import com.android.git.data.GitManager
 import com.android.git.data.GitTemplates
+import com.android.git.ui.components.AppSnackbar
+import com.android.git.ui.components.SnackbarType
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -30,12 +33,20 @@ fun IgnoreEditorScreen(
     
     var content by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
+    var isSaving by remember { mutableStateOf(false) }
     var statusMessage by remember { mutableStateOf("") }
+    var statusType by remember { mutableStateOf(SnackbarType.INFO) }
     var showTemplateMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(gitManager) {
-        content = gitManager.readGitIgnore()
-        isLoading = false
+        try {
+            content = gitManager.readGitIgnore()
+        } catch (e: Exception) {
+            statusMessage = e.message ?: "Unable to read .gitignore"
+            statusType = SnackbarType.ERROR
+        } finally {
+            isLoading = false
+        }
     }
 
     Scaffold(
@@ -50,7 +61,7 @@ fun IgnoreEditorScreen(
                 actions = {
                     Box {
                         IconButton(onClick = { showTemplateMenu = true }) {
-                            Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Add Template")
+                            Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = stringResource(R.string.ignore_add_template))
                         }
                         
                         DropdownMenu(
@@ -71,13 +82,19 @@ fun IgnoreEditorScreen(
                         }
                     }
 
-                    IconButton(onClick = {
-                        scope.launch {
-                            statusMessage = "Saving..." // Using literal temporarily for logic check
-                            // In real app, we should use a state for 'isSaving'
-                            statusMessage = gitManager.saveGitIgnore(content)
-                        }
-                    }) {
+                    IconButton(
+                        onClick = {
+                            if (isSaving) return@IconButton
+                            scope.launch {
+                                isSaving = true
+                                val result = gitManager.saveGitIgnore(content)
+                                statusMessage = result
+                                statusType = if (result.trim().lowercase().startsWith("error")) SnackbarType.ERROR else SnackbarType.SUCCESS
+                                isSaving = false
+                            }
+                        },
+                        enabled = !isLoading && !isSaving
+                    ) {
                         Icon(Icons.Default.Save, contentDescription = stringResource(R.string.action_save))
                     }
                 },
@@ -86,26 +103,19 @@ fun IgnoreEditorScreen(
         },
         bottomBar = {
             if (statusMessage.isNotEmpty()) {
-                val displayText = if(statusMessage == "Saving...") stringResource(R.string.action_saving) else statusMessage
-                
-                Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primary) {
-                    Text(
-                        text = displayText,
-                        modifier = Modifier.padding(16.dp),
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                }
-                LaunchedEffect(statusMessage) {
-                    if (statusMessage != "Saving...") {
-                        kotlinx.coroutines.delay(2000)
-                        statusMessage = ""
-                    }
-                }
+                AppSnackbar(
+                    message = statusMessage,
+                    type = statusType,
+                    onDismiss = { statusMessage = "" }
+                )
             }
         }
     ) { padding ->
         if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding)) { CircularProgressIndicator() }
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center
+            ) { CircularProgressIndicator() }
         } else {
             BasicTextField(
                 value = content,
