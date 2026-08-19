@@ -14,11 +14,17 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.security.KeyPair
 import java.security.KeyPairGenerator
+import java.security.Security
 
 /** Authentication modes supported by GitHub and other Git remotes. */
 enum class GitAuthMode {
     HTTPS,
     SSH
+}
+
+enum class SshKeyAlgorithm {
+    ED25519,
+    RSA_4096
 }
 
 data class GitAuthConfig(
@@ -46,6 +52,7 @@ class GitAuthManager(private val contextDir: File) {
 
     @Synchronized
     fun configureSsh(config: GitAuthConfig): SshdSessionFactory {
+        ensureBouncyCastleProvider()
         require(config.mode == GitAuthMode.SSH) { "SSH configuration requires SSH authentication mode." }
         require(config.privateKey.isNotBlank()) { "An SSH private key is required." }
 
@@ -106,48 +113,80 @@ class GitAuthManager(private val contextDir: File) {
         activeKeyFile = null
     }
 
-    fun generateKeyPair(passphrase: String = "", email: String = ""): GeneratedSshKey {
-        val keyPair = generateEd25519KeyPair()
+    fun generateKeyPair(
+        passphrase: String = "",
+        email: String = "",
+        preferredAlgorithm: SshKeyAlgorithm = SshKeyAlgorithm.ED25519
+    ): GeneratedSshKey {
+        ensureBouncyCastleProvider()
+        // The OpenSSH writer expects the Ed25519 key implementation supplied by BC.
+        // Therefore generation and export are attempted together; a writer failure also falls back to RSA.
+        if (preferredAlgorithm == SshKeyAlgorithm.ED25519) {
+            runCatching {
+                val keyPair = KeyPairGenerator
+                    .getInstance("Ed25519", BouncyCastleProvider())
+                    .generateKeyPair()
+                encodeOpenSshKey(keyPair, "Ed25519", passphrase, email)
+            }.getOrNull()?.let { return it }
+        }
+
+        // RSA-4096 is accepted by GitHub and works on older Android providers.
+        return runCatching {
+            val rsaGenerator = KeyPairGenerator.getInstance("RSA")
+            rsaGenerator.initialize(4096)
+            encodeOpenSshKey(
+                rsaGenerator.generateKeyPair(),
+                "RSA-4096",
+                passphrase,
+                email
+            )
+        }.getOrElse { rsaFailure ->
+            throw IllegalStateException(
+                "Ed25519 is unavailable and RSA-4096 fallback failed: " +
+                    "${rsaFailure::class.java.simpleName}: ${rsaFailure.message ?: "unknown error"}",
+                rsaFailure
+            )
+        }
+    }
+
+    private fun ensureBouncyCastleProvider() {
+        // Android may ship an incomplete provider under the reserved BC name.
+        // Replace it with the bundled provider before Apache SSHD initializes ECCurves.
+        Security.removeProvider("BC")
+        Security.addProvider(BouncyCastleProvider())
+    }
+
+    private fun encodeOpenSshKey(
+        keyPair: KeyPair,
+        algorithm: String,
+        passphrase: String,
+        email: String
+    ): GeneratedSshKey {
+        val comment = email.ifBlank { "androidgit" }
         val privateKey = ByteArrayOutputStream().use { output ->
             val encryption = if (passphrase.isBlank()) {
                 null
             } else {
                 OpenSSHKeyEncryptionContext().apply {
+                    // The default context leaves cipherType unset, producing the invalid aesnull-ctr.
+                    setCipherType("256")
+                    setCipherMode("CTR")
                     setPassword(passphrase)
                     setKdfRounds(16)
                 }
             }
             OpenSSHKeyPairResourceWriter.INSTANCE.writePrivateKey(
                 keyPair,
-                email.ifBlank { "androidgit" },
+                comment,
                 encryption,
                 output
             )
             output.toString(Charsets.UTF_8.name())
         }
-        val publicKey = PublicKeyEntry.toString(keyPair.public) +
-            " " + email.ifBlank { "androidgit" }
-        return GeneratedSshKey(privateKey, publicKey, "Ed25519")
+        val publicKey = PublicKeyEntry.toString(keyPair.public) + " " + comment
+        return GeneratedSshKey(privateKey, publicKey, algorithm)
     }
 
-    private fun generateEd25519KeyPair(): KeyPair {
-        val platformFailure = runCatching {
-            // Prefer the Android platform provider. This avoids the reserved BC provider name.
-            KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
-        }.exceptionOrNull()
-
-        return runCatching {
-            // Use a provider instance directly so an existing Android provider named BC cannot interfere.
-            KeyPairGenerator.getInstance("Ed25519", BouncyCastleProvider()).generateKeyPair()
-        }.getOrElse { bouncyCastleFailure ->
-            throw IllegalStateException(
-                "Ed25519 key generation is unavailable on this Android device. " +
-                    "Platform error: ${platformFailure?.message ?: "unknown"}; " +
-                    "Bouncy Castle error: ${bouncyCastleFailure.message ?: "unknown"}",
-                bouncyCastleFailure
-            )
-        }
-    }
 
 
     companion object {

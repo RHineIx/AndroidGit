@@ -71,6 +71,7 @@ fun CloneScreen(
     var sshPrivateKeyVisible by remember { mutableStateOf(false) }
     var sshPassphraseVisible by remember { mutableStateOf(false) }
     var sshGenerationError by remember { mutableStateOf("") }
+    var sshGenerationInfo by remember { mutableStateOf("") }
 
     // State to track if the token is visible or hidden
     var tokenVisible by remember { mutableStateOf(false) }
@@ -368,9 +369,16 @@ fun CloneScreen(
                                     sshPrivateKey = generated.privateKey
                                     sshPublicKey = generated.publicKey
                                     sshGenerationError = ""
+                                    sshGenerationInfo = context.getString(R.string.ssh_generated_fmt, generated.algorithm)
                                 }.onFailure { error ->
-                                    sshGenerationError = error.message
-                                        ?: "Unable to generate an Ed25519 key on this device."
+                                    sshGenerationInfo = ""
+                                    sshGenerationError = buildString {
+                                        append(error::class.java.simpleName)
+                                        error.message?.takeIf { it.isNotBlank() }?.let {
+                                            append(": ")
+                                            append(it)
+                                        }
+                                    }
                                 }
                             },
                             enabled = !isLoading,
@@ -379,6 +387,14 @@ fun CloneScreen(
                             Icon(Icons.Default.AutoFixHigh, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
                             Text(stringResource(R.string.ssh_generate_key))
+                        }
+                        if (sshGenerationInfo.isNotBlank()) {
+                            Text(
+                                text = sshGenerationInfo,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
                         }
                         if (sshGenerationError.isNotBlank()) {
                             Text(

@@ -11,8 +11,8 @@ android {
         applicationId = "com.android.git"
         minSdk = 26
         targetSdk = 37
-        versionCode = 50300
-        versionName = "5.3.0"
+        versionCode = 50200
+        versionName = "5.2.0-stable"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -84,6 +84,7 @@ dependencies {
     // JGit & Required Crypto Dependencies for modern SSH support
     implementation(libs.jgit)
     implementation(libs.jgit.ssh)
+    implementation(libs.sshd.osgi)
     implementation(libs.bcprov)
     implementation(libs.bcpkix)
 

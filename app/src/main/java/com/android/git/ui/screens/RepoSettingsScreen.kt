@@ -54,6 +54,7 @@ fun RepoSettingsScreen(
     var sshPassphraseVisible by remember { mutableStateOf(false) }
     var isSaving by remember { mutableStateOf(false) }
     var sshGenerationError by remember { mutableStateOf("") }
+    var sshGenerationInfo by remember { mutableStateOf("") }
 
     val cardShape = RoundedCornerShape(16.dp)
     val textFieldShape = RoundedCornerShape(16.dp)
@@ -239,9 +240,16 @@ fun RepoSettingsScreen(
                                         sshPrivateKey = generated.privateKey
                                         sshPublicKey = generated.publicKey
                                         sshGenerationError = ""
+                                        sshGenerationInfo = context.getString(R.string.repo_settings_ssh_generated_fmt, generated.algorithm)
                                     }.onFailure { error ->
-                                        sshGenerationError = error.message
-                                            ?: "Unable to generate an Ed25519 key on this device."
+                                        sshGenerationInfo = ""
+                                        sshGenerationError = buildString {
+                                            append(error::class.java.simpleName)
+                                            error.message?.takeIf { it.isNotBlank() }?.let {
+                                                append(": ")
+                                                append(it)
+                                            }
+                                        }
                                     }
                                 },
                                 enabled = !isSaving,
@@ -263,6 +271,14 @@ fun RepoSettingsScreen(
                                 Spacer(Modifier.width(6.dp))
                                 Text(stringResource(R.string.repo_settings_ssh_copy_public))
                             }
+                        }
+                        if (sshGenerationInfo.isNotBlank()) {
+                            Text(
+                                text = sshGenerationInfo,
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
                         }
                         if (sshGenerationError.isNotBlank()) {
                             Text(

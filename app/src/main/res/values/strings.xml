@@ -58,6 +58,7 @@
     <string name="ssh_public_key_label">Public Key</string>
     <string name="ssh_public_key_help">Only add this public key to GitHub. Never share the private key.</string>
     <string name="ssh_generate_key">Generate Ed25519 Key</string>
+    <string name="ssh_generated_fmt">Generated %1$s key successfully.</string>
     <string name="clone_status_running">Cloning...</string>
     <string name="clone_btn_action">Clone</string>
 
@@ -165,6 +166,7 @@
     <string name="repo_settings_ssh_public_key">SSH Public Key</string>
     <string name="repo_settings_ssh_passphrase">SSH Key Passphrase</string>
     <string name="repo_settings_ssh_generate">Generate Ed25519 Key</string>
+    <string name="repo_settings_ssh_generated_fmt">Generated %1$s key successfully.</string>
     <string name="repo_settings_ssh_copy_public">Copy Public Key</string>
     <string name="repo_settings_ssh_clear">Remove SSH Key</string>
     <string name="repo_settings_ssh_saved">SSH key saved.</string>

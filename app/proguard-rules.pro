@@ -5,10 +5,21 @@
 -keep class org.eclipse.jgit.** { *; }
 -dontwarn org.eclipse.jgit.**
 
+# Bouncy Castle Provider Rules
+# Provider algorithms are registered through reflection and must survive R8 shrinking.
+# Keep the provider/algorithm registry, not the entire BC library, to avoid bloating R8.
+-keep class org.bouncycastle.jce.provider.BouncyCastleProvider { *; }
+-keep class org.bouncycastle.jcajce.provider.** { *; }
+-keep class org.bouncycastle.jce.provider.** { *; }
+-keep class org.bouncycastle.jcajce.interfaces.** { *; }
+-dontwarn org.bouncycastle.**
+
 # Apache Mina SSHD / JGit SSH Rules
-# SSHD contains optional Java SE integrations that are not shipped by Android.
-# Keep the SSH implementation because JGit loads parts of it through factories/reflection.
--keep class org.apache.sshd.** { *; }
+# Keep the SSH factory, key parsing, and security provider registries used by JGit.
+-keep class org.apache.sshd.common.config.keys.KeyUtils { *; }
+-keep class org.apache.sshd.common.config.keys.** { *; }
+-keep class org.apache.sshd.common.util.security.** { *; }
+-keep class org.apache.sshd.client.** { *; }
 -keep class org.eclipse.jgit.transport.sshd.** { *; }
 -dontwarn org.apache.sshd.**
 -dontwarn java.rmi.**
