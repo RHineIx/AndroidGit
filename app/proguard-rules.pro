@@ -15,12 +15,18 @@
 -dontwarn org.bouncycastle.**
 
 # Apache Mina SSHD / JGit SSH Rules
-# Keep the SSH factory, key parsing, and security provider registries used by JGit.
--keep class org.apache.sshd.common.config.keys.KeyUtils { *; }
+# SSHD discovers these classes by reflection. In particular, R8 previously renamed
+# NoFlowControl to wu2, then Mina failed to call its no-argument constructor.
+-keep class org.apache.sshd.common.kex.extension.** { *; }
+-keepnames class org.apache.sshd.common.kex.extension.**
+-keep class org.apache.sshd.common.io.** { *; }
+-keepnames class org.apache.sshd.common.io.**
 -keep class org.apache.sshd.common.config.keys.** { *; }
 -keep class org.apache.sshd.common.util.security.** { *; }
 -keep class org.apache.sshd.client.** { *; }
+-keep class org.apache.sshd.sftp.** { *; }
 -keep class org.eclipse.jgit.transport.sshd.** { *; }
+-keepnames class org.eclipse.jgit.transport.sshd.**
 -dontwarn org.apache.sshd.**
 -dontwarn java.rmi.**
 -dontwarn javax.management.**

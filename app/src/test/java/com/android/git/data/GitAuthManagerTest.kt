@@ -59,6 +59,9 @@ class GitAuthManagerTest {
                 File(directory, ".androidgit-home").toPath(),
                 PathUtils.getUserHomeFolder()
             )
+            val knownHosts = File(directory, ".androidgit-ssh/known_hosts").readText()
+            assertTrue(knownHosts.contains("github.com ssh-ed25519"))
+            assertTrue(knownHosts.contains("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt"))
             manager.closeActiveSshFactory()
         }
     }
