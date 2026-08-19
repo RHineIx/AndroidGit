@@ -1,6 +1,7 @@
 package com.android.git.data
 
 import java.io.File
+import org.apache.sshd.common.util.io.PathUtils
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -38,6 +39,27 @@ class GitAuthManagerTest {
             assertTrue(generated.publicKey.startsWith("ssh-rsa "))
             assertTrue(generated.publicKey.endsWith(" androidgit-rsa-test"))
             assertEquals("RSA-4096", generated.algorithm)
+        }
+    }
+
+    @Test
+    fun `configure ssh sets an app private user home`() {
+        withTemporaryDirectory { directory ->
+            val manager = GitAuthManager(directory)
+            val generated = manager.generateKeyPair(preferredAlgorithm = SshKeyAlgorithm.RSA_4096)
+
+            manager.configureSsh(
+                GitAuthConfig(
+                    mode = GitAuthMode.SSH,
+                    privateKey = generated.privateKey
+                )
+            )
+
+            assertEquals(
+                File(directory, ".androidgit-home").toPath(),
+                PathUtils.getUserHomeFolder()
+            )
+            manager.closeActiveSshFactory()
         }
     }
 

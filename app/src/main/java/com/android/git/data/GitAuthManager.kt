@@ -1,6 +1,7 @@
 package com.android.git.data
 
 import org.apache.sshd.common.config.keys.PublicKeyEntry
+import org.apache.sshd.common.util.io.PathUtils
 import org.apache.sshd.common.config.keys.writer.openssh.OpenSSHKeyEncryptionContext
 import org.apache.sshd.common.config.keys.writer.openssh.OpenSSHKeyPairResourceWriter
 import org.eclipse.jgit.transport.SshSessionFactory
@@ -58,6 +59,11 @@ class GitAuthManager(private val contextDir: File) {
 
         closeActiveSshFactory()
 
+        val appHomeDirectory = File(contextDir, ".androidgit-home").apply { mkdirs() }
+        // Android has no conventional OS user home. Apache SSHD resolves '~'
+        // through PathUtils, so provide an app-private home before creating JGit's factory.
+        PathUtils.setUserHomeFolderResolver { appHomeDirectory.toPath() }
+
         val sshDirectory = File(contextDir, ".androidgit-ssh").apply { mkdirs() }
         val keyFile = File(sshDirectory, "id_androidgit")
         keyFile.writeText(config.privateKey.trimEnd() + "\n")
@@ -78,7 +84,7 @@ class GitAuthManager(private val contextDir: File) {
         }
 
         val factory = SshdSessionFactoryBuilder()
-            .setHomeDirectory(contextDir)
+            .setHomeDirectory(appHomeDirectory)
             .setSshDirectory(sshDirectory)
             .setDefaultIdentities { listOf(keyFile.toPath()) }
             .setDefaultKnownHostsFiles { listOf(knownHostsFile.toPath()) }
