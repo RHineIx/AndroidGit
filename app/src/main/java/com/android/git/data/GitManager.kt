@@ -566,6 +566,18 @@ class GitManager(
     }
 
     companion object {
+        private fun formatGitFailure(error: Throwable): String {
+            val messages = generateSequence(error) { it.cause }
+                .mapNotNull { cause -> cause.message?.takeIf { it.isNotBlank() } }
+                .distinct()
+                .toList()
+            return if (messages.isEmpty()) {
+                error::class.java.simpleName
+            } else {
+                messages.joinToString(" -> ")
+            }
+        }
+
         suspend fun cloneRepo(
             url: String,
             parentDir: File,
@@ -608,6 +620,13 @@ class GitManager(
             }
 
             try {
+                val isSshUrl = GitRemoteUrl.isSsh(url)
+                if (auth.mode == GitAuthMode.SSH && !isSshUrl) {
+                    return@withContext Pair(null, "Clone failed: SSH authentication requires an SSH URL such as git@github.com:owner/repository.git")
+                }
+                if (auth.mode == GitAuthMode.HTTPS && isSshUrl) {
+                    return@withContext Pair(null, "Clone failed: HTTPS authentication requires an HTTPS URL")
+                }
                 if (auth.mode == GitAuthMode.SSH) {
                     authManager.configureSsh(auth)
                 }
@@ -624,7 +643,7 @@ class GitManager(
                 Pair(destDir, "Cloned!")
             } catch (e: Exception) {
                 if (destDir.exists()) destDir.deleteRecursively()
-                Pair(null, "Clone failed: ${e.message}")
+                Pair(null, "Clone failed: ${formatGitFailure(e)}")
             } finally {
                 if (auth.mode == GitAuthMode.SSH) {
                     authManager.closeActiveSshFactory()

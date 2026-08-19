@@ -1,5 +1,8 @@
 package com.android.git.ui.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -38,7 +41,9 @@ import com.android.git.R
 import com.android.git.data.GitAuthConfig
 import com.android.git.data.GitAuthManager
 import com.android.git.data.GitAuthMode
+import com.android.git.data.GitRemoteUrl
 import com.android.git.data.PreferencesManager
+import com.android.git.ui.components.ExpandableSshTextField
 import com.android.git.ui.components.SnackbarType
 import com.android.git.ui.viewmodel.MainViewModel
 import java.io.File
@@ -68,8 +73,6 @@ fun CloneScreen(
     var sshPrivateKey by remember { mutableStateOf(prefsManager.getSshPrivateKey()) }
     var sshPublicKey by remember { mutableStateOf(prefsManager.getSshPublicKey()) }
     var sshPassphrase by remember { mutableStateOf(prefsManager.getSshPassphrase()) }
-    var sshPrivateKeyVisible by remember { mutableStateOf(false) }
-    var sshPassphraseVisible by remember { mutableStateOf(false) }
     var sshGenerationError by remember { mutableStateOf("") }
     var sshGenerationInfo by remember { mutableStateOf("") }
 
@@ -85,6 +88,9 @@ fun CloneScreen(
     val cloneTaskDetails = viewModel.cloneTaskDetails
 
     val textFieldShape = RoundedCornerShape(16.dp)
+
+    val parsedRemoteUrl = remember(repoUrl) { GitRemoteUrl.parse(repoUrl) }
+    val sshRemoteUrl = remember(repoUrl) { GitRemoteUrl.toSshUrl(repoUrl) }
 
     LaunchedEffect(repoUrl) {
         val cleanUrl = repoUrl.trim().removeSuffix("/")
@@ -157,6 +163,50 @@ fun CloneScreen(
                         label = { Text(stringResource(R.string.clone_url_label)) },
                         placeholder = { Text(stringResource(R.string.clone_url_placeholder)) },
                         leadingIcon = { Icon(Icons.Default.Link, contentDescription = null) },
+                        trailingIcon = {
+                            Row {
+                                IconButton(
+                                    onClick = {
+                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                                        if (repoUrl.isBlank()) {
+                                            clipboard?.primaryClip?.getItemAt(0)?.coerceToText(context)?.toString()?.let {
+                                                repoUrl = it
+                                            }
+                                        } else {
+                                            clipboard?.setPrimaryClip(ClipData.newPlainText("Git repository URL", repoUrl))
+                                        }
+                                    },
+                                    enabled = !isLoading
+                                ) {
+                                    Icon(
+                                        imageVector = if (repoUrl.isBlank()) Icons.Default.ContentPaste else Icons.Default.ContentCopy,
+                                        contentDescription = stringResource(
+                                            if (repoUrl.isBlank()) R.string.clone_url_paste else R.string.clone_url_copy
+                                        )
+                                    )
+                                }
+                                if (sshRemoteUrl != null && !GitRemoteUrl.isSsh(repoUrl)) {
+                                    IconButton(
+                                        onClick = { repoUrl = sshRemoteUrl },
+                                        enabled = !isLoading
+                                    ) {
+                                        Icon(
+                                            Icons.Default.AutoFixHigh,
+                                            contentDescription = stringResource(R.string.clone_url_use_ssh)
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                        isError = repoUrl.isNotBlank() && parsedRemoteUrl == null,
+                        supportingText = {
+                            when {
+                                repoUrl.isNotBlank() && parsedRemoteUrl == null ->
+                                    Text(stringResource(R.string.clone_url_invalid))
+                                GitRemoteUrl.isSsh(repoUrl) ->
+                                    Text(stringResource(R.string.clone_url_ssh_hint))
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         shape = textFieldShape,
                         keyboardOptions = KeyboardOptions(
@@ -298,59 +348,66 @@ fun CloneScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.height(10.dp))
-                        OutlinedTextField(
+                        ExpandableSshTextField(
                             value = sshPrivateKey,
                             onValueChange = { sshPrivateKey = it },
                             label = { Text(stringResource(R.string.ssh_private_key_label)) },
-                            leadingIcon = { Icon(Icons.Default.Key, contentDescription = null) },
-                            trailingIcon = {
-                                IconButton(onClick = { sshPrivateKeyVisible = !sshPrivateKeyVisible }) {
-                                    Icon(
-                                        imageVector = if (sshPrivateKeyVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                        contentDescription = null
-                                    )
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = textFieldShape,
-                            visualTransformation = if (sshPrivateKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            leadingIcon = Icons.Default.Key,
                             enabled = !isLoading,
-                            minLines = 4,
-                            maxLines = 8
+                            isSecret = true,
+                            expandDescription = stringResource(R.string.ssh_expand_field),
+                            collapseDescription = stringResource(R.string.ssh_collapse_field),
+                            showDescription = stringResource(R.string.ssh_show_value),
+                            hideDescription = stringResource(R.string.ssh_hide_value),
+                            modifier = Modifier,
+                            maxExpandedLines = 10
                         )
                         Spacer(Modifier.height(10.dp))
-                        OutlinedTextField(
+                        ExpandableSshTextField(
                             value = sshPassphrase,
                             onValueChange = { sshPassphrase = it },
                             label = { Text(stringResource(R.string.ssh_passphrase_label)) },
-                            leadingIcon = { Icon(Icons.Default.Password, contentDescription = null) },
-                            trailingIcon = {
-                                IconButton(onClick = { sshPassphraseVisible = !sshPassphraseVisible }) {
-                                    Icon(
-                                        imageVector = if (sshPassphraseVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                        contentDescription = null
-                                    )
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = textFieldShape,
-                            visualTransformation = if (sshPassphraseVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            leadingIcon = Icons.Default.Password,
                             enabled = !isLoading,
-                            singleLine = true
+                            isSecret = true,
+                            expandDescription = stringResource(R.string.ssh_expand_field),
+                            collapseDescription = stringResource(R.string.ssh_collapse_field),
+                            showDescription = stringResource(R.string.ssh_show_value),
+                            hideDescription = stringResource(R.string.ssh_hide_value),
+                            modifier = Modifier,
+                            maxExpandedLines = 3,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                         )
                         Spacer(Modifier.height(10.dp))
-                        OutlinedTextField(
-                            value = sshPublicKey,
-                            onValueChange = { sshPublicKey = it },
-                            label = { Text(stringResource(R.string.ssh_public_key_label)) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = textFieldShape,
-                            minLines = 2,
-                            maxLines = 4,
-                            readOnly = false,
-                            enabled = !isLoading
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            ExpandableSshTextField(
+                                value = sshPublicKey,
+                                onValueChange = { sshPublicKey = it },
+                                label = { Text(stringResource(R.string.ssh_public_key_label)) },
+                                leadingIcon = Icons.Default.Key,
+                                enabled = !isLoading,
+                                expandDescription = stringResource(R.string.ssh_expand_field),
+                                collapseDescription = stringResource(R.string.ssh_collapse_field),
+                                showDescription = stringResource(R.string.ssh_show_value),
+                                hideDescription = stringResource(R.string.ssh_hide_value),
+                                modifier = Modifier.weight(1f),
+                                maxExpandedLines = 4
+                            )
+                            IconButton(
+                                onClick = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                                    clipboard?.setPrimaryClip(
+                                        ClipData.newPlainText("AndroidGit SSH public key", sshPublicKey)
+                                    )
+                                },
+                                enabled = !isLoading && sshPublicKey.isNotBlank()
+                            ) {
+                                Icon(
+                                    Icons.Default.ContentCopy,
+                                    contentDescription = stringResource(R.string.repo_settings_ssh_copy_public)
+                                )
+                            }
+                        }
                         Text(
                             text = stringResource(R.string.ssh_public_key_help),
                             style = MaterialTheme.typography.bodySmall,
@@ -413,33 +470,37 @@ fun CloneScreen(
             Button(
                 onClick = {
                     focusManager.clearFocus()
-                    if (authMode == GitAuthMode.HTTPS) {
+                    if (parsedRemoteUrl == null) {
+                        focusManager.clearFocus()
+                    } else if (authMode == GitAuthMode.HTTPS) {
                         prefsManager.setAuthMode(GitAuthMode.HTTPS)
                         if (saveToken && token.isNotEmpty()) {
                             prefsManager.saveToken(token)
                         } else if (!saveToken) {
                             prefsManager.clearToken()
                         }
+                        viewModel.cloneRepository(
+                            repoUrl.trim(),
+                            folderName,
+                            GitAuthConfig(GitAuthMode.HTTPS, token = token),
+                            onCloneSuccess
+                        )
                     } else {
                         prefsManager.setAuthMode(GitAuthMode.SSH)
                         prefsManager.saveSshKey(sshPrivateKey, sshPublicKey, sshPassphrase)
+                        viewModel.cloneRepository(
+                            repoUrl.trim(),
+                            folderName,
+                            GitAuthConfig(GitAuthMode.SSH, privateKey = sshPrivateKey, passphrase = sshPassphrase),
+                            onCloneSuccess
+                        )
                     }
-                    viewModel.cloneRepository(
-                        repoUrl,
-                        folderName,
-                        if (authMode == GitAuthMode.SSH) {
-                            GitAuthConfig(GitAuthMode.SSH, privateKey = sshPrivateKey, passphrase = sshPassphrase)
-                        } else {
-                            GitAuthConfig(GitAuthMode.HTTPS, token = token)
-                        },
-                        onCloneSuccess
-                    )
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
-                enabled = !isLoading && repoUrl.isNotBlank() &&
+                enabled = !isLoading && parsedRemoteUrl != null &&
                     (authMode == GitAuthMode.HTTPS || sshPrivateKey.isNotBlank())
             ) {
                 if (isLoading) {

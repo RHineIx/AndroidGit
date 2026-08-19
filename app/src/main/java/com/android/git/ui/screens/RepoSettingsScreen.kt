@@ -27,6 +27,7 @@ import com.android.git.data.GitAuthManager
 import com.android.git.data.GitAuthMode
 import com.android.git.data.GitManager
 import com.android.git.data.PreferencesManager
+import com.android.git.ui.components.ExpandableSshTextField
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -50,8 +51,6 @@ fun RepoSettingsScreen(
     var sshPublicKey by remember { mutableStateOf(prefs.getSshPublicKey()) }
     var sshPassphrase by remember { mutableStateOf(prefs.getSshPassphrase()) }
     var tokenVisible by remember { mutableStateOf(false) }
-    var sshPrivateKeyVisible by remember { mutableStateOf(false) }
-    var sshPassphraseVisible by remember { mutableStateOf(false) }
     var isSaving by remember { mutableStateOf(false) }
     var sshGenerationError by remember { mutableStateOf("") }
     var sshGenerationInfo by remember { mutableStateOf("") }
@@ -174,58 +173,49 @@ fun RepoSettingsScreen(
                             enabled = !isSaving
                         )
                     } else {
-                        OutlinedTextField(
+                        ExpandableSshTextField(
                             value = sshPrivateKey,
                             onValueChange = { sshPrivateKey = it },
                             label = { Text(stringResource(R.string.repo_settings_ssh_private_key)) },
-                            leadingIcon = { Icon(Icons.Default.Key, contentDescription = null) },
-                            trailingIcon = {
-                                IconButton(onClick = { sshPrivateKeyVisible = !sshPrivateKeyVisible }) {
-                                    Icon(
-                                        imageVector = if (sshPrivateKeyVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                        contentDescription = null
-                                    )
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = textFieldShape,
-                            visualTransformation = if (sshPrivateKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                            minLines = 4,
-                            maxLines = 8,
-                            enabled = !isSaving
+                            leadingIcon = Icons.Default.Key,
+                            enabled = !isSaving,
+                            isSecret = true,
+                            expandDescription = stringResource(R.string.ssh_expand_field),
+                            collapseDescription = stringResource(R.string.ssh_collapse_field),
+                            showDescription = stringResource(R.string.ssh_show_value),
+                            hideDescription = stringResource(R.string.ssh_hide_value),
+                            modifier = Modifier,
+                            maxExpandedLines = 10
                         )
                         Spacer(modifier = Modifier.height(12.dp))
-                        OutlinedTextField(
+                        ExpandableSshTextField(
                             value = sshPassphrase,
                             onValueChange = { sshPassphrase = it },
                             label = { Text(stringResource(R.string.repo_settings_ssh_passphrase)) },
-                            leadingIcon = { Icon(Icons.Default.Password, contentDescription = null) },
-                            trailingIcon = {
-                                IconButton(onClick = { sshPassphraseVisible = !sshPassphraseVisible }) {
-                                    Icon(
-                                        imageVector = if (sshPassphraseVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                        contentDescription = null
-                                    )
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = textFieldShape,
-                            visualTransformation = if (sshPassphraseVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                            singleLine = true,
-                            enabled = !isSaving
+                            leadingIcon = Icons.Default.Password,
+                            enabled = !isSaving,
+                            isSecret = true,
+                            expandDescription = stringResource(R.string.ssh_expand_field),
+                            collapseDescription = stringResource(R.string.ssh_collapse_field),
+                            showDescription = stringResource(R.string.ssh_show_value),
+                            hideDescription = stringResource(R.string.ssh_hide_value),
+                            modifier = Modifier,
+                            maxExpandedLines = 3,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                         )
                         Spacer(modifier = Modifier.height(12.dp))
-                        OutlinedTextField(
+                        ExpandableSshTextField(
                             value = sshPublicKey,
                             onValueChange = { sshPublicKey = it },
                             label = { Text(stringResource(R.string.repo_settings_ssh_public_key)) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = textFieldShape,
-                            minLines = 2,
-                            maxLines = 4,
-                            readOnly = false,
-                            enabled = !isSaving
+                            leadingIcon = Icons.Default.Key,
+                            enabled = !isSaving,
+                            expandDescription = stringResource(R.string.ssh_expand_field),
+                            collapseDescription = stringResource(R.string.ssh_collapse_field),
+                            showDescription = stringResource(R.string.ssh_show_value),
+                            hideDescription = stringResource(R.string.ssh_hide_value),
+                            modifier = Modifier,
+                            maxExpandedLines = 4
                         )
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
