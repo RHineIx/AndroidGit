@@ -18,6 +18,7 @@
 
     <string name="settings_title">Settings</string>
     <string name="error_set_token">Set Token in Settings</string>
+    <string name="error_set_ssh_key">Configure an SSH key in Clone or Repository Settings</string>
     <string name="settings_section_app">App Settings</string>
     <string name="settings_auto_open">Auto-open last project</string>
     <string name="settings_auto_open_desc">Automatically open the last viewed repository on launch</string>
@@ -49,6 +50,14 @@
     <string name="clone_folder_hint">Leave empty to use repo name</string>
     <string name="clone_token_label">Access Token (Optional for public)</string>
     <string name="clone_remember_token">Remember Token</string>
+    <string name="auth_mode_https">HTTPS + Token</string>
+    <string name="auth_mode_ssh">SSH Key</string>
+    <string name="ssh_clone_help">Use a GitHub SSH URL such as git@github.com:owner/repository.git. Generate an Ed25519 key or paste an existing OpenSSH private key, then add the public key to GitHub.</string>
+    <string name="ssh_private_key_label">SSH Private Key</string>
+    <string name="ssh_passphrase_label">Key Passphrase (optional)</string>
+    <string name="ssh_public_key_label">Public Key</string>
+    <string name="ssh_public_key_help">Only add this public key to GitHub. Never share the private key.</string>
+    <string name="ssh_generate_key">Generate Ed25519 Key</string>
     <string name="clone_status_running">Cloning...</string>
     <string name="clone_btn_action">Clone</string>
 
@@ -151,6 +160,14 @@
     <string name="repo_settings_label_user">Username</string>
     <string name="repo_settings_label_email">Email</string>
     <string name="repo_settings_label_token">Personal Access Token</string>
+    <string name="repo_settings_auth_help">Choose HTTPS with a GitHub token or SSH with an Ed25519/RSA private key.</string>
+    <string name="repo_settings_ssh_private_key">SSH Private Key</string>
+    <string name="repo_settings_ssh_public_key">SSH Public Key</string>
+    <string name="repo_settings_ssh_passphrase">SSH Key Passphrase</string>
+    <string name="repo_settings_ssh_generate">Generate Ed25519 Key</string>
+    <string name="repo_settings_ssh_copy_public">Copy Public Key</string>
+    <string name="repo_settings_ssh_clear">Remove SSH Key</string>
+    <string name="repo_settings_ssh_saved">SSH key saved.</string>
     <string name="repo_settings_section_remote">Remote</string>
     <string name="repo_settings_remote_connected">Connected</string>
     <string name="repo_settings_remote_disconnected">Disconnected</string>

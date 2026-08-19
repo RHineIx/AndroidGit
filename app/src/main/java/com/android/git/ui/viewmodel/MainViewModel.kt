@@ -11,6 +11,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.android.git.R
+import com.android.git.data.GitAuthConfig
+import com.android.git.data.GitAuthMode
 import com.android.git.data.GitHubUpdateManager
 import com.android.git.data.GitManager
 import com.android.git.data.PreferencesManager
@@ -100,6 +102,22 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     fun getLastValidToken(): String = prefs.getLastValidToken()
     
     fun restoreLastToken(): String = prefs.restoreLastToken()
+
+    fun getAuthConfig(): GitAuthConfig {
+        return when (prefs.getAuthMode()) {
+            GitAuthMode.SSH -> GitAuthConfig(
+                mode = GitAuthMode.SSH,
+                privateKey = prefs.getSshPrivateKey(),
+                passphrase = prefs.getSshPassphrase()
+            )
+            GitAuthMode.HTTPS -> GitAuthConfig(
+                mode = GitAuthMode.HTTPS,
+                token = prefs.getToken()
+            )
+        }
+    }
+
+    fun saveAuthMode(mode: GitAuthMode) = prefs.setAuthMode(mode)
 
     fun updateThemeMode(mode: ThemeMode) {
         themeMode = mode
@@ -248,7 +266,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         closeProject()
         currentRepoFile = file
         savedStateHandle["current_repo_path"] = file.absolutePath
-        gitManager = GitManager(file)
+        gitManager = GitManager(file, getApplication<Application>().filesDir)
         prefs.addRecentProject(file.absolutePath)
         loadDashboard()
     }
@@ -289,7 +307,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         }
     }
 
-    fun cloneRepository(url: String, folderName: String, token: String, onSuccess: (File) -> Unit) {
+    fun cloneRepository(url: String, folderName: String, auth: GitAuthConfig, onSuccess: (File) -> Unit) {
         if (isLoading) return
         viewModelScope.launch {
             val context = getApplication<Application>()
@@ -300,7 +318,13 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
             
             showStatus(context.getString(R.string.clone_progress), SnackbarType.INFO)
             
-            val result = GitManager.cloneRepo(url, Environment.getExternalStorageDirectory(), folderName, token) { task, progress, details ->
+            val result = GitManager.cloneRepo(
+                url = url,
+                parentDir = Environment.getExternalStorageDirectory(),
+                folderName = folderName,
+                auth = auth,
+                secureStorageDir = context.filesDir
+            ) { task, progress, details ->
                 cloneTaskName = task
                 cloneProgress = progress
                 cloneTaskDetails = details
@@ -320,12 +344,17 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         val manager = gitManager ?: return
         viewModelScope.launch {
             val context = getApplication<Application>()
-            if (prefs.getToken().isEmpty()) {
+            val auth = getAuthConfig()
+            if (auth.mode == GitAuthMode.HTTPS && auth.token.isEmpty()) {
                 showStatus(context.getString(R.string.error_set_token), SnackbarType.ERROR)
                 return@launch
             }
+            if (auth.mode == GitAuthMode.SSH && auth.privateKey.isEmpty()) {
+                showStatus(context.getString(R.string.error_set_ssh_key), SnackbarType.ERROR)
+                return@launch
+            }
             isLoading = true
-            val result = manager.pull(prefs.getToken())
+            val result = manager.pull(auth)
             isLoading = false
             showStatus(result, if (result.contains("Error") || result.contains("Exception")) SnackbarType.ERROR else SnackbarType.SUCCESS)
             loadDashboard()
@@ -336,12 +365,17 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         val manager = gitManager ?: return
         viewModelScope.launch {
             val context = getApplication<Application>()
-            if (prefs.getToken().isEmpty()) {
+            val auth = getAuthConfig()
+            if (auth.mode == GitAuthMode.HTTPS && auth.token.isEmpty()) {
                 showStatus(context.getString(R.string.error_set_token), SnackbarType.ERROR)
                 return@launch
             }
+            if (auth.mode == GitAuthMode.SSH && auth.privateKey.isEmpty()) {
+                showStatus(context.getString(R.string.error_set_ssh_key), SnackbarType.ERROR)
+                return@launch
+            }
             isLoading = true
-            val result = manager.push(prefs.getToken(), force)
+            val result = manager.push(auth, force)
             isLoading = false
             showStatus(result, if (result.contains("Error") || result.contains("Rejected")) SnackbarType.ERROR else SnackbarType.SUCCESS)
             loadDashboard()
@@ -431,13 +465,22 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         val manager = gitManager ?: return
         viewModelScope.launch {
             val context = getApplication<Application>()
-            if (prefs.getToken().isNotEmpty()) {
+            val auth = getAuthConfig()
+            val configured = when (auth.mode) {
+                GitAuthMode.HTTPS -> auth.token.isNotEmpty()
+                GitAuthMode.SSH -> auth.privateKey.isNotEmpty()
+            }
+            if (configured) {
                 isLoading = true
-                showStatus(manager.fetchAll(prefs.getToken()), SnackbarType.SUCCESS)
+                showStatus(manager.fetchAll(auth), SnackbarType.SUCCESS)
                 loadBranches()
                 isLoading = false
             } else {
-                showStatus(context.getString(R.string.error_set_token), SnackbarType.ERROR)
+                showStatus(
+                    if (auth.mode == GitAuthMode.SSH) context.getString(R.string.error_set_ssh_key)
+                    else context.getString(R.string.error_set_token),
+                    SnackbarType.ERROR
+                )
             }
         }
     }

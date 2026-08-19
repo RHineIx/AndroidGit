@@ -81,6 +81,7 @@ dependencies {
 
     // JGit & Required Crypto Dependencies for modern SSH support
     implementation(libs.jgit)
+    implementation(libs.jgit.ssh)
     implementation(libs.bcprov)
     implementation(libs.bcpkix)
 
@@ -89,6 +90,8 @@ dependencies {
 
     implementation(libs.slf4j.simple)
     implementation(libs.miuix)
+
+    testImplementation(libs.junit)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
