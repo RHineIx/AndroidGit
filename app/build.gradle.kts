@@ -11,8 +11,8 @@ android {
         applicationId = "com.android.git"
         minSdk = 26
         targetSdk = 37
-        versionCode = 50200
-        versionName = "5.2.0-stable"
+        versionCode = 50300
+        versionName = "5.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -53,6 +53,8 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "META-INF/DEPENDENCIES"
+            // JGit and jgit-ssh.apache both contain this duplicate OSGi metadata file.
+            excludes += "OSGI-INF/l10n/plugin.properties"
         }
         jniLibs {
             useLegacyPackaging = true
