@@ -55,6 +55,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     var isAIGenerating: Boolean by mutableStateOf(false)
         private set
 
+
     var statusMessage: String by mutableStateOf("")
         private set
 
@@ -133,89 +134,70 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
             isLoading = true
             try {
                 if (apiKey.isBlank()) throw Exception("API Key cannot be empty.")
-                
                 prefs.setGeminiApiKey(apiKey)
                 prefs.setGeminiModel(modelName)
                 prefs.setGeminiPrompt(prompt)
-
                 val model = GenerativeModel(
-                    modelName = modelName, 
+                    modelName = modelName,
                     apiKey = apiKey,
                     generationConfig = generationConfig { temperature = 0.1f }
                 )
-                
                 model.generateContent("Hello, respond with exactly 'OK'")
                 showStatus("Gemini Configuration Saved and Verified!", SnackbarType.SUCCESS)
             } catch (e: Exception) {
                 val errorMsg = if (e.message?.contains("MissingFieldException") == true) {
                     "Verification Failed: Invalid API Key, Unsupported Region, or Model Not Found."
-                } else {
-                    "Verification Failed: ${e.localizedMessage}"
-                }
+                } else "Verification Failed: ${e.localizedMessage}"
                 showStatus(errorMsg, SnackbarType.ERROR)
             } finally {
                 isLoading = false
             }
         }
     }
-    
+
     fun generateAICommitMessage(selectedPaths: Set<String>, onSuccess: (String) -> Unit) {
         if (selectedPaths.isEmpty()) {
             showStatus("Please select files first to generate a commit message.", SnackbarType.WARNING)
             return
         }
-        
         val apiKey = prefs.getGeminiApiKey()
         if (apiKey.isEmpty()) {
             showStatus("Gemini API Key is missing. Please set it in General Settings.", SnackbarType.ERROR)
             return
         }
-
         viewModelScope.launch {
             isAIGenerating = true
             try {
                 val diff = gitManager?.getDiff(selectedPaths) ?: ""
                 if (diff.isEmpty() || diff.startsWith("Error")) {
                     showStatus("Could not extract diff for AI processing.", SnackbarType.ERROR)
-                    isAIGenerating = false
                     return@launch
                 }
-
                 val customPrompt = prefs.getGeminiPrompt()
-                
-                // Improved prompt: Requests strict brevity and lists all changes concisely
-                val basePrompt = if (customPrompt.isNotBlank()) customPrompt else 
+                val basePrompt = if (customPrompt.isNotBlank()) customPrompt else
                     "You are an expert developer. Generate a Conventional Commit message based on the following git diff.\n" +
-                    "Format requirements:\n" +
-                    "1. A concise subject line (e.g., feat: ..., fix: ...).\n" +
-                    "2. A blank line.\n" +
-                    "3. A concise bulleted list summarizing ALL notable changes.\n" +
-                    "Keep the bullet points strictly short and to the point.\n" +
-                    "Output ONLY the commit message without any markdown formatting like ```."
-                
-                val finalPrompt = "$basePrompt\n\nGit Diff:\n$diff"
-
+                        "Format requirements:\n" +
+                        "1. A concise subject line (e.g., feat: ..., fix: ...).\n" +
+                        "2. A blank line.\n" +
+                        "3. A concise bulleted list summarizing ALL notable changes.\n" +
+                        "Keep the bullet points strictly short and to the point.\n" +
+                        "Output ONLY the commit message without any markdown formatting like ``` ."
                 val generativeModel = GenerativeModel(
                     modelName = prefs.getGeminiModel(),
                     apiKey = apiKey,
                     generationConfig = generationConfig {
-                        temperature = 0.3f 
-                        maxOutputTokens = 2048 // Increased to prevent 'MAX_TOKENS' error on large diffs
+                        temperature = 0.3f
+                        maxOutputTokens = 2048
                     }
                 )
-
-                val response = generativeModel.generateContent(finalPrompt)
-                val generatedText = response.text?.trim() ?: ""
-                val cleanText = generatedText.removePrefix("```").removeSuffix("```").trim()
-
+                val response = generativeModel.generateContent("$basePrompt\n\nGit Diff:\n$diff")
+                val cleanText = (response.text?.trim() ?: "").removePrefix("```").removeSuffix("```").trim()
                 onSuccess(cleanText)
                 showStatus("Commit message generated successfully!", SnackbarType.SUCCESS)
             } catch (e: Exception) {
                 val errorMsg = if (e.message?.contains("MissingFieldException") == true) {
                     "AI Error: Invalid Key, Unsupported Region, or Model Not Found."
-                } else {
-                    "AI Error: ${e.localizedMessage}"
-                }
+                } else "AI Error: ${e.localizedMessage}"
                 showStatus(errorMsg, SnackbarType.ERROR)
             } finally {
                 isAIGenerating = false

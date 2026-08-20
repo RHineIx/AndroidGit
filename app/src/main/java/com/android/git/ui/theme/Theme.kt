@@ -10,7 +10,9 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +23,8 @@ import androidx.core.view.WindowCompat
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.darkColorScheme as miuixDarkColorScheme
 import top.yukonga.miuix.kmp.theme.lightColorScheme as miuixLightColorScheme
+
+val LocalAndroidGitDarkTheme = staticCompositionLocalOf { false }
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -93,13 +97,15 @@ fun AndroidGitTheme(
         )
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        shapes = AndroidGitShapes
-    ) {
-        MiuixTheme(
-            colors = miuixColors,
-            content = content
-        )
+    CompositionLocalProvider(LocalAndroidGitDarkTheme provides darkTheme) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            shapes = AndroidGitShapes
+        ) {
+            MiuixTheme(
+                colors = miuixColors,
+                content = content
+            )
+        }
     }
 }

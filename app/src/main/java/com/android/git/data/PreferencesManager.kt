@@ -167,4 +167,5 @@ class PreferencesManager(context: Context) {
 
     fun getGeminiPrompt(): String = prefs.getString(KEY_GEMINI_PROMPT, "") ?: ""
     fun setGeminiPrompt(prompt: String) = prefs.edit().putString(KEY_GEMINI_PROMPT, prompt).apply()
+
 }

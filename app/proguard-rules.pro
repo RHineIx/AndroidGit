@@ -13,6 +13,11 @@
 -keep class org.bouncycastle.jce.provider.** { *; }
 -keep class org.bouncycastle.jcajce.interfaces.** { *; }
 -dontwarn org.bouncycastle.**
+# NTRU parameter tables are eagerly initialized by the provider. Keep only the
+# affected PQC packages so R8 cannot null or optimize their static parameters,
+# without keeping the entire Bouncy Castle crypto implementation in memory.
+-keep class org.bouncycastle.pqc.crypto.ntru.** { *; }
+-keep class org.bouncycastle.pqc.math.ntru.** { *; }
 
 # Apache Mina SSHD / JGit SSH Rules
 # SSHD discovers these classes by reflection. In particular, R8 previously renamed

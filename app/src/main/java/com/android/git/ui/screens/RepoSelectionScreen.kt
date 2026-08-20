@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.git.R
 import com.android.git.data.PreferencesManager
+import com.android.git.ui.theme.LocalAndroidGitDarkTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -60,6 +61,7 @@ fun RepoSelectionScreen(
     val context = LocalContext.current
     val prefs = remember { PreferencesManager(context) }
     val scope = rememberCoroutineScope()
+    val isDarkTheme = LocalAndroidGitDarkTheme.current
 
     var recentProjects by remember { mutableStateOf<List<String>>(emptyList()) }
 
@@ -87,7 +89,9 @@ fun RepoSelectionScreen(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            painter = painterResource(id = R.drawable.icon),
+                            painter = painterResource(
+                                id = if (isDarkTheme) R.drawable.icon_dark else R.drawable.icon_light
+                            ),
                             contentDescription = null,
                             tint = Color.Unspecified,
                             modifier = Modifier.size(38.dp)
