@@ -1,10 +1,8 @@
 package com.android.git.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,10 +22,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.android.git.R
+import com.android.git.data.GitAuthManager
+import com.android.git.data.GitAuthMode
 import com.android.git.data.GitManager
 import com.android.git.data.PreferencesManager
+import com.android.git.ui.components.ExpandableSshTextField
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -40,19 +40,20 @@ fun RepoSettingsScreen(
 ) {
     val context = LocalContext.current
     val prefs = remember { PreferencesManager(context) }
+    val authManager = remember { GitAuthManager(context.filesDir) }
     val scope = rememberCoroutineScope()
-
-    val activeToken = remember { prefs.getToken() }
-    val lastUsedToken = remember { prefs.getLastValidToken() }
 
     var userName by remember { mutableStateOf(prefs.getUserName()) }
     var userEmail by remember { mutableStateOf(prefs.getUserEmail()) }
-    var token by remember { mutableStateOf(activeToken) }
-    
-    // State to track token visibility
+    var token by remember { mutableStateOf(prefs.getToken()) }
+    var authMode by remember { mutableStateOf(prefs.getAuthMode()) }
+    var sshPrivateKey by remember { mutableStateOf(prefs.getSshPrivateKey()) }
+    var sshPublicKey by remember { mutableStateOf(prefs.getSshPublicKey()) }
+    var sshPassphrase by remember { mutableStateOf(prefs.getSshPassphrase()) }
     var tokenVisible by remember { mutableStateOf(false) }
-
     var isSaving by remember { mutableStateOf(false) }
+    var sshGenerationError by remember { mutableStateOf("") }
+    var sshGenerationInfo by remember { mutableStateOf("") }
 
     val cardShape = RoundedCornerShape(16.dp)
     val textFieldShape = RoundedCornerShape(16.dp)
@@ -93,7 +94,6 @@ fun RepoSettingsScreen(
                 elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    // User Identity Section
                     OutlinedTextField(
                         value = userName,
                         onValueChange = { userName = it },
@@ -124,49 +124,167 @@ fun RepoSettingsScreen(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     )
 
-                    // Authentication Token Section
-                    OutlinedTextField(
-                        value = token,
-                        onValueChange = { token = it },
-                        label = { Text(stringResource(R.string.repo_settings_label_token)) },
-                        leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null) },
-                        trailingIcon = {
-                            val image = if (tokenVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
-                            val description = if (tokenVisible) "Hide token" else "Show token"
-
-                            IconButton(onClick = { tokenVisible = !tokenVisible }) {
-                                Icon(imageVector = image, contentDescription = description)
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = textFieldShape,
-                        visualTransformation = if (tokenVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        singleLine = true,
-                        enabled = !isSaving
+                    Text(
+                        text = stringResource(R.string.repo_settings_auth_help),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                    // Token Recovery Suggestion
-                    AnimatedVisibility(
-                        visible = token.isEmpty() && lastUsedToken.isNotEmpty(),
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        FilterChip(
+                            selected = authMode == GitAuthMode.HTTPS,
+                            onClick = { authMode = GitAuthMode.HTTPS },
+                            label = { Text(stringResource(R.string.auth_mode_https)) },
+                            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) }
+                        )
+                        FilterChip(
+                            selected = authMode == GitAuthMode.SSH,
+                            onClick = { authMode = GitAuthMode.SSH },
+                            label = { Text(stringResource(R.string.auth_mode_ssh)) },
+                            leadingIcon = { Icon(Icons.Default.Key, contentDescription = null) }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    if (authMode == GitAuthMode.HTTPS) {
+                        OutlinedTextField(
+                            value = token,
+                            onValueChange = { token = it },
+                            label = { Text(stringResource(R.string.repo_settings_label_token)) },
+                            leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null) },
+                            trailingIcon = {
+                                IconButton(onClick = { tokenVisible = !tokenVisible }) {
+                                    Icon(
+                                        imageVector = if (tokenVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                        contentDescription = null
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = textFieldShape,
+                            visualTransformation = if (tokenVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            singleLine = true,
+                            enabled = !isSaving
+                        )
+                    } else {
+                        ExpandableSshTextField(
+                            value = sshPrivateKey,
+                            onValueChange = { sshPrivateKey = it },
+                            label = { Text(stringResource(R.string.repo_settings_ssh_private_key)) },
+                            leadingIcon = Icons.Default.Key,
+                            enabled = !isSaving,
+                            isSecret = true,
+                            showDescription = stringResource(R.string.ssh_show_value),
+                            hideDescription = stringResource(R.string.ssh_hide_value),
+                            modifier = Modifier,
+                            maxExpandedLines = 10
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        ExpandableSshTextField(
+                            value = sshPassphrase,
+                            onValueChange = { sshPassphrase = it },
+                            label = { Text(stringResource(R.string.repo_settings_ssh_passphrase)) },
+                            leadingIcon = Icons.Default.Password,
+                            enabled = !isSaving,
+                            isSecret = true,
+                            showDescription = stringResource(R.string.ssh_show_value),
+                            hideDescription = stringResource(R.string.ssh_hide_value),
+                            modifier = Modifier,
+                            maxExpandedLines = 3,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        ExpandableSshTextField(
+                            value = sshPublicKey,
+                            onValueChange = { sshPublicKey = it },
+                            label = { Text(stringResource(R.string.repo_settings_ssh_public_key)) },
+                            leadingIcon = Icons.Default.Key,
+                            enabled = !isSaving,
+                            showDescription = stringResource(R.string.ssh_show_value),
+                            hideDescription = stringResource(R.string.ssh_hide_value),
+                            modifier = Modifier,
+                            maxExpandedLines = 4
+                        )
                         Row(
-                            modifier = Modifier.padding(top = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            OutlinedButton(
+                                onClick = {
+                                    val result = runCatching {
+                                        authManager.generateKeyPair(sshPassphrase, userEmail)
+                                    }
+                                    result.onSuccess { generated ->
+                                        sshPrivateKey = generated.privateKey
+                                        sshPublicKey = generated.publicKey
+                                        sshGenerationError = ""
+                                        sshGenerationInfo = context.getString(R.string.repo_settings_ssh_generated_fmt, generated.algorithm)
+                                    }.onFailure { error ->
+                                        sshGenerationInfo = ""
+                                        sshGenerationError = buildString {
+                                            append(error::class.java.simpleName)
+                                            error.message?.takeIf { it.isNotBlank() }?.let {
+                                                append(": ")
+                                                append(it)
+                                            }
+                                        }
+                                    }
+                                },
+                                enabled = !isSaving,
+                                modifier = Modifier.weight(1f),
+                                shape = textFieldShape
+                            ) {
+                                Icon(Icons.Default.AutoFixHigh, contentDescription = null)
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.repo_settings_ssh_generate))
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                                    clipboard?.setPrimaryClip(ClipData.newPlainText("AndroidGit SSH public key", sshPublicKey))
+                                },
+                                enabled = !isSaving && sshPublicKey.isNotBlank(),
+                                modifier = Modifier.weight(1f),
+                                shape = textFieldShape
+                            ) {
+                                Icon(Icons.Default.ContentCopy, contentDescription = null)
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.repo_settings_ssh_copy_public))
+                            }
+                        }
+                        if (sshGenerationInfo.isNotBlank()) {
                             Text(
-                                text = "Use last token?",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text = sshGenerationInfo,
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 8.dp)
                             )
-                            Spacer(Modifier.width(8.dp))
-                            SuggestionChip(
-                                onClick = { token = lastUsedToken },
-                                label = { Text("Restore", fontSize = 12.sp) },
-                                shape = RoundedCornerShape(8.dp)
+                        }
+                        if (sshGenerationError.isNotBlank()) {
+                            Text(
+                                text = sshGenerationError,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 8.dp)
                             )
+                        }
+                        TextButton(
+                            onClick = {
+                                sshPrivateKey = ""
+                                sshPublicKey = ""
+                                sshPassphrase = ""
+                                prefs.clearSshKey()
+                                authMode = GitAuthMode.HTTPS
+                            },
+                            enabled = !isSaving && sshPrivateKey.isNotBlank()
+                        ) {
+                            Text(stringResource(R.string.repo_settings_ssh_clear), color = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -179,7 +297,12 @@ fun RepoSettingsScreen(
                     isSaving = true
                     prefs.setUserName(userName)
                     prefs.setUserEmail(userEmail)
-                    prefs.saveToken(token)
+                    prefs.setAuthMode(authMode)
+                    if (authMode == GitAuthMode.HTTPS) {
+                        prefs.saveToken(token)
+                    } else {
+                        prefs.saveSshKey(sshPrivateKey, sshPublicKey, sshPassphrase)
+                    }
 
                     scope.launch(Dispatchers.IO) {
                         gitManager?.configureUser(userName, userEmail)
@@ -193,7 +316,7 @@ fun RepoSettingsScreen(
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = cardShape,
-                enabled = !isSaving
+                enabled = !isSaving && (authMode == GitAuthMode.HTTPS || sshPrivateKey.isNotBlank())
             ) {
                 if (isSaving) {
                     CircularProgressIndicator(

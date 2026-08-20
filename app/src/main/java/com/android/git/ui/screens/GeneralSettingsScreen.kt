@@ -194,101 +194,78 @@ fun GeneralSettingsScreen(
                     }
                 }
 
-                SettingsSection(title = "AI Features (Gemini)") {
-                    
-                    OutlinedTextField(
-                        value = geminiApiKey,
-                        onValueChange = { geminiApiKey = it },
-                        label = { Text("Gemini API Key") },
-                        leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null) },
-                        trailingIcon = {
-                            val image = if (apiKeyVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
-                            val description = if (apiKeyVisible) "Hide API Key" else "Show API Key"
-
-                            IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
-                                Icon(imageVector = image, contentDescription = description)
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        singleLine = true
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    ExposedDropdownMenuBox(
-                        expanded = aiModelExpanded,
-                        onExpandedChange = { aiModelExpanded = it }
-                    ) {
+                    SettingsSection(title = stringResource(R.string.settings_ai_section)) {
                         OutlinedTextField(
-                            value = geminiModel,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("AI Model") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = aiModelExpanded) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp)
+                            value = geminiApiKey,
+                            onValueChange = { geminiApiKey = it },
+                            label = { Text(stringResource(R.string.settings_gemini_api_key)) },
+                            leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null) },
+                            trailingIcon = {
+                                val image = if (apiKeyVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
+                                val description = stringResource(if (apiKeyVisible) R.string.settings_hide_api_key else R.string.settings_show_api_key)
+                                IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
+                                    Icon(imageVector = image, contentDescription = description)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            singleLine = true
                         )
-                        
-                        ExposedDropdownMenu(
-                            expanded = aiModelExpanded,
-                            onDismissRequest = { aiModelExpanded = false },
-                            modifier = Modifier.fillMaxWidth(0.85f)
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        ExposedDropdownMenuBox(expanded = aiModelExpanded, onExpandedChange = { aiModelExpanded = it }) {
+                            OutlinedTextField(
+                                value = geminiModel,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text(stringResource(R.string.settings_ai_model)) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = aiModelExpanded) },
+                                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            ExposedDropdownMenu(expanded = aiModelExpanded, onDismissRequest = { aiModelExpanded = false }, modifier = Modifier.fillMaxWidth(0.85f)) {
+                                aiModels.forEach { model ->
+                                    DropdownMenuItem(
+                                        text = { Text(model) },
+                                        onClick = { geminiModel = model; aiModelExpanded = false },
+                                        trailingIcon = { if (geminiModel == model) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedTextField(
+                            value = geminiPrompt,
+                            onValueChange = { geminiPrompt = it },
+                            label = { Text(stringResource(R.string.settings_custom_prompt)) },
+                            placeholder = { Text(stringResource(R.string.settings_custom_prompt_hint)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            minLines = 3,
+                            maxLines = 6
+                        )
+
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Button(
+                            onClick = { focusManager.clearFocus(); viewModel.verifyGeminiSettings(geminiApiKey, geminiModel, geminiPrompt) },
+                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            enabled = !isLoading
                         ) {
-                            aiModels.forEach { model ->
-                                DropdownMenuItem(
-                                    text = { Text(model) },
-                                    onClick = {
-                                        geminiModel = model
-                                        aiModelExpanded = false
-                                    },
-                                    trailingIcon = {
-                                        if (geminiModel == model) {
-                                            Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                        }
-                                    }
-                                )
+                            if (isLoading) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.settings_verifying))
+                            } else {
+                                Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.settings_verify_save), fontWeight = FontWeight.Bold)
                             }
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    OutlinedTextField(
-                        value = geminiPrompt,
-                        onValueChange = { geminiPrompt = it },
-                        label = { Text("Custom Prompt (Optional)") },
-                        placeholder = { Text("Leave empty for default Conventional Commits rules.") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        minLines = 3,
-                        maxLines = 6
-                    )
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    Button(
-                        onClick = { 
-                            focusManager.clearFocus()
-                            viewModel.verifyGeminiSettings(geminiApiKey, geminiModel, geminiPrompt) 
-                        },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        enabled = !isLoading
-                    ) {
-                        if (isLoading) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Verifying...")
-                        } else {
-                            Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Verify & Save Settings", fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
 
                 DeveloperSection(context)
 
@@ -358,8 +335,8 @@ fun AppVersionFooter(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center
                 )
-                Text(
-                    text = "Tap to check for updates",
+                        Text(
+                            text = stringResource(R.string.settings_check_updates_hint),
                     style = MaterialTheme.typography.labelSmall,
                     fontSize = 10.sp,
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
@@ -398,7 +375,7 @@ fun DeveloperSection(context: Context) {
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.me),
-                    contentDescription = "RHineix Developer",
+                    contentDescription = stringResource(R.string.settings_developer_image_desc),
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )

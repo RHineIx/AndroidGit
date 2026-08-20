@@ -39,6 +39,7 @@ import com.android.git.model.CommitItem
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.components.SnackbarType
 import com.android.git.ui.viewmodel.MainViewModel
+import com.android.git.utils.isGitFailureMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
@@ -60,6 +61,7 @@ fun LogScreen(
     val context = LocalContext.current
     val commits = viewModel.logList
     val isLogLoading = viewModel.isLogLoading
+    val logErrorMessage = viewModel.logErrorMessage
 
     var statusMessage by remember { mutableStateOf("") }
     var statusType by remember { mutableStateOf(SnackbarType.INFO) }
@@ -134,7 +136,15 @@ fun LogScreen(
         content = { padding ->
             Box(modifier = Modifier.padding(padding).fillMaxSize()) {
                 if (commits.isEmpty() && !isLogLoading) {
-                    EmptyStateView(modifier = Modifier.align(Alignment.Center))
+                    if (logErrorMessage.isNotEmpty()) {
+                        LogErrorState(
+                            message = stringResource(R.string.log_load_error, logErrorMessage),
+                            onRetry = { viewModel.loadLogs(reset = true) },
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    } else {
+                        EmptyStateView(modifier = Modifier.align(Alignment.Center))
+                    }
                 } else {
                     LazyColumn(
                         state = listState,
@@ -308,7 +318,7 @@ fun TimelineCommitItem(
                         shape = RoundedCornerShape(6.dp)
                     ) {
                         Text(
-                            text = commit.hash,
+                            text = commit.hash.take(7),
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                             fontFamily = FontFamily.Monospace,
                             fontSize = 11.sp,
@@ -320,7 +330,7 @@ fun TimelineCommitItem(
                         Spacer(Modifier.width(8.dp))
                         Icon(
                             imageVector = Icons.Default.CloudOff,
-                            contentDescription = "Unpushed",
+                            contentDescription = stringResource(R.string.log_unpushed),
                             tint = Color(0xFFE65100),
                             modifier = Modifier.size(16.dp)
                         )
@@ -343,27 +353,32 @@ fun CommitDetailsSheet(
 
     var showRevertDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
+    var hardResetConfirmed by remember { mutableStateOf(false) }
+    var isActionRunning by remember { mutableStateOf(false) }
 
     if (showRevertDialog) {
         AlertDialog(
             onDismissRequest = { showRevertDialog = false },
-            title = { Text("Revert Commit") },
-            text = { Text("Are you sure you want to revert this commit? This will create a new commit that undoes the changes made in ${commit.hash}.") },
+            title = { Text(stringResource(R.string.log_revert_dialog_title)) },
+            text = { Text(stringResource(R.string.log_revert_dialog_msg)) },
             confirmButton = {
                 Button(
                     onClick = {
+                        if (isActionRunning) return@Button
                         showRevertDialog = false
+                        isActionRunning = true
                         scope.launch(Dispatchers.IO) {
                             val res = gitManager.revertCommit(commit.hash)
                             withContext(Dispatchers.Main) {
-                                val type = if (res.contains("failed", true)) SnackbarType.ERROR else SnackbarType.SUCCESS
-                                onAction(res, type)
+                                isActionRunning = false
+                                onAction(res, operationSnackbarType(res))
                             }
                         }
                     },
+                    enabled = !isActionRunning,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Revert")
+                    Text(stringResource(R.string.log_revert_confirm))
                 }
             },
             dismissButton = {
@@ -378,37 +393,59 @@ fun CommitDetailsSheet(
     if (showResetDialog) {
         AlertDialog(
             onDismissRequest = { showResetDialog = false },
-            title = { Text("Reset to Commit") },
-            text = { Text("You are about to reset the current branch to ${commit.hash}. How would you like to handle your current working directory changes?") },
+            title = { Text(stringResource(R.string.log_reset_dialog_title)) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.log_reset_dialog_msg, commit.hash.take(7)))
+                    Spacer(Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = hardResetConfirmed,
+                            onCheckedChange = { hardResetConfirmed = it },
+                            enabled = !isActionRunning
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.log_reset_hard_ack), style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
             confirmButton = {
                 Button(
                     onClick = {
+                        if (isActionRunning) return@Button
                         showResetDialog = false
+                        isActionRunning = true
                         scope.launch(Dispatchers.IO) {
                             val res = gitManager.resetToCommit(commit.hash, hard = true)
                             withContext(Dispatchers.Main) {
-                                onAction(res, SnackbarType.WARNING)
+                                isActionRunning = false
+                                onAction(res, operationSnackbarType(res))
                             }
                         }
                     },
+                    enabled = !isActionRunning && hardResetConfirmed,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Hard Reset (Discard All)")
+                    Text(stringResource(R.string.log_reset_hard_confirm))
                 }
             },
             dismissButton = {
                 OutlinedButton(
                     onClick = {
+                        if (isActionRunning) return@OutlinedButton
                         showResetDialog = false
+                        isActionRunning = true
                         scope.launch(Dispatchers.IO) {
                             val res = gitManager.resetToCommit(commit.hash, hard = false)
                             withContext(Dispatchers.Main) {
-                                onAction(res, SnackbarType.SUCCESS)
+                                isActionRunning = false
+                                onAction(res, operationSnackbarType(res))
                             }
                         }
-                    }
+                    },
+                    enabled = !isActionRunning
                 ) {
-                    Text("Mixed Reset (Keep Changes)")
+                    Text(stringResource(R.string.log_reset_mixed))
                 }
             },
             icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) }
@@ -495,7 +532,7 @@ fun CommitDetailsSheet(
         Spacer(Modifier.height(12.dp))
 
         Button(
-            onClick = { showResetDialog = true },
+            onClick = { hardResetConfirmed = false; showResetDialog = true },
             modifier = Modifier.fillMaxWidth().height(50.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer)
@@ -522,6 +559,44 @@ fun LabelValueItem(label: String, value: String, icon: ImageVector) {
         Column {
             Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+        }
+    }
+}
+
+private fun operationSnackbarType(message: String): SnackbarType =
+    if (isGitFailureMessage(message)) SnackbarType.ERROR else SnackbarType.SUCCESS
+
+@Composable
+fun LogErrorState(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    ElevatedCard(
+        modifier = modifier.padding(24.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = Icons.Default.Error,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.size(40.dp)
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = message,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(onClick = onRetry) {
+                Text(stringResource(R.string.log_retry))
+            }
         }
     }
 }
@@ -554,9 +629,9 @@ fun getRelativeTime(date: Date): String {
 
     return when {
         diff < TimeUnit.MINUTES.toMillis(1) -> stringResource(R.string.log_time_now)
-        diff < TimeUnit.HOURS.toMillis(1) -> "${TimeUnit.MILLISECONDS.toMinutes(diff)}m ago"
-        diff < TimeUnit.DAYS.toMillis(1) -> "${TimeUnit.MILLISECONDS.toHours(diff)}h ago"
-        diff < TimeUnit.DAYS.toMillis(7) -> "${TimeUnit.MILLISECONDS.toDays(diff)}d ago"
+        diff < TimeUnit.HOURS.toMillis(1) -> stringResource(R.string.log_time_minutes, TimeUnit.MILLISECONDS.toMinutes(diff).toInt())
+        diff < TimeUnit.DAYS.toMillis(1) -> stringResource(R.string.log_time_hours, TimeUnit.MILLISECONDS.toHours(diff).toInt())
+        diff < TimeUnit.DAYS.toMillis(7) -> stringResource(R.string.log_time_days, TimeUnit.MILLISECONDS.toDays(diff).toInt())
         else -> SimpleDateFormat("dd MMM", Locale.getDefault()).format(date)
     }
 }

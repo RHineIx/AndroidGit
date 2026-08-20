@@ -67,8 +67,11 @@ fun ChangesScreen(
     LaunchedEffect(Unit) { viewModel.loadChangedFiles() }
 
     LaunchedEffect(files) {
-        if (selectedFiles.isEmpty() && files.isNotEmpty()) {
-            selectedFiles = files.map { it.path }.toSet()
+        val currentPaths = files.map { it.path }.toSet()
+        selectedFiles = if (selectedFiles.isEmpty() && files.isNotEmpty()) {
+            currentPaths
+        } else {
+            selectedFiles intersect currentPaths
         }
     }
 
@@ -227,13 +230,13 @@ fun ChangesScreen(
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.AutoAwesome, 
-                                                contentDescription = "Generate with AI", 
+                                                contentDescription = stringResource(R.string.changes_ai_generate),
                                                 tint = if (selectedFiles.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                                             )
                                         }
                                     }
                                     IconButton(onClick = { isMessageExpanded = true }) {
-                                        Icon(Icons.Default.Fullscreen, contentDescription = "Expand to fullscreen")
+                                        Icon(Icons.Default.Fullscreen, contentDescription = stringResource(R.string.changes_expand_message))
                                     }
                                 }
                             }
@@ -243,9 +246,16 @@ fun ChangesScreen(
 
                         Button(
                             onClick = {
-                                viewModel.commitChanges(commitMessage, isAmend, selectedFiles)
-                                commitMessage = ""
-                                isAmend = false
+                                viewModel.commitChanges(
+                                    message = commitMessage,
+                                    isAmend = isAmend,
+                                    selectedPaths = selectedFiles,
+                                    onSuccess = {
+                                        commitMessage = ""
+                                        isAmend = false
+                                        selectedFiles = emptySet()
+                                    }
+                                )
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -361,7 +371,7 @@ fun ChangesScreen(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.AutoAwesome, 
-                                        contentDescription = "Generate with AI", 
+                                        contentDescription = stringResource(R.string.changes_ai_generate),
                                         tint = if (selectedFiles.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                                     )
                                 }

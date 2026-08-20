@@ -16,8 +16,12 @@ class GitStashManager(private val git: Git) {
         try {
             git.stashApply().setStashRef("stash@{$index}").call()
             if (drop) {
-                dropStash(index)
-                return "Stash applied and dropped"
+                val dropResult = dropStash(index)
+                return if (dropResult.startsWith("Failed", ignoreCase = true) || dropResult.startsWith("Error", ignoreCase = true)) {
+                    "Error: Stash applied, but drop failed: $dropResult"
+                } else {
+                    "Stash applied and dropped"
+                }
             }
             return "Stash applied"
         } catch (e: Exception) {
@@ -35,17 +39,13 @@ class GitStashManager(private val git: Git) {
     }
     
     fun getStashList(): List<StashItem> {
-        return try {
-            val stashes = git.stashList().call()
-            stashes.mapIndexed { index, rev ->
-                StashItem(
-                    index = index,
-                    message = rev.shortMessage,
-                    hash = rev.name.substring(0, 7)
-                )
-            }
-        } catch (e: Exception) {
-            emptyList()
+        val stashes = git.stashList().call()
+        return stashes.mapIndexed { index, rev ->
+            StashItem(
+                index = index,
+                message = rev.shortMessage,
+                hash = rev.name.take(7)
+            )
         }
     }
 }

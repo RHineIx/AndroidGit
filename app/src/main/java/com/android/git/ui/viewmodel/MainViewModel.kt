@@ -11,6 +11,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.android.git.R
+import com.android.git.data.GitAuthConfig
+import com.android.git.data.GitAuthMode
 import com.android.git.data.GitHubUpdateManager
 import com.android.git.data.GitManager
 import com.android.git.data.PreferencesManager
@@ -21,6 +23,7 @@ import com.android.git.model.DashboardState
 import com.android.git.model.GitFile
 import com.android.git.model.UpdateInfo
 import com.android.git.ui.components.SnackbarType
+import com.android.git.utils.isGitFailureMessage
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.generationConfig
 import kotlinx.coroutines.Dispatchers
@@ -52,6 +55,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     var isAIGenerating: Boolean by mutableStateOf(false)
         private set
 
+
     var statusMessage: String by mutableStateOf("")
         private set
 
@@ -69,6 +73,9 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         private set
 
     var isLogLoading: Boolean by mutableStateOf(false)
+        private set
+
+    var logErrorMessage: String by mutableStateOf("")
         private set
 
     private var logCurrentOffset = 0
@@ -101,6 +108,22 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     
     fun restoreLastToken(): String = prefs.restoreLastToken()
 
+    fun getAuthConfig(): GitAuthConfig {
+        return when (prefs.getAuthMode()) {
+            GitAuthMode.SSH -> GitAuthConfig(
+                mode = GitAuthMode.SSH,
+                privateKey = prefs.getSshPrivateKey(),
+                passphrase = prefs.getSshPassphrase()
+            )
+            GitAuthMode.HTTPS -> GitAuthConfig(
+                mode = GitAuthMode.HTTPS,
+                token = prefs.getToken()
+            )
+        }
+    }
+
+    fun saveAuthMode(mode: GitAuthMode) = prefs.setAuthMode(mode)
+
     fun updateThemeMode(mode: ThemeMode) {
         themeMode = mode
         prefs.setThemeMode(mode)
@@ -111,89 +134,70 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
             isLoading = true
             try {
                 if (apiKey.isBlank()) throw Exception("API Key cannot be empty.")
-                
                 prefs.setGeminiApiKey(apiKey)
                 prefs.setGeminiModel(modelName)
                 prefs.setGeminiPrompt(prompt)
-
                 val model = GenerativeModel(
-                    modelName = modelName, 
+                    modelName = modelName,
                     apiKey = apiKey,
                     generationConfig = generationConfig { temperature = 0.1f }
                 )
-                
                 model.generateContent("Hello, respond with exactly 'OK'")
                 showStatus("Gemini Configuration Saved and Verified!", SnackbarType.SUCCESS)
             } catch (e: Exception) {
                 val errorMsg = if (e.message?.contains("MissingFieldException") == true) {
                     "Verification Failed: Invalid API Key, Unsupported Region, or Model Not Found."
-                } else {
-                    "Verification Failed: ${e.localizedMessage}"
-                }
+                } else "Verification Failed: ${e.localizedMessage}"
                 showStatus(errorMsg, SnackbarType.ERROR)
             } finally {
                 isLoading = false
             }
         }
     }
-    
+
     fun generateAICommitMessage(selectedPaths: Set<String>, onSuccess: (String) -> Unit) {
         if (selectedPaths.isEmpty()) {
             showStatus("Please select files first to generate a commit message.", SnackbarType.WARNING)
             return
         }
-        
         val apiKey = prefs.getGeminiApiKey()
         if (apiKey.isEmpty()) {
             showStatus("Gemini API Key is missing. Please set it in General Settings.", SnackbarType.ERROR)
             return
         }
-
         viewModelScope.launch {
             isAIGenerating = true
             try {
                 val diff = gitManager?.getDiff(selectedPaths) ?: ""
                 if (diff.isEmpty() || diff.startsWith("Error")) {
                     showStatus("Could not extract diff for AI processing.", SnackbarType.ERROR)
-                    isAIGenerating = false
                     return@launch
                 }
-
                 val customPrompt = prefs.getGeminiPrompt()
-                
-                // Improved prompt: Requests strict brevity and lists all changes concisely
-                val basePrompt = if (customPrompt.isNotBlank()) customPrompt else 
+                val basePrompt = if (customPrompt.isNotBlank()) customPrompt else
                     "You are an expert developer. Generate a Conventional Commit message based on the following git diff.\n" +
-                    "Format requirements:\n" +
-                    "1. A concise subject line (e.g., feat: ..., fix: ...).\n" +
-                    "2. A blank line.\n" +
-                    "3. A concise bulleted list summarizing ALL notable changes.\n" +
-                    "Keep the bullet points strictly short and to the point.\n" +
-                    "Output ONLY the commit message without any markdown formatting like ```."
-                
-                val finalPrompt = "$basePrompt\n\nGit Diff:\n$diff"
-
+                        "Format requirements:\n" +
+                        "1. A concise subject line (e.g., feat: ..., fix: ...).\n" +
+                        "2. A blank line.\n" +
+                        "3. A concise bulleted list summarizing ALL notable changes.\n" +
+                        "Keep the bullet points strictly short and to the point.\n" +
+                        "Output ONLY the commit message without any markdown formatting like ``` ."
                 val generativeModel = GenerativeModel(
                     modelName = prefs.getGeminiModel(),
                     apiKey = apiKey,
                     generationConfig = generationConfig {
-                        temperature = 0.3f 
-                        maxOutputTokens = 2048 // Increased to prevent 'MAX_TOKENS' error on large diffs
+                        temperature = 0.3f
+                        maxOutputTokens = 2048
                     }
                 )
-
-                val response = generativeModel.generateContent(finalPrompt)
-                val generatedText = response.text?.trim() ?: ""
-                val cleanText = generatedText.removePrefix("```").removeSuffix("```").trim()
-
+                val response = generativeModel.generateContent("$basePrompt\n\nGit Diff:\n$diff")
+                val cleanText = (response.text?.trim() ?: "").removePrefix("```").removeSuffix("```").trim()
                 onSuccess(cleanText)
                 showStatus("Commit message generated successfully!", SnackbarType.SUCCESS)
             } catch (e: Exception) {
                 val errorMsg = if (e.message?.contains("MissingFieldException") == true) {
                     "AI Error: Invalid Key, Unsupported Region, or Model Not Found."
-                } else {
-                    "AI Error: ${e.localizedMessage}"
-                }
+                } else "AI Error: ${e.localizedMessage}"
                 showStatus(errorMsg, SnackbarType.ERROR)
             } finally {
                 isAIGenerating = false
@@ -248,7 +252,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         closeProject()
         currentRepoFile = file
         savedStateHandle["current_repo_path"] = file.absolutePath
-        gitManager = GitManager(file)
+        gitManager = GitManager(file, getApplication<Application>().filesDir)
         prefs.addRecentProject(file.absolutePath)
         loadDashboard()
     }
@@ -262,6 +266,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         branchList = emptyList()
         changedFiles = emptyList()
         logList = emptyList()
+        logErrorMessage = ""
         statusMessage = ""
     }
 
@@ -269,12 +274,16 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         val manager = gitManager ?: return
         dashboardState = DashboardState.Loading 
         viewModelScope.launch {
-            if (manager.isGitRepo()) {
-                manager.configureUser(prefs.getUserName(), prefs.getUserEmail())
-                manager.openRepo()
-                dashboardState = manager.getDashboardStats()
-            } else {
-                dashboardState = DashboardState.NotInitialized
+            try {
+                if (manager.isGitRepo()) {
+                    manager.configureUser(prefs.getUserName(), prefs.getUserEmail())
+                    manager.openRepo()
+                    dashboardState = manager.getDashboardStats()
+                } else {
+                    dashboardState = DashboardState.NotInitialized
+                }
+            } catch (e: Exception) {
+                dashboardState = DashboardState.Error(e.message ?: "Unable to load repository")
             }
         }
     }
@@ -283,13 +292,14 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         val manager = gitManager ?: return
         viewModelScope.launch {
             isLoading = true
-            showStatus(manager.initRepo(), SnackbarType.SUCCESS)
+            val result = manager.initRepo()
+            showStatus(result, resultSnackbarType(result))
             loadDashboard()
             isLoading = false
         }
     }
 
-    fun cloneRepository(url: String, folderName: String, token: String, onSuccess: (File) -> Unit) {
+    fun cloneRepository(url: String, folderName: String, auth: GitAuthConfig, onSuccess: (File) -> Unit) {
         if (isLoading) return
         viewModelScope.launch {
             val context = getApplication<Application>()
@@ -300,7 +310,13 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
             
             showStatus(context.getString(R.string.clone_progress), SnackbarType.INFO)
             
-            val result = GitManager.cloneRepo(url, Environment.getExternalStorageDirectory(), folderName, token) { task, progress, details ->
+            val result = GitManager.cloneRepo(
+                url = url,
+                parentDir = Environment.getExternalStorageDirectory(),
+                folderName = folderName,
+                auth = auth,
+                secureStorageDir = context.filesDir
+            ) { task, progress, details ->
                 cloneTaskName = task
                 cloneProgress = progress
                 cloneTaskDetails = details
@@ -320,14 +336,19 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         val manager = gitManager ?: return
         viewModelScope.launch {
             val context = getApplication<Application>()
-            if (prefs.getToken().isEmpty()) {
+            val auth = getAuthConfig()
+            if (auth.mode == GitAuthMode.HTTPS && auth.token.isEmpty()) {
                 showStatus(context.getString(R.string.error_set_token), SnackbarType.ERROR)
                 return@launch
             }
+            if (auth.mode == GitAuthMode.SSH && auth.privateKey.isEmpty()) {
+                showStatus(context.getString(R.string.error_set_ssh_key), SnackbarType.ERROR)
+                return@launch
+            }
             isLoading = true
-            val result = manager.pull(prefs.getToken())
+            val result = manager.pull(auth)
             isLoading = false
-            showStatus(result, if (result.contains("Error") || result.contains("Exception")) SnackbarType.ERROR else SnackbarType.SUCCESS)
+            showStatus(result, resultSnackbarType(result))
             loadDashboard()
         }
     }
@@ -336,14 +357,19 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         val manager = gitManager ?: return
         viewModelScope.launch {
             val context = getApplication<Application>()
-            if (prefs.getToken().isEmpty()) {
+            val auth = getAuthConfig()
+            if (auth.mode == GitAuthMode.HTTPS && auth.token.isEmpty()) {
                 showStatus(context.getString(R.string.error_set_token), SnackbarType.ERROR)
                 return@launch
             }
+            if (auth.mode == GitAuthMode.SSH && auth.privateKey.isEmpty()) {
+                showStatus(context.getString(R.string.error_set_ssh_key), SnackbarType.ERROR)
+                return@launch
+            }
             isLoading = true
-            val result = manager.push(prefs.getToken(), force)
+            val result = manager.push(auth, force)
             isLoading = false
-            showStatus(result, if (result.contains("Error") || result.contains("Rejected")) SnackbarType.ERROR else SnackbarType.SUCCESS)
+            showStatus(result, resultSnackbarType(result))
             loadDashboard()
         }
     }
@@ -352,8 +378,14 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         val manager = gitManager ?: return
         viewModelScope.launch {
             isLoading = true
-            branchList = manager.getRichBranches()
-            isLoading = false
+            try {
+                branchList = manager.getRichBranches()
+            } catch (e: Exception) {
+                branchList = emptyList()
+                showStatus(e.message ?: "Unable to load branches", SnackbarType.ERROR)
+            } finally {
+                isLoading = false
+            }
         }
     }
 
@@ -361,7 +393,8 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         val manager = gitManager ?: return
         viewModelScope.launch {
             isLoading = true
-            showStatus(manager.checkoutBranch(name), SnackbarType.SUCCESS)
+            val result = manager.checkoutBranch(name)
+            showStatus(result, resultSnackbarType(result))
             loadBranches()
             loadDashboard()
             isLoading = false
@@ -373,8 +406,16 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         viewModelScope.launch {
             isLoading = true
             val result = manager.createBranch(name)
-            manager.checkoutBranch(name)
-            showStatus(result, SnackbarType.SUCCESS)
+            if (!isFailure(result)) {
+                val checkoutResult = manager.checkoutBranch(name)
+                if (isFailure(checkoutResult)) {
+                    showStatus(checkoutResult, resultSnackbarType(checkoutResult))
+                    loadBranches()
+                    isLoading = false
+                    return@launch
+                }
+            }
+            showStatus(result, resultSnackbarType(result))
             loadBranches()
             loadDashboard()
             isLoading = false
@@ -386,7 +427,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         viewModelScope.launch {
             isLoading = true
             val result = manager.deleteBranch(name)
-            showStatus(result, if(result.contains("Error")) SnackbarType.ERROR else SnackbarType.SUCCESS)
+            showStatus(result, resultSnackbarType(result))
             loadBranches()
             isLoading = false
         }
@@ -396,7 +437,8 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         val manager = gitManager ?: return
         viewModelScope.launch {
             isLoading = true
-            showStatus(manager.renameBranch(newName), SnackbarType.SUCCESS)
+            val result = manager.renameBranch(newName)
+            showStatus(result, resultSnackbarType(result))
             loadBranches()
             loadDashboard()
             isLoading = false
@@ -408,7 +450,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         viewModelScope.launch {
             isLoading = true
             val result = manager.mergeBranch(name)
-            showStatus(result, if(result.contains("failed")) SnackbarType.ERROR else SnackbarType.SUCCESS)
+            showStatus(result, resultSnackbarType(result))
             loadBranches()
             loadDashboard()
             isLoading = false
@@ -420,7 +462,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         viewModelScope.launch {
             isLoading = true
             val result = manager.rebaseBranch(name)
-            showStatus(result, if(result.contains("failed")) SnackbarType.ERROR else SnackbarType.SUCCESS)
+            showStatus(result, resultSnackbarType(result))
             loadBranches()
             loadDashboard()
             isLoading = false
@@ -431,13 +473,24 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         val manager = gitManager ?: return
         viewModelScope.launch {
             val context = getApplication<Application>()
-            if (prefs.getToken().isNotEmpty()) {
+            val auth = getAuthConfig()
+            val configured = when (auth.mode) {
+                GitAuthMode.HTTPS -> auth.token.isNotEmpty()
+                GitAuthMode.SSH -> auth.privateKey.isNotEmpty()
+            }
+            if (configured) {
                 isLoading = true
-                showStatus(manager.fetchAll(prefs.getToken()), SnackbarType.SUCCESS)
+                val result = manager.fetchAll(auth)
+                showStatus(result, resultSnackbarType(result))
                 loadBranches()
+                loadDashboard()
                 isLoading = false
             } else {
-                showStatus(context.getString(R.string.error_set_token), SnackbarType.ERROR)
+                showStatus(
+                    if (auth.mode == GitAuthMode.SSH) context.getString(R.string.error_set_ssh_key)
+                    else context.getString(R.string.error_set_token),
+                    SnackbarType.ERROR
+                )
             }
         }
     }
@@ -446,18 +499,36 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         val manager = gitManager ?: return
         viewModelScope.launch {
             isLoading = true
-            changedFiles = manager.getChangedFiles()
-            isLoading = false
+            try {
+                changedFiles = manager.getChangedFiles()
+            } catch (e: Exception) {
+                changedFiles = emptyList()
+                showStatus(e.message ?: "Unable to load changes", SnackbarType.ERROR)
+            } finally {
+                isLoading = false
+            }
         }
     }
 
-    fun commitChanges(message: String, isAmend: Boolean, selectedPaths: Set<String>) {
+    fun commitChanges(
+        message: String,
+        isAmend: Boolean,
+        selectedPaths: Set<String>,
+        onSuccess: () -> Unit = {}
+    ) {
         val manager = gitManager ?: return
         viewModelScope.launch {
             isLoading = true
-            manager.addToStage(changedFiles.filter { selectedPaths.contains(it.path) })
-            showStatus(manager.commit(message, isAmend), SnackbarType.SUCCESS)
-            loadChangedFiles()
+            val stageResult = manager.addToStage(changedFiles.filter { selectedPaths.contains(it.path) })
+            if (isFailure(stageResult)) {
+                showStatus(stageResult, SnackbarType.ERROR)
+                isLoading = false
+                return@launch
+            }
+            val result = manager.commit(message, isAmend)
+            showStatus(result, resultSnackbarType(result))
+            if (!isFailure(result)) onSuccess()
+            changedFiles = manager.getChangedFiles()
             loadDashboard()
             isLoading = false
         }
@@ -476,23 +547,35 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
             logCurrentOffset = 0
             logHasMore = true
             logList = emptyList()
+            logErrorMessage = ""
         }
 
         if (!logHasMore) return
 
         viewModelScope.launch {
             isLogLoading = true
-            val newLogs = manager.getCommits(limit = LOG_PAGE_SIZE, offset = logCurrentOffset)
-            if (newLogs.size < LOG_PAGE_SIZE) {
-                logHasMore = false
+            try {
+                val newLogs = manager.getCommits(limit = LOG_PAGE_SIZE, offset = logCurrentOffset)
+                if (newLogs.size < LOG_PAGE_SIZE) {
+                    logHasMore = false
+                }
+                logList = if (reset) newLogs else logList + newLogs
+                logCurrentOffset += newLogs.size
+                logErrorMessage = ""
+            } catch (e: Exception) {
+                logErrorMessage = e.message ?: "Unable to load commit history"
+            } finally {
+                isLogLoading = false
             }
-            logList = if (reset) newLogs else logList + newLogs
-            logCurrentOffset += newLogs.size
-            isLogLoading = false
         }
     }
 
     fun clearStatus() { statusMessage = "" }
+
+    private fun isFailure(message: String): Boolean = isGitFailureMessage(message)
+
+    private fun resultSnackbarType(message: String): SnackbarType =
+        if (isFailure(message)) SnackbarType.ERROR else SnackbarType.SUCCESS
 
     private fun showStatus(message: String, type: SnackbarType) {
         statusMessage = message

@@ -11,8 +11,8 @@ android {
         applicationId = "com.android.git"
         minSdk = 26
         targetSdk = 37
-        versionCode = 50200
-        versionName = "5.2.0-stable"
+        versionCode = 60200
+        versionName = "6.2.0-stable"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -53,6 +53,8 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "META-INF/DEPENDENCIES"
+            // JGit and jgit-ssh.apache both contain this duplicate OSGi metadata file.
+            excludes += "OSGI-INF/l10n/plugin.properties"
         }
         jniLibs {
             useLegacyPackaging = true
@@ -81,6 +83,8 @@ dependencies {
 
     // JGit & Required Crypto Dependencies for modern SSH support
     implementation(libs.jgit)
+    implementation(libs.jgit.ssh)
+    implementation(libs.sshd.osgi)
     implementation(libs.bcprov)
     implementation(libs.bcpkix)
 
@@ -89,6 +93,8 @@ dependencies {
 
     implementation(libs.slf4j.simple)
     implementation(libs.miuix)
+
+    testImplementation(libs.junit)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)

@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -23,6 +24,7 @@ import com.android.git.data.GitManager
 import com.android.git.model.StashItem
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.components.SnackbarType
+import com.android.git.utils.isGitFailureMessage
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,6 +34,7 @@ fun StashScreen(
     onBack: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     var stashes by remember { mutableStateOf<List<StashItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -43,13 +46,23 @@ fun StashScreen(
     var stashMessage by remember { mutableStateOf("") }
     
     var showActionDialog by remember { mutableStateOf(false) }
+    var showDropDialog by remember { mutableStateOf(false) }
     var selectedStash by remember { mutableStateOf<StashItem?>(null) }
+    var isActionRunning by remember { mutableStateOf(false) }
 
     fun loadStashes() {
         scope.launch {
             isLoading = true
-            stashes = gitManager.getStashList()
-            isLoading = false
+            try {
+                stashes = gitManager.getStashList()
+                statusMessage = ""
+            } catch (e: Exception) {
+                stashes = emptyList()
+                statusMessage = context.getString(R.string.stash_load_error, e.message ?: "Unknown error")
+                statusType = SnackbarType.ERROR
+            } finally {
+                isLoading = false
+            }
         }
     }
 
@@ -68,16 +81,22 @@ fun StashScreen(
                 )
             },
             confirmButton = {
-                Button(onClick = {
-                    scope.launch {
-                        val msg = gitManager.stashChanges(stashMessage)
-                        statusMessage = msg
-                        statusType = if (msg.contains("No changes")) SnackbarType.WARNING else SnackbarType.SUCCESS
+                Button(
+                    onClick = {
+                        if (isActionRunning) return@Button
+                        isActionRunning = true
                         showCreateDialog = false
-                        stashMessage = ""
-                        loadStashes()
-                    }
-                }) { Text("Stash") }
+                        scope.launch {
+                            val msg = gitManager.stashChanges(stashMessage)
+                            statusMessage = msg
+                            statusType = stashSnackbarType(msg)
+                            stashMessage = ""
+                            isActionRunning = false
+                            loadStashes()
+                        }
+                    },
+                    enabled = !isActionRunning
+                ) { Text(stringResource(R.string.stash_dialog_create_title)) }
             },
             dismissButton = { TextButton(onClick = { showCreateDialog = false }) { Text(stringResource(R.string.action_cancel)) } }
         )
@@ -89,26 +108,72 @@ fun StashScreen(
             title = { Text(stringResource(R.string.stash_dialog_action_title)) },
             text = { Text(stringResource(R.string.stash_dialog_action_msg)) },
             confirmButton = {
-                Button(onClick = {
-                    scope.launch {
-                        val res = gitManager.applyStash(selectedStash!!.index, drop = true)
-                        statusMessage = res
-                        statusType = SnackbarType.SUCCESS
-                        showActionDialog = false
-                        loadStashes()
-                    }
-                }) { Text(stringResource(R.string.stash_btn_pop)) }
+                Button(
+                    onClick = {
+                        if (isActionRunning) return@Button
+                        isActionRunning = true
+                        scope.launch {
+                            val res = gitManager.applyStash(selectedStash!!.index, drop = true)
+                            statusMessage = res
+                            statusType = stashSnackbarType(res)
+                            showActionDialog = false
+                            isActionRunning = false
+                            loadStashes()
+                        }
+                    },
+                    enabled = !isActionRunning
+                ) { Text(stringResource(R.string.stash_btn_pop)) }
             },
             dismissButton = {
-                OutlinedButton(onClick = {
-                    scope.launch {
-                        val res = gitManager.applyStash(selectedStash!!.index, drop = false)
-                        statusMessage = res
-                        showActionDialog = false
-                    }
-                }) { Text(stringResource(R.string.stash_btn_apply)) }
+                OutlinedButton(
+                    onClick = {
+                        if (isActionRunning) return@OutlinedButton
+                        isActionRunning = true
+                        scope.launch {
+                            val res = gitManager.applyStash(selectedStash!!.index, drop = false)
+                            statusMessage = res
+                            statusType = stashSnackbarType(res)
+                            showActionDialog = false
+                            isActionRunning = false
+                            loadStashes()
+                        }
+                    },
+                    enabled = !isActionRunning
+                ) { Text(stringResource(R.string.stash_btn_apply)) }
             },
             icon = { Icon(Icons.Default.Archive, null) }
+        )
+    }
+
+    if (showDropDialog && selectedStash != null) {
+        AlertDialog(
+            onDismissRequest = { if (!isActionRunning) showDropDialog = false },
+            title = { Text(stringResource(R.string.stash_drop_title)) },
+            text = { Text(stringResource(R.string.stash_drop_msg, selectedStash!!.index)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (isActionRunning) return@Button
+                        isActionRunning = true
+                        showDropDialog = false
+                        scope.launch {
+                            val res = gitManager.dropStash(selectedStash!!.index)
+                            statusMessage = res
+                            statusType = stashSnackbarType(res)
+                            isActionRunning = false
+                            loadStashes()
+                        }
+                    },
+                    enabled = !isActionRunning,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text(stringResource(R.string.stash_drop_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDropDialog = false }, enabled = !isActionRunning) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+            icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
         )
     }
 
@@ -125,7 +190,7 @@ fun StashScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showCreateDialog = true }) {
+            FloatingActionButton(onClick = { if (!isLoading && !isActionRunning) showCreateDialog = true }) {
                 Icon(Icons.Default.Add, null)
             }
         }
@@ -153,11 +218,8 @@ fun StashScreen(
                                     showActionDialog = true
                                 },
                                 onDrop = {
-                                    scope.launch {
-                                        val res = gitManager.dropStash(stash.index)
-                                        statusMessage = res
-                                        loadStashes()
-                                    }
+                                    selectedStash = stash
+                                    showDropDialog = true
                                 }
                             )
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
@@ -170,6 +232,15 @@ fun StashScreen(
                 AppSnackbar(message = statusMessage, type = statusType, onDismiss = { statusMessage = "" })
             }
         }
+    }
+}
+
+private fun stashSnackbarType(message: String): SnackbarType {
+    val normalized = message.trim().lowercase()
+    return when {
+        isGitFailureMessage(message) -> SnackbarType.ERROR
+        normalized.contains("no changes") -> SnackbarType.WARNING
+        else -> SnackbarType.SUCCESS
     }
 }
 

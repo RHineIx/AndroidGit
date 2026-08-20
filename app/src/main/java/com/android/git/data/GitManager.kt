@@ -16,7 +16,6 @@ import org.eclipse.jgit.api.errors.NoHeadException
 import org.eclipse.jgit.diff.DiffFormatter
 import org.eclipse.jgit.lib.ProgressMonitor
 import org.eclipse.jgit.transport.RemoteRefUpdate
-import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
 import org.eclipse.jgit.treewalk.CanonicalTreeParser
 import org.eclipse.jgit.treewalk.EmptyTreeIterator
 import org.eclipse.jgit.treewalk.FileTreeIterator
@@ -25,7 +24,10 @@ import java.io.Closeable
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 
-class GitManager(private val rootDir: File) : Closeable {
+class GitManager(
+    private val rootDir: File,
+    secureStorageDir: File? = null
+) : Closeable {
 
     private var git: Git? = null
     private var branchManager: GitBranchManager? = null
@@ -36,7 +38,7 @@ class GitManager(private val rootDir: File) : Closeable {
     private val lifecycleMutex = Mutex()
     private val isClosed = AtomicBoolean(false)
 
-    val authManager = GitAuthManager(rootDir.parentFile ?: rootDir)
+    val authManager = GitAuthManager(secureStorageDir ?: rootDir.parentFile ?: rootDir)
 
     fun isGitRepo(): Boolean = File(rootDir, ".git").exists()
 
@@ -88,12 +90,16 @@ class GitManager(private val rootDir: File) : Closeable {
                 val repo = git?.repository ?: return@runSafeRead DashboardState.Error("Repo closed")
                 
                 val status = git?.status()?.call()
-                val changedCount = (status?.untracked?.size ?: 0) + 
-                                   (status?.modified?.size ?: 0) + 
-                                   (status?.added?.size ?: 0) + 
-                                   (status?.missing?.size ?: 0) + 
-                                   (status?.removed?.size ?: 0) +
-                                   (status?.conflicting?.size ?: 0)
+                val changedPaths = linkedSetOf<String>().apply {
+                    addAll(status?.untracked.orEmpty())
+                    addAll(status?.modified.orEmpty())
+                    addAll(status?.changed.orEmpty())
+                    addAll(status?.added.orEmpty())
+                    addAll(status?.missing.orEmpty())
+                    addAll(status?.removed.orEmpty())
+                    addAll(status?.conflicting.orEmpty())
+                }
+                val changedCount = changedPaths.size
                 
                 val branchName = repo.branch ?: "Unknown"
 
@@ -256,7 +262,7 @@ class GitManager(private val rootDir: File) : Closeable {
                    message = rev.fullMessage.trim(),
                    author = rev.authorIdent.name ?: "Unknown",
                    date = java.util.Date.from(rev.authorIdent.whenAsInstant),
-                   hash = hash.substring(0, 7),
+                   hash = hash,
                    isPushed = isPushed
                ))
             }
@@ -312,8 +318,9 @@ class GitManager(private val rootDir: File) : Closeable {
     suspend fun revertCommit(hash: String): String = withContext(Dispatchers.IO) {
         runGitOperation {
             val objId = git?.repository?.resolve(hash) ?: throw Exception("Commit not found")
-            git?.revert()?.include(objId)?.call()
-            "Reverted commit"
+            val revertedCommit = git?.revert()?.include(objId)?.call()
+                ?: throw Exception("Revert produced no commit")
+            "Reverted commit ${revertedCommit.name.take(7)}"
         }
     }
 
@@ -354,48 +361,58 @@ class GitManager(private val rootDir: File) : Closeable {
         }
     }
 
-    suspend fun fetchAll(token: String): String = withContext(Dispatchers.IO) {
+    suspend fun fetchAll(auth: GitAuthConfig): String = withContext(Dispatchers.IO) {
         runGitOperation {
-            val cmd = git?.fetch()?.setCheckFetchedObjects(true)
-            if (token.isNotEmpty()) cmd?.setCredentialsProvider(authManager.getCredentialsProvider(token))
-            cmd?.call()
-            "Fetched all"
+            withAuth(auth) {
+                val cmd = git?.fetch()?.setCheckFetchedObjects(true)
+                applyCredentials(cmd, auth)
+                cmd?.call()
+                "Fetched all"
+            }
         }
     }
 
-    suspend fun push(token: String, force: Boolean = false): String = withContext(Dispatchers.IO) {
+    suspend fun push(auth: GitAuthConfig, force: Boolean = false): String = withContext(Dispatchers.IO) {
         runGitOperation {
-            val cmd = git?.push()?.setForce(force)
-            if (token.isNotEmpty()) {
-                cmd?.setCredentialsProvider(authManager.getCredentialsProvider(token))
-            }
+            withAuth(auth) {
+                val cmd = git?.push()?.setForce(force)
+                applyCredentials(cmd, auth)
 
-            val pushResults = cmd?.call()
-            var resultMessage = ""
-            
-            pushResults?.forEach { result ->
-                result.remoteUpdates.forEach { update ->
-                    when (update.status) {
-                        RemoteRefUpdate.Status.OK -> resultMessage += "Success: ${update.srcRef} -> ${update.remoteName}\n"
-                        RemoteRefUpdate.Status.UP_TO_DATE -> resultMessage += "Up to date.\n"
-                        RemoteRefUpdate.Status.REJECTED_NONFASTFORWARD -> resultMessage += "Rejected: Non-fast-forward (Pull first!)\n"
-                        RemoteRefUpdate.Status.REJECTED_NODELETE -> resultMessage += "Rejected: No Delete.\n"
-                        RemoteRefUpdate.Status.REJECTED_REMOTE_CHANGED -> resultMessage += "Rejected: Remote Changed.\n"
-                        RemoteRefUpdate.Status.REJECTED_OTHER_REASON -> resultMessage += "Rejected: ${update.message}\n"
-                        else -> resultMessage += "Status: ${update.status}\n"
+                val pushResults = cmd?.call()
+                var resultMessage = ""
+
+                pushResults?.forEach { result ->
+                    result.remoteUpdates.forEach { update ->
+                        when (update.status) {
+                            RemoteRefUpdate.Status.OK -> resultMessage += "Success: ${update.srcRef} -> ${update.remoteName}\n"
+                            RemoteRefUpdate.Status.UP_TO_DATE -> resultMessage += "Up to date.\n"
+                            RemoteRefUpdate.Status.REJECTED_NONFASTFORWARD -> resultMessage += "Rejected: Non-fast-forward (Pull first!)\n"
+                            RemoteRefUpdate.Status.REJECTED_NODELETE -> resultMessage += "Rejected: No Delete.\n"
+                            RemoteRefUpdate.Status.REJECTED_REMOTE_CHANGED -> resultMessage += "Rejected: Remote Changed.\n"
+                            RemoteRefUpdate.Status.REJECTED_OTHER_REASON -> resultMessage += "Rejected: ${update.message}\n"
+                            else -> resultMessage += "Status: ${update.status}\n"
+                        }
                     }
                 }
+                if (resultMessage.isEmpty()) "Push executed (No updates)." else resultMessage.trim()
             }
-            if (resultMessage.isEmpty()) "Push executed (No updates)." else resultMessage.trim()
         }
     }
 
-    suspend fun pull(token: String): String = withContext(Dispatchers.IO) {
+    suspend fun pull(auth: GitAuthConfig): String = withContext(Dispatchers.IO) {
         runGitOperation {
-            val cmd = git?.pull()
-            if (token.isNotEmpty()) cmd?.setCredentialsProvider(authManager.getCredentialsProvider(token))
-            cmd?.call()
-            "Pulled!"
+            withAuth(auth) {
+                val cmd = git?.pull() ?: throw Exception("Pull command unavailable")
+                applyCredentials(cmd, auth)
+                val pullResult = cmd.call()
+                if (pullResult.isSuccessful) {
+                    "Pulled!"
+                } else {
+                    val mergeStatus = pullResult.mergeResult?.mergeStatus
+                    val rebaseStatus = pullResult.rebaseResult?.status
+                    "Error: Pull incomplete${mergeStatus?.let { ": $it" } ?: rebaseStatus?.let { ": $it" } ?: ""}"
+                }
+            }
         }
     }
 
@@ -513,6 +530,29 @@ class GitManager(private val rootDir: File) : Closeable {
         }
     }
     
+    private fun <T> withAuth(auth: GitAuthConfig, block: () -> T): T {
+        if (auth.mode == GitAuthMode.SSH) {
+            authManager.configureSsh(auth)
+        }
+        return try {
+            block()
+        } finally {
+            if (auth.mode == GitAuthMode.SSH) {
+                authManager.closeActiveSshFactory()
+            }
+        }
+    }
+
+    private fun applyCredentials(command: Any?, auth: GitAuthConfig) {
+        if (auth.mode != GitAuthMode.HTTPS || auth.token.isBlank()) return
+        when (command) {
+            is org.eclipse.jgit.api.FetchCommand -> command.setCredentialsProvider(authManager.getCredentialsProvider(auth.token))
+            is org.eclipse.jgit.api.PushCommand -> command.setCredentialsProvider(authManager.getCredentialsProvider(auth.token))
+            is org.eclipse.jgit.api.PullCommand -> command.setCredentialsProvider(authManager.getCredentialsProvider(auth.token))
+            is org.eclipse.jgit.api.CloneCommand -> command.setCredentialsProvider(authManager.getCredentialsProvider(auth.token))
+        }
+    }
+
     private suspend inline fun <T> runSafeRead(crossinline block: suspend () -> T): T {
         ensureOpen()
         // Read operations can happen concurrently, bypassing the writeMutex
@@ -527,6 +567,7 @@ class GitManager(private val rootDir: File) : Closeable {
     override fun close() {
         if (isClosed.compareAndSet(false, true)) {
             try {
+                authManager.closeActiveSshFactory()
                 git?.close()
                 git = null
             } catch (e: Exception) {
@@ -536,13 +577,27 @@ class GitManager(private val rootDir: File) : Closeable {
     }
 
     companion object {
+        private fun formatGitFailure(error: Throwable): String {
+            val messages = generateSequence(error) { it.cause }
+                .mapNotNull { cause -> cause.message?.takeIf { it.isNotBlank() } }
+                .distinct()
+                .toList()
+            return if (messages.isEmpty()) {
+                error::class.java.simpleName
+            } else {
+                messages.joinToString(" -> ")
+            }
+        }
+
         suspend fun cloneRepo(
-            url: String, 
-            parentDir: File, 
-            folderName: String, 
-            token: String,
+            url: String,
+            parentDir: File,
+            folderName: String,
+            auth: GitAuthConfig,
+            secureStorageDir: File,
             onProgress: (String, Float, String) -> Unit
         ): Pair<File?, String> = withContext(Dispatchers.IO) {
+            val authManager = GitAuthManager(secureStorageDir)
             val destDir = File(parentDir, folderName)
             if (destDir.exists() && destDir.listFiles()?.isNotEmpty() == true) {
                 return@withContext Pair(null, "Error: Folder exists.")
@@ -576,19 +631,34 @@ class GitManager(private val rootDir: File) : Closeable {
             }
 
             try {
+                val isSshUrl = GitRemoteUrl.isSsh(url)
+                if (auth.mode == GitAuthMode.SSH && !isSshUrl) {
+                    return@withContext Pair(null, "Clone failed: SSH authentication requires an SSH URL such as git@github.com:owner/repository.git")
+                }
+                if (auth.mode == GitAuthMode.HTTPS && isSshUrl) {
+                    return@withContext Pair(null, "Clone failed: HTTPS authentication requires an HTTPS URL")
+                }
+                if (auth.mode == GitAuthMode.SSH) {
+                    authManager.configureSsh(auth)
+                }
+
                 val cmd = Git.cloneRepository()
                     .setURI(url)
                     .setDirectory(destDir)
                     .setProgressMonitor(monitor)
 
-                if (token.isNotEmpty()) {
-                    cmd.setCredentialsProvider(UsernamePasswordCredentialsProvider(token, ""))
+                if (auth.mode == GitAuthMode.HTTPS && auth.token.isNotBlank()) {
+                    cmd.setCredentialsProvider(authManager.getCredentialsProvider(auth.token))
                 }
-                cmd.call().close() 
+                cmd.call().close()
                 Pair(destDir, "Cloned!")
             } catch (e: Exception) {
                 if (destDir.exists()) destDir.deleteRecursively()
-                Pair(null, "Clone failed: ${e.message}")
+                Pair(null, "Clone failed: ${formatGitFailure(e)}")
+            } finally {
+                if (auth.mode == GitAuthMode.SSH) {
+                    authManager.closeActiveSshFactory()
+                }
             }
         }
     }

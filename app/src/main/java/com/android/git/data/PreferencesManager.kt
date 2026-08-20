@@ -25,6 +25,10 @@ class PreferencesManager(context: Context) {
     companion object {
         private const val KEY_TOKEN = "github_token"
         private const val KEY_LAST_VALID_TOKEN = "last_valid_github_token"
+        private const val KEY_AUTH_MODE = "git_auth_mode"
+        private const val KEY_SSH_PRIVATE_KEY = "ssh_private_key"
+        private const val KEY_SSH_PUBLIC_KEY = "ssh_public_key"
+        private const val KEY_SSH_PASSPHRASE = "ssh_passphrase"
         private const val KEY_USERNAME = "git_username"
         private const val KEY_EMAIL = "git_email"
         private const val KEY_THEME_DARK = "app_theme_dark"
@@ -61,6 +65,36 @@ class PreferencesManager(context: Context) {
             saveToken(lastToken)
         }
         return lastToken
+    }
+
+    fun getAuthMode(): GitAuthMode {
+        return runCatching { GitAuthMode.valueOf(prefs.getString(KEY_AUTH_MODE, GitAuthMode.HTTPS.name) ?: GitAuthMode.HTTPS.name) }
+            .getOrDefault(GitAuthMode.HTTPS)
+    }
+
+    fun setAuthMode(mode: GitAuthMode) {
+        prefs.edit().putString(KEY_AUTH_MODE, mode.name).apply()
+    }
+
+    fun saveSshKey(privateKey: String, publicKey: String, passphrase: String) {
+        prefs.edit()
+            .putString(KEY_SSH_PRIVATE_KEY, privateKey)
+            .putString(KEY_SSH_PUBLIC_KEY, publicKey)
+            .putString(KEY_SSH_PASSPHRASE, passphrase)
+            .apply()
+    }
+
+    fun getSshPrivateKey(): String = prefs.getString(KEY_SSH_PRIVATE_KEY, "") ?: ""
+    fun getSshPublicKey(): String = prefs.getString(KEY_SSH_PUBLIC_KEY, "") ?: ""
+    fun getSshPassphrase(): String = prefs.getString(KEY_SSH_PASSPHRASE, "") ?: ""
+
+    fun clearSshKey() {
+        prefs.edit()
+            .remove(KEY_SSH_PRIVATE_KEY)
+            .remove(KEY_SSH_PUBLIC_KEY)
+            .remove(KEY_SSH_PASSPHRASE)
+            .putString(KEY_AUTH_MODE, GitAuthMode.HTTPS.name)
+            .apply()
     }
 
     fun saveGitIdentity(name: String, email: String) {
@@ -133,4 +167,5 @@ class PreferencesManager(context: Context) {
 
     fun getGeminiPrompt(): String = prefs.getString(KEY_GEMINI_PROMPT, "") ?: ""
     fun setGeminiPrompt(prompt: String) = prefs.edit().putString(KEY_GEMINI_PROMPT, prompt).apply()
+
 }

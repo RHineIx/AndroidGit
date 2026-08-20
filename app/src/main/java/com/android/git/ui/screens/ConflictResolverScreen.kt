@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -16,6 +17,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.git.R
 import com.android.git.data.GitManager
+import com.android.git.ui.components.AppSnackbar
+import com.android.git.ui.components.SnackbarType
+import com.android.git.utils.isGitFailureMessage
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,6 +32,11 @@ fun ConflictResolverScreen(
     val scope = rememberCoroutineScope()
     
     var fileContent by remember { mutableStateOf("") } // Init empty, load in LaunchedEffect
+    var isResolving by remember { mutableStateOf(false) }
+    var statusMessage by remember { mutableStateOf("") }
+    var statusType by remember { mutableStateOf(SnackbarType.INFO) }
+
+    fun isFailure(message: String): Boolean = isGitFailureMessage(message)
 
     LaunchedEffect(filePath) {
         fileContent = gitManager.readFileContent(filePath)
@@ -59,11 +68,20 @@ fun ConflictResolverScreen(
                 ) {
                     Button(
                         onClick = {
+                            if (isResolving) return@Button
+                            isResolving = true
                             scope.launch {
-                                gitManager.resolveUsingOurs(filePath)
-                                onBack()
+                                val result = gitManager.resolveUsingOurs(filePath)
+                                isResolving = false
+                                if (isFailure(result)) {
+                                    statusMessage = result
+                                    statusType = SnackbarType.ERROR
+                                } else {
+                                    onBack()
+                                }
                             }
                         },
+                        enabled = !isResolving,
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)) // Green
                     ) {
@@ -72,11 +90,20 @@ fun ConflictResolverScreen(
                     
                     Button(
                         onClick = {
+                            if (isResolving) return@Button
+                            isResolving = true
                             scope.launch {
-                                gitManager.resolveUsingTheirs(filePath)
-                                onBack()
+                                val result = gitManager.resolveUsingTheirs(filePath)
+                                isResolving = false
+                                if (isFailure(result)) {
+                                    statusMessage = result
+                                    statusType = SnackbarType.ERROR
+                                } else {
+                                    onBack()
+                                }
                             }
                         },
+                        enabled = !isResolving,
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828)) // Red
                     ) {
@@ -86,7 +113,8 @@ fun ConflictResolverScreen(
             }
         }
     ) { padding ->
-        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize()) {
             
             // Info Header
             Surface(
@@ -122,5 +150,11 @@ fun ConflictResolverScreen(
                 }
             }
         }
+        if (statusMessage.isNotEmpty()) {
+            Box(modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 88.dp)) {
+                AppSnackbar(message = statusMessage, type = statusType) { statusMessage = "" }
+            }
+        }
     }
+}
 }
