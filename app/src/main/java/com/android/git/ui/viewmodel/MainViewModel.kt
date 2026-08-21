@@ -12,6 +12,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.android.git.R
 import com.android.git.data.GitAuthConfig
+import com.android.git.data.GitHubApiManager
+import com.android.git.data.GitRemoteUrl
 import com.android.git.data.GitAuthMode
 import com.android.git.data.GitHubUpdateManager
 import com.android.git.data.GitManager
@@ -21,6 +23,10 @@ import com.android.git.model.BranchModel
 import com.android.git.model.CommitItem
 import com.android.git.model.DashboardState
 import com.android.git.model.GitFile
+import com.android.git.model.GitHubAccount
+import com.android.git.model.GitHubRepository
+import com.android.git.model.GitHubWorkflow
+import com.android.git.model.GitHubWorkflowRun
 import com.android.git.model.UpdateInfo
 import com.android.git.ui.components.SnackbarType
 import com.android.git.utils.isGitFailureMessage
@@ -33,6 +39,7 @@ import java.io.File
 class MainViewModel(application: Application, private val savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
 
     private val prefs = PreferencesManager(application)
+    private val githubApi = GitHubApiManager()
 
     var gitManager: GitManager? = null
         private set
@@ -55,6 +62,38 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     var isAIGenerating: Boolean by mutableStateOf(false)
         private set
 
+    var isGitHubLoading: Boolean by mutableStateOf(false)
+        private set
+
+    var githubAccount: GitHubAccount? by mutableStateOf(null)
+        private set
+
+    var githubRepositories: List<GitHubRepository> by mutableStateOf(emptyList())
+        private set
+
+    var isWorkflowsLoading: Boolean by mutableStateOf(false)
+        private set
+
+    var githubWorkflows: List<GitHubWorkflow> by mutableStateOf(emptyList())
+        private set
+
+    var githubWorkflowRuns: List<GitHubWorkflowRun> by mutableStateOf(emptyList())
+        private set
+
+    var githubWorkflowOwner: String by mutableStateOf("")
+        private set
+
+    var githubWorkflowRepository: String by mutableStateOf("")
+        private set
+
+    var githubWorkflowBranch: String by mutableStateOf("main")
+        private set
+
+    var pendingCloneUrl: String by mutableStateOf("")
+        private set
+
+    var pendingCloneFolderName: String by mutableStateOf("")
+        private set
 
     var statusMessage: String by mutableStateOf("")
         private set
@@ -107,6 +146,116 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     fun getLastValidToken(): String = prefs.getLastValidToken()
     
     fun restoreLastToken(): String = prefs.restoreLastToken()
+
+    fun saveGitHubToken(token: String) {
+        prefs.saveToken(token.trim())
+        if (token.isBlank()) {
+            githubAccount = null
+            githubRepositories = emptyList()
+        }
+    }
+
+    fun loadGitHubAccount() {
+        val token = prefs.getToken()
+        if (token.isBlank()) {
+            githubAccount = null
+            githubRepositories = emptyList()
+            return
+        }
+        if (isGitHubLoading) return
+        viewModelScope.launch {
+            isGitHubLoading = true
+            try {
+                val snapshot = githubApi.getAccountSnapshot(token)
+                githubAccount = snapshot.account
+                githubRepositories = snapshot.repositories
+            } catch (e: Exception) {
+                showStatus(e.message ?: "Unable to load GitHub account", SnackbarType.ERROR)
+            } finally {
+                isGitHubLoading = false
+            }
+        }
+    }
+
+    fun prepareClone(repository: GitHubRepository) {
+        pendingCloneUrl = if (prefs.getAuthMode() == GitAuthMode.SSH) repository.sshUrl else repository.cloneUrl
+        pendingCloneFolderName = repository.name
+    }
+
+    fun clearPendingClone() {
+        pendingCloneUrl = ""
+        pendingCloneFolderName = ""
+    }
+
+    fun showStatusForExternalAction(message: String) {
+        showStatus(message, SnackbarType.INFO)
+    }
+
+    fun disconnectGitHub() {
+        prefs.clearToken()
+        githubAccount = null
+        githubRepositories = emptyList()
+        showStatus("GitHub account disconnected", SnackbarType.SUCCESS)
+    }
+
+    fun loadWorkflowsForCurrentRepository() {
+        val manager = gitManager ?: return
+        val token = prefs.getToken()
+        if (token.isBlank()) {
+            showStatus("Set a GitHub HTTPS token in General Settings first", SnackbarType.ERROR)
+            return
+        }
+        if (isWorkflowsLoading) return
+        viewModelScope.launch {
+            isWorkflowsLoading = true
+            try {
+                val parsed = GitRemoteUrl.parse(manager.getRemoteUrl())
+                    ?.takeIf { it.host.equals("github.com", ignoreCase = true) }
+                    ?: error("The open repository does not use a GitHub remote")
+                val parts = parsed.path.split('/').filter { it.isNotBlank() }
+                if (parts.size < 2) error("Unable to read GitHub owner and repository from remote")
+                githubWorkflowOwner = parts[0]
+                githubWorkflowRepository = parts[1].removeSuffix(".git")
+                githubWorkflowBranch = (dashboardState as? DashboardState.Success)?.branch ?: "main"
+                githubWorkflows = githubApi.listWorkflows(githubWorkflowOwner, githubWorkflowRepository, token)
+                githubWorkflowRuns = githubApi.listWorkflowRuns(githubWorkflowOwner, githubWorkflowRepository, token)
+            } catch (e: Exception) {
+                showStatus(e.message ?: "Unable to load GitHub Workflows", SnackbarType.ERROR)
+            } finally {
+                isWorkflowsLoading = false
+            }
+        }
+    }
+
+    fun runWorkflow(workflow: GitHubWorkflow, branch: String) {
+        val token = prefs.getToken()
+        if (token.isBlank()) {
+            showStatus("Set a GitHub HTTPS token in General Settings first", SnackbarType.ERROR)
+            return
+        }
+        if (githubWorkflowOwner.isBlank() || githubWorkflowRepository.isBlank()) {
+            showStatus("Open a GitHub repository before running a Workflow", SnackbarType.ERROR)
+            return
+        }
+        viewModelScope.launch {
+            isWorkflowsLoading = true
+            try {
+                githubApi.dispatchWorkflow(
+                    owner = githubWorkflowOwner,
+                    repository = githubWorkflowRepository,
+                    workflowId = workflow.id,
+                    ref = branch.ifBlank { githubWorkflowBranch },
+                    token = token
+                )
+                showStatus("Workflow started successfully", SnackbarType.SUCCESS)
+                githubWorkflowRuns = githubApi.listWorkflowRuns(githubWorkflowOwner, githubWorkflowRepository, token)
+            } catch (e: Exception) {
+                showStatus(e.message ?: "Unable to start Workflow", SnackbarType.ERROR)
+            } finally {
+                isWorkflowsLoading = false
+            }
+        }
+    }
 
     fun getAuthConfig(): GitAuthConfig {
         return when (prefs.getAuthMode()) {

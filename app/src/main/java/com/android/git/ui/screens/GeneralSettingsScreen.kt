@@ -1,10 +1,17 @@
 package com.android.git.ui.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -35,10 +42,14 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.android.git.R
+import com.android.git.data.GitAuthManager
+import com.android.git.data.GitAuthMode
 import com.android.git.data.PreferencesManager
 import com.android.git.data.ThemeMode
 import com.android.git.ui.components.AppSnackbar
+import com.android.git.ui.components.ExpandableSshTextField
 import com.android.git.ui.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,6 +62,7 @@ fun GeneralSettingsScreen(
     val context = LocalContext.current
     val prefs = remember { PreferencesManager(context) }
     val focusManager = LocalFocusManager.current
+    val authManager = remember { GitAuthManager(context.filesDir) }
 
     val statusMessage = viewModel.statusMessage
     val statusType = viewModel.statusType
@@ -58,6 +70,18 @@ fun GeneralSettingsScreen(
 
     var autoOpen by remember { mutableStateOf(prefs.isAutoOpenEnabled()) }
     var themeExpanded by remember { mutableStateOf(false) }
+    var githubToken by remember { mutableStateOf(viewModel.getToken()) }
+    var githubTokenVisible by remember { mutableStateOf(false) }
+    var authMode by remember { mutableStateOf(prefs.getAuthMode()) }
+    var sshPrivateKey by remember { mutableStateOf(prefs.getSshPrivateKey()) }
+    var sshPublicKey by remember { mutableStateOf(prefs.getSshPublicKey()) }
+    var sshPassphrase by remember { mutableStateOf(prefs.getSshPassphrase()) }
+    var sshGenerationInfo by remember { mutableStateOf("") }
+    var sshGenerationError by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        viewModel.loadGitHubAccount()
+    }
 
     var geminiApiKey by remember { mutableStateOf(prefs.getGeminiApiKey()) }
     var geminiModel by remember { mutableStateOf(prefs.getGeminiModel()) }
@@ -97,6 +121,174 @@ fun GeneralSettingsScreen(
                     .padding(top = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
+
+                SettingsSection(title = stringResource(R.string.settings_github_section)) {
+                    viewModel.githubAccount?.let { account ->
+                        GitHubAccountSummary(account = account)
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    OutlinedTextField(
+                        value = githubToken,
+                        onValueChange = { githubToken = it },
+                        label = { Text(stringResource(R.string.settings_github_token)) },
+                        placeholder = { Text(stringResource(R.string.settings_github_token_hint)) },
+                        leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                        trailingIcon = {
+                            IconButton(onClick = { githubTokenVisible = !githubTokenVisible }) {
+                                Icon(
+                                    imageVector = if (githubTokenVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    contentDescription = null
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        visualTransformation = if (githubTokenVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        singleLine = true,
+                        enabled = !viewModel.isGitHubLoading
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.settings_github_token_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(stringResource(R.string.settings_git_transport), fontWeight = FontWeight.SemiBold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = authMode == GitAuthMode.HTTPS,
+                            onClick = { authMode = GitAuthMode.HTTPS },
+                            label = { Text(stringResource(R.string.auth_mode_https)) },
+                            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) }
+                        )
+                        FilterChip(
+                            selected = authMode == GitAuthMode.SSH,
+                            onClick = { authMode = GitAuthMode.SSH },
+                            label = { Text(stringResource(R.string.auth_mode_ssh)) },
+                            leadingIcon = { Icon(Icons.Default.Key, contentDescription = null) }
+                        )
+                    }
+                    if (authMode == GitAuthMode.SSH) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        ExpandableSshTextField(
+                            value = sshPrivateKey,
+                            onValueChange = { sshPrivateKey = it },
+                            label = { Text(stringResource(R.string.repo_settings_ssh_private_key)) },
+                            leadingIcon = Icons.Default.Key,
+                            enabled = !viewModel.isGitHubLoading,
+                            isSecret = true,
+                            showDescription = stringResource(R.string.ssh_show_value),
+                            hideDescription = stringResource(R.string.ssh_hide_value),
+                            maxExpandedLines = 10
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        ExpandableSshTextField(
+                            value = sshPassphrase,
+                            onValueChange = { sshPassphrase = it },
+                            label = { Text(stringResource(R.string.repo_settings_ssh_passphrase)) },
+                            leadingIcon = Icons.Default.Password,
+                            enabled = !viewModel.isGitHubLoading,
+                            isSecret = true,
+                            showDescription = stringResource(R.string.ssh_show_value),
+                            hideDescription = stringResource(R.string.ssh_hide_value),
+                            maxExpandedLines = 3,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        ExpandableSshTextField(
+                            value = sshPublicKey,
+                            onValueChange = { sshPublicKey = it },
+                            label = { Text(stringResource(R.string.repo_settings_ssh_public_key)) },
+                            leadingIcon = Icons.Default.Key,
+                            enabled = !viewModel.isGitHubLoading,
+                            showDescription = stringResource(R.string.ssh_show_value),
+                            hideDescription = stringResource(R.string.ssh_hide_value),
+                            maxExpandedLines = 4
+                        )
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = {
+                                    runCatching { authManager.generateKeyPair(sshPassphrase, "androidgit") }
+                                        .onSuccess { generated ->
+                                            sshPrivateKey = generated.privateKey
+                                            sshPublicKey = generated.publicKey
+                                            sshGenerationError = ""
+                                            sshGenerationInfo = context.getString(R.string.repo_settings_ssh_generated_fmt, generated.algorithm)
+                                        }
+                                        .onFailure { error ->
+                                            sshGenerationInfo = ""
+                                            sshGenerationError = error.message.orEmpty()
+                                        }
+                                },
+                                modifier = Modifier.weight(1f),
+                                enabled = !viewModel.isGitHubLoading,
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Default.AutoFixHigh, contentDescription = null)
+                                Spacer(Modifier.width(4.dp))
+                                Text(stringResource(R.string.repo_settings_ssh_generate))
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                                    clipboard?.setPrimaryClip(ClipData.newPlainText("AndroidGit SSH public key", sshPublicKey))
+                                },
+                                modifier = Modifier.weight(1f),
+                                enabled = !viewModel.isGitHubLoading && sshPublicKey.isNotBlank(),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Default.ContentCopy, contentDescription = null)
+                                Spacer(Modifier.width(4.dp))
+                                Text(stringResource(R.string.repo_settings_ssh_copy_public))
+                            }
+                        }
+                        if (sshGenerationInfo.isNotBlank()) Text(sshGenerationInfo, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+                        if (sshGenerationError.isNotBlank()) Text(sshGenerationError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = {
+                                focusManager.clearFocus()
+                                prefs.setAuthMode(authMode)
+                                if (authMode == GitAuthMode.SSH) {
+                                    prefs.saveSshKey(sshPrivateKey, sshPublicKey, sshPassphrase)
+                                }
+                                viewModel.saveGitHubToken(githubToken)
+                                viewModel.loadGitHubAccount()
+                            },
+                            enabled = !viewModel.isGitHubLoading && githubToken.isNotBlank(),
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            if (viewModel.isGitHubLoading) {
+                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(18.dp))
+                            }
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.settings_github_connect))
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                githubToken = ""
+                                viewModel.disconnectGitHub()
+                            },
+                            enabled = !viewModel.isGitHubLoading && (githubToken.isNotBlank() || viewModel.githubAccount != null),
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.LinkOff, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.settings_github_disconnect))
+                        }
+                    }
+                }
 
                 SettingsSection(title = stringResource(R.string.settings_section_app)) {
 
@@ -195,7 +387,42 @@ fun GeneralSettingsScreen(
                 }
 
                     SettingsSection(title = stringResource(R.string.settings_ai_section)) {
-                        OutlinedTextField(
+                        var geminiExpanded by remember { mutableStateOf(false) }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { geminiExpanded = !geminiExpanded }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.settings_ai_section),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = stringResource(R.string.settings_ai_collapsed_hint),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Icon(
+                                imageVector = if (geminiExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = null
+                            )
+                        }
+                        AnimatedVisibility(
+                            visible = geminiExpanded,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            Column {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                OutlinedTextField(
                             value = geminiApiKey,
                             onValueChange = { geminiApiKey = it },
                             label = { Text(stringResource(R.string.settings_gemini_api_key)) },
@@ -264,6 +491,8 @@ fun GeneralSettingsScreen(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(stringResource(R.string.settings_verify_save), fontWeight = FontWeight.Bold)
                             }
+                                }
+                            }
                         }
                     }
 
@@ -285,6 +514,43 @@ fun GeneralSettingsScreen(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun GitHubAccountSummary(account: com.android.git.model.GitHubAccount) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        AsyncImage(
+            model = account.avatarUrl,
+            contentDescription = stringResource(R.string.settings_github_avatar_desc),
+            modifier = Modifier.size(64.dp).clip(CircleShape),
+            contentScale = ContentScale.Crop
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(account.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            Text("@${account.login}", color = MaterialTheme.colorScheme.primary)
+            if (account.bio.isNotBlank()) {
+                Text(account.bio, maxLines = 2, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+    Spacer(modifier = Modifier.height(12.dp))
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+        GitHubStat(label = stringResource(R.string.settings_github_repositories), value = account.totalRepositories)
+        GitHubStat(label = stringResource(R.string.settings_github_followers), value = account.followers)
+        GitHubStat(label = stringResource(R.string.settings_github_following), value = account.following)
+    }
+}
+
+@Composable
+private fun GitHubStat(label: String, value: Int) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value.toString(), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

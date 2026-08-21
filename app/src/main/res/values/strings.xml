@@ -20,6 +20,17 @@
     <string name="error_set_token">Set Token in Settings</string>
     <string name="error_set_ssh_key">Configure an SSH key in Clone or Repository Settings</string>
     <string name="settings_section_app">App Settings</string>
+    <string name="settings_github_section">GitHub Account</string>
+    <string name="settings_github_token">GitHub Personal Access Token</string>
+    <string name="settings_github_token_hint">ghp_... or github_pat_...</string>
+    <string name="settings_github_token_desc">Use a token with access to your private repositories. It is stored in encrypted app storage.</string>
+    <string name="settings_git_transport">Git transport for clone, pull and push</string>
+    <string name="settings_github_connect">Connect</string>
+    <string name="settings_github_disconnect">Disconnect</string>
+    <string name="settings_github_avatar_desc">GitHub profile photo</string>
+    <string name="settings_github_repositories">Repositories</string>
+    <string name="settings_github_followers">Followers</string>
+    <string name="settings_github_following">Following</string>
     <string name="settings_auto_open">Auto-open last project</string>
     <string name="settings_auto_open_desc">Automatically open the last viewed repository on launch</string>
     <string name="settings_version_fmt">Version %1$s (Build %2$d)</string>
@@ -32,6 +43,7 @@
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_ai_section">AI Features (Gemini)</string>
+    <string name="settings_ai_collapsed_hint">Tap to expand Gemini configuration</string>
     <string name="settings_gemini_api_key">Gemini API Key</string>
     <string name="settings_hide_api_key">Hide API key</string>
     <string name="settings_show_api_key">Show API key</string>
@@ -96,6 +108,15 @@
     <string name="dashboard_tool_merge">Merge Conflicts</string>
     <string name="dashboard_tool_gitignore">Edit .gitignore</string>
     <string name="dashboard_tool_fetch">Fetch All</string>
+    <string name="dashboard_tool_workflows">Workflows</string>
+    <string name="dashboard_github_repositories">My GitHub Repositories</string>
+    <string name="dashboard_github_repositories_desc">Clone and open repositories connected to your account</string>
+    <string name="dashboard_github_not_connected">Connect GitHub in General Settings to see your repositories</string>
+    <string name="dashboard_github_repo_private">Private</string>
+    <string name="dashboard_github_repo_public">Public</string>
+    <string name="dashboard_github_clone">Clone</string>
+    <string name="dashboard_github_open">Open in GitHub</string>
+    <string name="dashboard_github_clone_copied">Clone URL copied</string>
     <string name="dashboard_not_repo">Not a Git Repository</string>
     <string name="dashboard_init_git">Initialize Git Repository</string>
     <string name="dashboard_quick_actions">Quick Actions</string>
@@ -223,6 +244,17 @@
     <string name="repo_settings_btn_link_remote">Link Remote</string>
     <string name="repo_settings_msg_saved">Settings saved.</string>
     <string name="repo_settings_btn_save">Save Settings</string>
+
+    <string name="workflow_title">GitHub Workflows</string>
+    <string name="workflow_empty">No workflows found for this repository.</string>
+    <string name="workflow_no_token">Connect a GitHub account to manage Workflows.</string>
+    <string name="workflow_run">Run Workflow</string>
+    <string name="workflow_branch">Branch or tag</string>
+    <string name="workflow_runs">Recent Runs</string>
+    <string name="workflow_no_runs">No recent workflow runs.</string>
+    <string name="workflow_state_active">Active</string>
+    <string name="workflow_started">Workflow started successfully</string>
+    <string name="workflow_status_fmt">%1$s · %2$s · %3$s</string>
 
     <string name="stash_title">Stashes</string>
     <string name="stash_dialog_create_title">Create Stash</string>
