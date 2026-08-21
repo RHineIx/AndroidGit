@@ -108,7 +108,6 @@ fun AppNavGraph(
                 viewModel = viewModel,
                 onBack = { navController.popBackStack() },
                 onCloneSuccess = { file ->
-                    viewModel.clearPendingClone()
                     // تم إزالة التوجيه اليدوي لتجنب التضارب، الـ LaunchedEffect سيتكفل بالباقي
                     viewModel.openProject(file)
                 }
@@ -120,13 +119,6 @@ fun AppNavGraph(
                 viewModel = viewModel,
                 onBack = { navController.popBackStack() },
                 onCheckUpdate = { viewModel.checkForUpdates(isManual = true) }
-            )
-        }
-
-        composable(Screen.Workflows.route) {
-            WorkflowsScreen(
-                viewModel = viewModel,
-                onBack = { navController.popBackStack() }
             )
         }
 
@@ -145,12 +137,7 @@ fun AppNavGraph(
                     onOpenStash = { navController.navigate(Screen.Stash.route) { launchSingleTop = true } },
                     onIgnoreEditor = { navController.navigate(Screen.IgnoreEditor.route) { launchSingleTop = true } },
                     onCloseProject = { viewModel.closeProject() },
-                    onMergeConflicts = { navController.navigate(Screen.MergeConflicts.route) { launchSingleTop = true } },
-                    onOpenWorkflows = { navController.navigate(Screen.Workflows.route) { launchSingleTop = true } },
-                    onCloneGitHubRepository = { repository ->
-                        viewModel.prepareClone(repository)
-                        navController.navigate(Screen.Clone.route) { launchSingleTop = true }
-                    }
+                    onMergeConflicts = { navController.navigate(Screen.MergeConflicts.route) { launchSingleTop = true } }
                 )
             } else {
                 // تم إزالة الـ LaunchedEffect المتعارض من هنا

@@ -9,7 +9,6 @@ sealed class Screen(val route: String) {
     data object Clone : Screen("clone")
     data object GeneralSettings : Screen("general_settings")
     data object Dashboard : Screen("dashboard")
-    data object Workflows : Screen("workflows")
     data object ChangesList : Screen("changes_list")
     data object RepoSettings : Screen("repo_settings")
     data object Log : Screen("log")

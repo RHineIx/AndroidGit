@@ -1,9 +1,5 @@
 package com.android.git.ui.screens
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,7 +20,6 @@ import androidx.compose.ui.semantics.Role
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -33,7 +28,6 @@ import androidx.compose.ui.unit.sp
 import com.android.git.R
 import com.android.git.data.GitManager
 import com.android.git.model.DashboardState
-import com.android.git.model.GitHubRepository
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.viewmodel.MainViewModel
 import java.io.File
@@ -55,9 +49,7 @@ fun DashboardScreen(
     onOpenStash: () -> Unit,
     onIgnoreEditor: () -> Unit,
     onCloseProject: () -> Unit,
-    onMergeConflicts: () -> Unit,
-    onOpenWorkflows: () -> Unit,
-    onCloneGitHubRepository: (GitHubRepository) -> Unit
+    onMergeConflicts: () -> Unit
 ) {
     var showExitDialog by remember { mutableStateOf(false) }
     var showForcePushDialog by remember { mutableStateOf(false) }
@@ -68,11 +60,6 @@ fun DashboardScreen(
     val statusType = viewModel.statusType
 
     val cardShape = RoundedCornerShape(16.dp)
-    val context = LocalContext.current
-
-    LaunchedEffect(Unit) {
-        viewModel.loadGitHubAccount()
-    }
 
     BackHandler(enabled = true) { showExitDialog = true }
 
@@ -338,36 +325,6 @@ fun DashboardScreen(
                             )
                         }
 
-                        Spacer(Modifier.height(12.dp))
-
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            DashboardToolCard(
-                                title = stringResource(R.string.dashboard_tool_workflows),
-                                icon = Icons.Default.PlayCircle,
-                                modifier = Modifier.weight(1f),
-                                enabled = !isLoading,
-                                onClick = onOpenWorkflows
-                            )
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
-
-                        GitHubRepositoriesCard(
-                            accountLogin = viewModel.githubAccount?.login,
-                            repositories = viewModel.githubRepositories,
-                            enabled = !isLoading,
-                            onClone = onCloneGitHubRepository,
-                            onOpen = { repository ->
-                                runCatching {
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(repository.htmlUrl)))
-                                }
-                            },
-                            onCopy = { repository ->
-                                val clipboard = context.getSystemService(ClipboardManager::class.java)
-                                clipboard?.setPrimaryClip(ClipData.newPlainText("GitHub clone URL", repository.cloneUrl))
-                                viewModel.showStatusForExternalAction(context.getString(R.string.dashboard_github_clone_copied))
-                            }
-                        )
-
                         Spacer(Modifier.height(32.dp))
                     }
                     is DashboardState.Error -> {
@@ -388,63 +345,6 @@ fun DashboardScreen(
 
             Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp, start = 16.dp, end = 16.dp)) {
                 AppSnackbar(statusMessage, statusType) { viewModel.clearStatus() }
-            }
-        }
-    }
-}
-
-@Composable
-private fun GitHubRepositoriesCard(
-    accountLogin: String?,
-    repositories: List<GitHubRepository>,
-    enabled: Boolean,
-    onClone: (GitHubRepository) -> Unit,
-    onOpen: (GitHubRepository) -> Unit,
-    onCopy: (GitHubRepository) -> Unit
-) {
-    Spacer(Modifier.height(24.dp))
-    Text(
-        text = stringResource(R.string.dashboard_github_repositories),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(bottom = 12.dp)
-    )
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
-    ) {
-        Column(Modifier.padding(16.dp)) {
-            if (accountLogin == null) {
-                Text(stringResource(R.string.dashboard_github_not_connected), style = MaterialTheme.typography.bodyMedium)
-            } else if (repositories.isEmpty()) {
-                Text(stringResource(R.string.selection_no_recent), style = MaterialTheme.typography.bodyMedium)
-            } else {
-                Text("@$accountLogin", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(8.dp))
-                repositories.take(5).forEachIndexed { index, repository ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(repository.name, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                            Text(
-                                text = if (repository.isPrivate) stringResource(R.string.dashboard_github_repo_private) else stringResource(R.string.dashboard_github_repo_public),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        TextButton(onClick = { onClone(repository) }, enabled = enabled) { Text(stringResource(R.string.dashboard_github_clone)) }
-                        IconButton(onClick = { onCopy(repository) }, enabled = enabled) {
-                            Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.action_copy))
-                        }
-                        IconButton(onClick = { onOpen(repository) }) {
-                            Icon(Icons.Default.OpenInNew, contentDescription = stringResource(R.string.dashboard_github_open))
-                        }
-                    }
-                    if (index < repositories.take(5).lastIndex) HorizontalDivider()
-                }
             }
         }
     }

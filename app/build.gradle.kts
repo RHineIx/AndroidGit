@@ -93,7 +93,6 @@ dependencies {
 
     implementation(libs.slf4j.simple)
     implementation(libs.miuix)
-    implementation(libs.coil.compose)
 
     testImplementation(libs.junit)
 
