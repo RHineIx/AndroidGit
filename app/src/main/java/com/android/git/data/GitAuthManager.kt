@@ -44,6 +44,7 @@ data class GeneratedSshKey(
 class GitAuthManager(private val contextDir: File) {
     private var activeSshFactory: SshdSessionFactory? = null
     private var activeKeyFile: File? = null
+    private var activeSshConfig: GitAuthConfig? = null
 
     fun getCredentialsProvider(token: String): UsernamePasswordCredentialsProvider {
         require(token.isNotBlank()) { "A GitHub token is required for HTTPS authentication." }
@@ -53,11 +54,23 @@ class GitAuthManager(private val contextDir: File) {
 
     @Synchronized
     fun configureSsh(config: GitAuthConfig): SshdSessionFactory {
-        ensureBouncyCastleProvider()
         require(config.mode == GitAuthMode.SSH) { "SSH configuration requires SSH authentication mode." }
         require(config.privateKey.isNotBlank()) { "An SSH private key is required." }
 
+        activeSshFactory?.let { factory ->
+            if (activeSshConfig == config &&
+                activeKeyFile?.exists() == true &&
+                SshSessionFactory.getInstance() === factory
+            ) {
+                return factory
+            }
+        }
+
+        // A factory owns the SSH sessions it creates. Replacing it is safe only
+        // before a new Git operation starts; it must not be closed in a
+        // per-operation finally block while JGit is still unwinding transport.
         closeActiveSshFactory()
+        ensureBouncyCastleProvider()
 
         val appHomeDirectory = File(contextDir, ".androidgit-home").apply { mkdirs() }
         // Android has no conventional OS user home. Apache SSHD resolves '~'
@@ -105,6 +118,7 @@ class GitAuthManager(private val contextDir: File) {
 
         SshSessionFactory.setInstance(factory)
         activeSshFactory = factory
+        activeSshConfig = config.copy()
         return factory
     }
 
@@ -115,6 +129,7 @@ class GitAuthManager(private val contextDir: File) {
             SshSessionFactory.setInstance(null)
         }
         activeSshFactory = null
+        activeSshConfig = null
         activeKeyFile?.delete()
         activeKeyFile = null
     }

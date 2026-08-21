@@ -531,16 +531,13 @@ class GitManager(
     }
     
     private fun <T> withAuth(auth: GitAuthConfig, block: () -> T): T {
+        // Keep the SSH factory alive for the repository session. Closing it in
+        // finally can race with JGit/SSHD transport cleanup and causes
+        // "Session is being closed" on subsequent pull/push operations.
         if (auth.mode == GitAuthMode.SSH) {
             authManager.configureSsh(auth)
         }
-        return try {
-            block()
-        } finally {
-            if (auth.mode == GitAuthMode.SSH) {
-                authManager.closeActiveSshFactory()
-            }
-        }
+        return block()
     }
 
     private fun applyCredentials(command: Any?, auth: GitAuthConfig) {
@@ -567,9 +564,9 @@ class GitManager(
     override fun close() {
         if (isClosed.compareAndSet(false, true)) {
             try {
-                authManager.closeActiveSshFactory()
                 git?.close()
                 git = null
+                authManager.closeActiveSshFactory()
             } catch (e: Exception) {
                 e.printStackTrace()
             }

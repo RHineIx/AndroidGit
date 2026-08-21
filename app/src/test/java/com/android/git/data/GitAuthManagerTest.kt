@@ -2,6 +2,7 @@ package com.android.git.data
 
 import java.io.File
 import org.apache.sshd.common.util.io.PathUtils
+import org.eclipse.jgit.transport.SshSessionFactory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -63,6 +64,26 @@ class GitAuthManagerTest {
             assertTrue(knownHosts.contains("github.com ssh-ed25519"))
             assertTrue(knownHosts.contains("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt"))
             manager.closeActiveSshFactory()
+        }
+    }
+
+    @Test
+    fun `same ssh configuration reuses an active session factory`() {
+        withTemporaryDirectory { directory ->
+            val manager = GitAuthManager(directory)
+            val generated = manager.generateKeyPair(preferredAlgorithm = SshKeyAlgorithm.ED25519)
+            val config = GitAuthConfig(
+                mode = GitAuthMode.SSH,
+                privateKey = generated.privateKey
+            )
+
+            val first = manager.configureSsh(config)
+            val second = manager.configureSsh(config)
+
+            assertTrue(first === second)
+            assertTrue(SshSessionFactory.getInstance() === first)
+            manager.closeActiveSshFactory()
+            assertEquals(null, SshSessionFactory.getInstance())
         }
     }
 
