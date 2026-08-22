@@ -14,6 +14,9 @@ import com.android.git.R
 import com.android.git.data.GitAuthConfig
 import com.android.git.data.GitAuthMode
 import com.android.git.data.GitHubUpdateManager
+import com.android.git.data.GitHubWorkflowApiManager
+import com.android.git.data.GitHubWorkflowException
+import com.android.git.data.GitRemoteUrl
 import com.android.git.data.GitManager
 import com.android.git.data.PreferencesManager
 import com.android.git.data.ThemeMode
@@ -21,6 +24,10 @@ import com.android.git.model.BranchModel
 import com.android.git.model.CommitItem
 import com.android.git.model.DashboardState
 import com.android.git.model.GitFile
+import com.android.git.model.GitHubRepositoryRef
+import com.android.git.model.GitHubWorkflow
+import com.android.git.model.GitHubWorkflowInput
+import com.android.git.model.GitHubWorkflowRun
 import com.android.git.model.UpdateInfo
 import com.android.git.ui.components.SnackbarType
 import com.android.git.utils.isGitFailureMessage
@@ -67,6 +74,33 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     var cloneTaskName: String by mutableStateOf("")
         private set
     var cloneTaskDetails: String by mutableStateOf("")
+        private set
+
+    var githubWorkflows: List<GitHubWorkflow> by mutableStateOf(emptyList())
+        private set
+
+    var githubWorkflowRuns: List<GitHubWorkflowRun> by mutableStateOf(emptyList())
+        private set
+
+    var githubWorkflowInputs: List<GitHubWorkflowInput> by mutableStateOf(emptyList())
+        private set
+
+    var githubWorkflowRepository: GitHubRepositoryRef? by mutableStateOf(null)
+        private set
+
+    var selectedWorkflow: GitHubWorkflow? by mutableStateOf(null)
+        private set
+
+    var isWorkflowsLoading: Boolean by mutableStateOf(false)
+        private set
+
+    var isWorkflowInputLoading: Boolean by mutableStateOf(false)
+        private set
+
+    var isWorkflowRunning: Boolean by mutableStateOf(false)
+        private set
+
+    var workflowErrorMessage: String by mutableStateOf("")
         private set
 
     var logList: List<CommitItem> by mutableStateOf(emptyList())
@@ -571,6 +605,91 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     }
 
     fun clearStatus() { statusMessage = "" }
+
+    fun loadWorkflowsForCurrentRepository() {
+        val manager = gitManager ?: return
+        val token = prefs.getToken()
+        if (token.isBlank()) {
+            workflowErrorMessage = getApplication<Application>().getString(R.string.workflow_no_token)
+            githubWorkflows = emptyList()
+            githubWorkflowRuns = emptyList()
+            return
+        }
+        viewModelScope.launch {
+            isWorkflowsLoading = true
+            workflowErrorMessage = ""
+            try {
+                val remote = manager.getRemoteUrl()
+                val parsed = GitRemoteUrl.parse(remote)
+                val path = parsed?.path?.trim('/')?.removeSuffix(".git")?.split('/') ?: emptyList()
+                if (parsed == null || !parsed.host.equals("github.com", ignoreCase = true) || path.size < 2) {
+                    throw GitHubWorkflowException(getApplication<Application>().getString(R.string.workflow_github_remote_required))
+                }
+                val ref = manager.getCurrentBranch().ifBlank { "main" }
+                val repository = GitHubRepositoryRef(path[0], path[1], ref)
+                val api = GitHubWorkflowApiManager(token)
+                githubWorkflowRepository = repository
+                githubWorkflows = api.listWorkflows(repository)
+                githubWorkflowRuns = api.recentRuns(repository).take(5)
+            } catch (error: Exception) {
+                workflowErrorMessage = error.message ?: getApplication<Application>().getString(R.string.workflow_load_failed)
+                githubWorkflows = emptyList()
+                githubWorkflowRuns = emptyList()
+            } finally {
+                isWorkflowsLoading = false
+            }
+        }
+    }
+
+    fun prepareWorkflowRun(workflow: GitHubWorkflow) {
+        val repository = githubWorkflowRepository ?: return
+        val token = prefs.getToken()
+        if (token.isBlank()) {
+            showStatus(getApplication<Application>().getString(R.string.workflow_no_token), SnackbarType.ERROR)
+            return
+        }
+        selectedWorkflow = workflow
+        githubWorkflowInputs = emptyList()
+        isWorkflowInputLoading = true
+        viewModelScope.launch {
+            try {
+                githubWorkflowInputs = GitHubWorkflowApiManager(token).readWorkflowInputs(repository, workflow)
+            } catch (error: Exception) {
+                workflowErrorMessage = error.message ?: getApplication<Application>().getString(R.string.workflow_inputs_load_failed)
+            } finally {
+                isWorkflowInputLoading = false
+            }
+        }
+    }
+
+    fun closeWorkflowRunDialog() {
+        selectedWorkflow = null
+        githubWorkflowInputs = emptyList()
+        isWorkflowInputLoading = false
+    }
+
+    fun runWorkflow(ref: String, inputs: Map<String, String>) {
+        val workflow = selectedWorkflow ?: return
+        val repository = githubWorkflowRepository ?: return
+        val token = prefs.getToken()
+        if (token.isBlank()) {
+            showStatus(getApplication<Application>().getString(R.string.workflow_no_token), SnackbarType.ERROR)
+            return
+        }
+        viewModelScope.launch {
+            isWorkflowRunning = true
+            try {
+                GitHubWorkflowApiManager(token).dispatchWorkflow(repository, workflow, ref, inputs)
+                closeWorkflowRunDialog()
+                showStatus(getApplication<Application>().getString(R.string.workflow_started), SnackbarType.SUCCESS)
+                githubWorkflowRuns = GitHubWorkflowApiManager(token).recentRuns(repository).take(5)
+            } catch (error: Exception) {
+                showStatus(error.message ?: getApplication<Application>().getString(R.string.workflow_run_failed), SnackbarType.ERROR)
+            } finally {
+                isWorkflowRunning = false
+            }
+        }
+    }
 
     private fun isFailure(message: String): Boolean = isGitFailureMessage(message)
 

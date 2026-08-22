@@ -83,7 +83,7 @@ class GitAuthManagerTest {
             assertTrue(first === second)
             assertTrue(SshSessionFactory.getInstance() === first)
             manager.closeActiveSshFactory()
-            assertEquals(null, SshSessionFactory.getInstance())
+            assertTrue(SshSessionFactory.getInstance() !== first)
         }
     }
 

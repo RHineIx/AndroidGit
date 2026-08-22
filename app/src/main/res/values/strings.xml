@@ -96,6 +96,7 @@
     <string name="dashboard_tool_merge">Merge Conflicts</string>
     <string name="dashboard_tool_gitignore">Edit .gitignore</string>
     <string name="dashboard_tool_fetch">Fetch All</string>
+    <string name="dashboard_tool_workflows">Workflows</string>
     <string name="dashboard_not_repo">Not a Git Repository</string>
     <string name="dashboard_init_git">Initialize Git Repository</string>
     <string name="dashboard_quick_actions">Quick Actions</string>
@@ -199,6 +200,11 @@
 
     <string name="repo_settings_title">Repository Settings</string>
     <string name="repo_settings_section_auth">Authentication</string>
+    <string name="settings_auth_section">Authentication</string>
+    <string name="settings_auth_user_name">Git username</string>
+    <string name="settings_auth_user_email">Git email</string>
+    <string name="settings_auth_help">These credentials are used for commits and remote operations. Choose HTTPS + Token or SSH Key.</string>
+    <string name="settings_auth_saved">Authentication settings saved</string>
     <string name="repo_settings_label_user">Username</string>
     <string name="repo_settings_label_email">Email</string>
     <string name="repo_settings_label_token">Personal Access Token</string>
@@ -223,6 +229,26 @@
     <string name="repo_settings_btn_link_remote">Link Remote</string>
     <string name="repo_settings_msg_saved">Settings saved.</string>
     <string name="repo_settings_btn_save">Save Settings</string>
+
+    <string name="workflow_title">GitHub Workflows</string>
+    <string name="workflow_current_ref">Current ref: %1$s</string>
+    <string name="workflow_empty">No workflows found for this GitHub repository.</string>
+    <string name="workflow_no_token">Add a GitHub token in Authentication settings to manage Workflows.</string>
+    <string name="workflow_github_remote_required">The current remote must be a GitHub repository.</string>
+    <string name="workflow_load_failed">Unable to load Workflows.</string>
+    <string name="workflow_inputs_load_failed">Unable to read Workflow inputs.</string>
+    <string name="workflow_run_failed">Unable to start Workflow.</string>
+    <string name="workflow_configure_run">Configure &amp; Run</string>
+    <string name="workflow_execute">Run</string>
+    <string name="workflow_run_dialog_title">Run %1$s</string>
+    <string name="workflow_loading_inputs">Reading Workflow options…</string>
+    <string name="workflow_ref">Branch or tag</string>
+    <string name="workflow_no_inputs">This Workflow has no configurable inputs.</string>
+    <string name="workflow_required_input">Required input: %1$s</string>
+    <string name="workflow_runs">Latest 5 Workflow runs</string>
+    <string name="workflow_no_runs">No recent Workflow runs.</string>
+    <string name="workflow_started">Workflow started successfully.</string>
+    <string name="workflow_status_fmt">%1$s · %2$s · %3$s</string>
 
     <string name="stash_title">Stashes</string>
     <string name="stash_dialog_create_title">Create Stash</string>

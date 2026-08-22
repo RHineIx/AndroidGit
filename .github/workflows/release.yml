@@ -1,98 +1,263 @@
-name: Auto Build & Release APK (Signed)
+name: AndroidGit Release
 
 on:
   workflow_dispatch:
-    # No inputs needed explicitly; version is read from source code.
+    inputs:
+      release_type:
+        description: "How should this build be published?"
+        required: true
+        default: stable
+        type: choice
+        options:
+          - stable
+          - prerelease
+          - internal
+      bump_type:
+        description: "Version bump when version_override is empty"
+        required: true
+        default: patch
+        type: choice
+        options:
+          - none
+          - patch
+          - minor
+          - major
+      bump_count:
+        description: "How many times to apply the selected bump"
+        required: true
+        default: "1"
+        type: string
+      version_override:
+        description: "Optional full version, for example 6.3.0-stable or 6.3.0-rc.1"
+        required: false
+        default: ""
+        type: string
+      version_code_override:
+        description: "Optional positive Android versionCode override"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: write
 
+concurrency:
+  group: androidgit-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx1536m
+
 jobs:
   release:
-    name: Build, Sign, Tag and Publish
+    name: Validate, Build, Sign and Publish
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: true
 
-      - name: Set up JDK
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: "17"
+          cache: gradle
 
-      - name: Setup Gradle
-        uses: gradle/gradle-build-action@v3
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Grant execute permission to gradlew
-        run: chmod +x ./gradlew
-
-      # ---------------------------------------------------------
-      # 1. Extract Version Name from build.gradle.kts
-      # ---------------------------------------------------------
-      - name: Extract Version Name
-        id: extract_version
+      - name: Validate workflow inputs
+        env:
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          BUMP_TYPE: ${{ inputs.bump_type }}
+          BUMP_COUNT: ${{ inputs.bump_count }}
+          VERSION_OVERRIDE: ${{ inputs.version_override }}
+          VERSION_CODE_OVERRIDE: ${{ inputs.version_code_override }}
         run: |
-          # Reads 'versionName = "x.y.z"' from app/build.gradle.kts
-          VERSION_NAME=$(grep 'versionName =' app/build.gradle.kts | awk -F'"' '{print $2}')
-          
-          if [ -z "$VERSION_NAME" ]; then
-            echo "Error: Could not extract versionName from app/build.gradle.kts"
+          set -euo pipefail
+          [[ "$RELEASE_TYPE" =~ ^(stable|prerelease|internal)$ ]] || { echo "Invalid release_type"; exit 1; }
+          [[ "$BUMP_TYPE" =~ ^(none|patch|minor|major)$ ]] || { echo "Invalid bump_type"; exit 1; }
+          [[ "$BUMP_COUNT" =~ ^[1-9][0-9]*$ ]] || { echo "bump_count must be a positive integer"; exit 1; }
+          (( BUMP_COUNT <= 20 )) || { echo "bump_count must be no greater than 20"; exit 1; }
+          if [[ -n "$VERSION_CODE_OVERRIDE" && ! "$VERSION_CODE_OVERRIDE" =~ ^[1-9][0-9]*$ ]]; then
+            echo "version_code_override must be a positive integer"
             exit 1
           fi
-          
-          echo "Detected Version: $VERSION_NAME"
-          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          if [[ -n "$VERSION_OVERRIDE" && ! "$VERSION_OVERRIDE" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "version_override must use MAJOR.MINOR.PATCH with an optional suffix"
+            exit 1
+          fi
+          if [[ -n "$VERSION_CODE_OVERRIDE" && -z "$VERSION_OVERRIDE" ]]; then
+            echo "version_code_override requires version_override"
+            exit 1
+          fi
+          if [[ "$BUMP_TYPE" != "none" || -n "$VERSION_OVERRIDE" ]] && [[ "$GITHUB_REF_TYPE" != "branch" ]]; then
+            echo "Version changes can only be committed from a branch, not a tag or commit ref."
+            exit 1
+          fi
 
-      # ---------------------------------------------------------
-      # 2. Decode Keystore from Base64
-      # ---------------------------------------------------------
-      - name: Decode Keystore
+      - name: Apply version bump or override
+        if: ${{ inputs.bump_type != 'none' || inputs.version_override != '' }}
+        env:
+          BUMP_TYPE: ${{ inputs.bump_type }}
+          BUMP_COUNT: ${{ inputs.bump_count }}
+          VERSION_OVERRIDE: ${{ inputs.version_override }}
+          VERSION_CODE_OVERRIDE: ${{ inputs.version_code_override }}
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/release.keystore
+          set -euo pipefail
+          if [[ -n "$VERSION_OVERRIDE" ]]; then
+            if [[ -n "$VERSION_CODE_OVERRIDE" ]]; then
+              python3 tools/version.py bump --type patch --version "$VERSION_OVERRIDE" --version-code "$VERSION_CODE_OVERRIDE"
+            else
+              python3 tools/version.py bump --type patch --version "$VERSION_OVERRIDE"
+            fi
+          else
+            python3 tools/version.py bump --type "$BUMP_TYPE" --count "$BUMP_COUNT"
+          fi
 
-      # ---------------------------------------------------------
-      # 3. Build & Sign (Injecting Signing Config)
-      # ---------------------------------------------------------
-      - name: Build Signed Release APK
-        run: |
-          ./gradlew assembleRelease \
-            -Pandroid.injected.signing.store.file=$(pwd)/app/release.keystore \
-            -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
-            -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
-            -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add app/build.gradle.kts
+          if git diff --cached --quiet; then
+            echo "The requested version is already present; refusing to create an empty release commit."
+            exit 1
+          fi
+          VERSION_NAME=$(python3 tools/version.py print | awk -F= '$1 == "VERSION_NAME" {print $2}')
+          git commit -m "chore(release): bump version to $VERSION_NAME"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
-      # ---------------------------------------------------------
-      # 4. Create Git Tag (Idempotent)
-      # ---------------------------------------------------------
-      - name: Create and Push Git Tag
+      - name: Read and validate version info
+        id: version
         run: |
-          TAG="v${{ env.VERSION_NAME }}"
-          
-          # Check if tag already exists to avoid errors
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists. Skipping tag creation."
+          set -euo pipefail
+          python3 tools/version.py validate
+          python3 tools/version.py print --github-output "$GITHUB_OUTPUT"
+
+      - name: Decode signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for variable in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            [[ -n "${!variable}" ]] || { echo "Missing required secret: $variable"; exit 1; }
+          done
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > app/release.keystore
+          test -s app/release.keystore
+
+      - name: Build signed release APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace \
+            -Pandroid.injected.signing.store.file="$GITHUB_WORKSPACE/app/release.keystore" \
+            -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
+
+      - name: Verify APKs and create checksums
+        id: artifacts
+        env:
+          VERSION_NAME: ${{ steps.version.outputs.VERSION_NAME }}
+          VERSION_CODE: ${{ steps.version.outputs.VERSION_CODE }}
+        run: |
+          set -euo pipefail
+          mapfile -t APKS < <(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | sort)
+          (( ${#APKS[@]} > 0 )) || { echo "No release APK was produced"; exit 1; }
+
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)
+          [[ -x "$APKSIGNER" ]] || { echo "Android apksigner was not found"; exit 1; }
+          for apk in "${APKS[@]}"; do
+            "$APKSIGNER" verify --verbose "$apk"
+          done
+
+          mkdir -p release_artifacts
+          for apk in "${APKS[@]}"; do
+            cp "$apk" release_artifacts/AndroidGit-v${VERSION_NAME}-$(basename "$apk")
+          done
+          printf 'AndroidGit release %s (versionCode %s)\n' "$VERSION_NAME" "$VERSION_CODE" > release_artifacts/SHA256SUMS.txt
+          (cd release_artifacts && sha256sum *.apk) >> release_artifacts/SHA256SUMS.txt
+          printf 'APK_COUNT=%s\n' "${#APKS[@]}" >> "$GITHUB_OUTPUT"
+          cat release_artifacts/SHA256SUMS.txt
+
+      - name: Create release notes
+        env:
+          VERSION_NAME: ${{ steps.version.outputs.VERSION_NAME }}
+          VERSION_CODE: ${{ steps.version.outputs.VERSION_CODE }}
+          TAG_NAME: ${{ steps.version.outputs.TAG_NAME }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
+        run: |
+          set -euo pipefail
+          cat > RELEASE_BODY.md <<EOF
+          ## AndroidGit ${TAG_NAME}
+
+          **Version name:** ${VERSION_NAME}
+          **Version code:** ${VERSION_CODE}
+          **Release type:** ${RELEASE_TYPE}
+          **Workflow run:** #${GITHUB_RUN_NUMBER}
+          **Commit:** ${GITHUB_SHA}
+
+          APK integrity hashes are available in \`SHA256SUMS.txt\`.
+          EOF
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AndroidGit-${{ steps.version.outputs.TAG_NAME }}-${{ inputs.release_type }}
+          path: |
+            release_artifacts/*.apk
+            release_artifacts/SHA256SUMS.txt
+            RELEASE_BODY.md
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Create or verify Git tag
+        if: ${{ inputs.release_type != 'internal' }}
+        env:
+          TAG_NAME: ${{ steps.version.outputs.TAG_NAME }}
+        run: |
+          set -euo pipefail
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            EXISTING_SHA=$(git rev-list -n 1 "$TAG_NAME")
+            CURRENT_SHA=$(git rev-parse HEAD)
+            [[ "$EXISTING_SHA" == "$CURRENT_SHA" ]] || {
+              echo "Tag $TAG_NAME already points to $EXISTING_SHA, not $CURRENT_SHA"
+              exit 1
+            }
+            echo "Tag $TAG_NAME already exists at the current commit."
           else
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git tag "$TAG"
-            git push origin "$TAG"
+            git tag -a "$TAG_NAME" -m "AndroidGit $TAG_NAME" HEAD
+            git push origin "$TAG_NAME"
           fi
 
-      - name: Verify APK outputs
-        run: ls -R app/build/outputs/apk
-
-      # ---------------------------------------------------------
-      # 5. Create GitHub Release
-      # ---------------------------------------------------------
-      - name: Create GitHub Release and upload APKs
+      - name: Publish GitHub Release
+        if: ${{ inputs.release_type != 'internal' }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ env.VERSION_NAME }}
-          name: Release v${{ env.VERSION_NAME }}
+          tag_name: ${{ steps.version.outputs.TAG_NAME }}
+          name: AndroidGit ${{ steps.version.outputs.TAG_NAME }}
+          body_path: RELEASE_BODY.md
           generate_release_notes: true
+          prerelease: ${{ inputs.release_type == 'prerelease' }}
           files: |
-            app/build/outputs/apk/release/*.apk
+            release_artifacts/*.apk
+            release_artifacts/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Clean signing material
+        if: ${{ always() }}
+        run: rm -f app/release.keystore
