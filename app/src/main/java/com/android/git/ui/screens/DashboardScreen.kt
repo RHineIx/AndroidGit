@@ -49,7 +49,8 @@ fun DashboardScreen(
     onOpenStash: () -> Unit,
     onIgnoreEditor: () -> Unit,
     onCloseProject: () -> Unit,
-    onMergeConflicts: () -> Unit
+    onMergeConflicts: () -> Unit,
+    onOpenWorkflows: () -> Unit
 ) {
     var showExitDialog by remember { mutableStateOf(false) }
     var showForcePushDialog by remember { mutableStateOf(false) }
@@ -323,6 +324,19 @@ fun DashboardScreen(
                                 enabled = !isLoading,
                                 onClick = { viewModel.fetchAll() }
                             )
+                        }
+
+                        Spacer(Modifier.height(12.dp))
+
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            DashboardToolCard(
+                                title = stringResource(R.string.dashboard_tool_workflows),
+                                icon = Icons.Default.PlayCircle,
+                                modifier = Modifier.weight(1f),
+                                enabled = !isLoading,
+                                onClick = onOpenWorkflows
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
                         }
 
                         Spacer(Modifier.height(32.dp))

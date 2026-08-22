@@ -122,6 +122,13 @@ fun AppNavGraph(
             )
         }
 
+        composable(Screen.Workflows.route) {
+            WorkflowsScreen(
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
         composable(Screen.Dashboard.route) {
             if (manager != null && viewModel.currentRepoFile != null) {
                 DashboardScreen(
@@ -137,7 +144,8 @@ fun AppNavGraph(
                     onOpenStash = { navController.navigate(Screen.Stash.route) { launchSingleTop = true } },
                     onIgnoreEditor = { navController.navigate(Screen.IgnoreEditor.route) { launchSingleTop = true } },
                     onCloseProject = { viewModel.closeProject() },
-                    onMergeConflicts = { navController.navigate(Screen.MergeConflicts.route) { launchSingleTop = true } }
+                    onMergeConflicts = { navController.navigate(Screen.MergeConflicts.route) { launchSingleTop = true } },
+                    onOpenWorkflows = { navController.navigate(Screen.Workflows.route) { launchSingleTop = true } }
                 )
             } else {
                 // تم إزالة الـ LaunchedEffect المتعارض من هنا

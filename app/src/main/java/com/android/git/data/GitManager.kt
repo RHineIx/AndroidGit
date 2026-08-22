@@ -351,6 +351,10 @@ class GitManager(
         runSafeRead { git?.repository?.config?.getString("remote", "origin", "url") ?: "" }
     }
 
+    suspend fun getCurrentBranch(): String = withContext(Dispatchers.IO) {
+        runSafeRead { git?.repository?.branch ?: "" }
+    }
+
     suspend fun addRemote(url: String): String = withContext(Dispatchers.IO) {
         runGitOperation {
             val config = git?.repository?.config
