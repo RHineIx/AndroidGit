@@ -204,6 +204,10 @@ class GitManager(
         runGitOperation { branchManager?.deleteBranch(name) ?: "Error" }
     }
 
+    suspend fun forceDeleteBranch(name: String): String = withContext(Dispatchers.IO) {
+        runGitOperation { branchManager?.forceDeleteBranch(name) ?: "Error" }
+    }
+
     suspend fun mergeBranch(name: String): String = withContext(Dispatchers.IO) {
         runGitOperation { branchManager?.mergeBranch(name) ?: "Error" }
     }
@@ -556,9 +560,10 @@ class GitManager(
 
     private suspend inline fun <T> runSafeRead(crossinline block: suspend () -> T): T {
         ensureOpen()
-        // Read operations can happen concurrently, bypassing the writeMutex
+        // JGit Repository/RevWalk are not safe to use concurrently with writes.
+        // Serialize reads with writes so Branch Manager never renders a half-updated ref graph.
         try {
-            return block()
+            return writeMutex.withLock { block() }
         } catch (e: Exception) {
             e.printStackTrace()
             throw e

@@ -41,10 +41,22 @@ enum class BranchType {
 }
 
 data class BranchModel(
+    /** Human-friendly branch name without the refs/heads or refs/remotes prefix. */
     val name: String,
+    /** Canonical ref used for Git operations. Never use [name] as an operation identifier. */
     val fullPath: String,
     val type: BranchType,
-    val isCurrent: Boolean
+    val isCurrent: Boolean,
+    /** Remote name for remote refs, or null for local refs. */
+    val remoteName: String? = null,
+    /** Configured upstream display name for a local branch. */
+    val trackingName: String? = null,
+    /** Number of commits ahead of upstream, when an upstream is available. */
+    val aheadCount: Int = 0,
+    /** Number of commits behind upstream, when an upstream is available. */
+    val behindCount: Int = 0,
+    /** True when the configured upstream no longer exists locally. */
+    val isUpstreamGone: Boolean = false
 )
 
 // [New] Model for Update System

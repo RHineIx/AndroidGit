@@ -410,97 +410,84 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
 
     fun loadBranches() {
         val manager = gitManager ?: return
+        if (isLoading) return
         viewModelScope.launch {
             isLoading = true
             try {
                 branchList = manager.getRichBranches()
             } catch (e: Exception) {
                 branchList = emptyList()
-                showStatus(e.message ?: "Unable to load branches", SnackbarType.ERROR)
+                showStatus(errorMessage(e, "Unable to load branches"), SnackbarType.ERROR)
             } finally {
                 isLoading = false
             }
         }
     }
 
-    fun checkoutBranch(name: String) {
-        val manager = gitManager ?: return
-        viewModelScope.launch {
-            isLoading = true
-            val result = manager.checkoutBranch(name)
-            showStatus(result, resultSnackbarType(result))
-            loadBranches()
-            loadDashboard()
-            isLoading = false
-        }
+    fun checkoutBranch(name: String) = runBranchOperation { manager ->
+        manager.checkoutBranch(name)
     }
 
-    fun createBranch(name: String) {
-        val manager = gitManager ?: return
-        viewModelScope.launch {
-            isLoading = true
-            val result = manager.createBranch(name)
-            if (!isFailure(result)) {
-                val checkoutResult = manager.checkoutBranch(name)
-                if (isFailure(checkoutResult)) {
-                    showStatus(checkoutResult, resultSnackbarType(checkoutResult))
-                    loadBranches()
-                    isLoading = false
-                    return@launch
-                }
+    fun createBranch(name: String) = runBranchOperation { manager ->
+        val created = manager.createBranch(name)
+        if (isFailure(created)) {
+            created
+        } else {
+            val checkout = manager.checkoutBranch(name)
+            if (isFailure(checkout)) {
+                "Error: $created, but checkout failed: $checkout"
+            } else {
+                "Created and switched to ${name.trim()}"
             }
-            showStatus(result, resultSnackbarType(result))
-            loadBranches()
-            loadDashboard()
-            isLoading = false
         }
     }
 
-    fun deleteBranch(name: String) {
+    fun deleteBranch(name: String) = runBranchOperation { manager ->
+        manager.deleteBranch(name)
+    }
+
+    fun forceDeleteBranch(name: String) = runBranchOperation { manager ->
+        manager.forceDeleteBranch(name)
+    }
+
+    fun renameBranch(newName: String) = runBranchOperation { manager ->
+        manager.renameBranch(newName)
+    }
+
+    fun mergeBranch(name: String) = runBranchOperation { manager ->
+        manager.mergeBranch(name)
+    }
+
+    fun rebaseBranch(name: String) = runBranchOperation { manager ->
+        manager.rebaseBranch(name)
+    }
+
+    private fun runBranchOperation(operation: suspend (GitManager) -> String) {
         val manager = gitManager ?: return
+        if (isLoading) return
         viewModelScope.launch {
             isLoading = true
-            val result = manager.deleteBranch(name)
-            showStatus(result, resultSnackbarType(result))
-            loadBranches()
-            isLoading = false
+            try {
+                val result = operation(manager)
+                showStatus(result, resultSnackbarType(result))
+                // Keep the list and dashboard in sync before controls become active again.
+                branchList = manager.getRichBranches()
+                if (manager.isGitRepo()) dashboardState = manager.getDashboardStats()
+            } catch (e: Exception) {
+                showStatus(errorMessage(e, "Branch operation failed"), SnackbarType.ERROR)
+                runCatching { branchList = manager.getRichBranches() }
+            } finally {
+                isLoading = false
+            }
         }
     }
 
-    fun renameBranch(newName: String) {
-        val manager = gitManager ?: return
-        viewModelScope.launch {
-            isLoading = true
-            val result = manager.renameBranch(newName)
-            showStatus(result, resultSnackbarType(result))
-            loadBranches()
-            loadDashboard()
-            isLoading = false
-        }
-    }
-
-    fun mergeBranch(name: String) {
-        val manager = gitManager ?: return
-        viewModelScope.launch {
-            isLoading = true
-            val result = manager.mergeBranch(name)
-            showStatus(result, resultSnackbarType(result))
-            loadBranches()
-            loadDashboard()
-            isLoading = false
-        }
-    }
-
-    fun rebaseBranch(name: String) {
-        val manager = gitManager ?: return
-        viewModelScope.launch {
-            isLoading = true
-            val result = manager.rebaseBranch(name)
-            showStatus(result, resultSnackbarType(result))
-            loadBranches()
-            loadDashboard()
-            isLoading = false
-        }
+    private fun errorMessage(error: Throwable, fallback: String): String {
+        val message = generateSequence(error) { it.cause }
+            .mapNotNull { it.message?.trim()?.takeIf(String::isNotEmpty) }
+            .distinct()
+            .joinToString(" -> ")
+        return "Error: ${if (message.isBlank()) fallback else message}"
     }
 
     fun fetchAll() {

@@ -1,33 +1,86 @@
 package com.android.git.ui.screens
 
-import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.CallMerge
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Computer
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SyncAlt
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.git.R
 import com.android.git.model.BranchModel
 import com.android.git.model.BranchType
+import com.android.git.model.DashboardState
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.viewmodel.MainViewModel
-
-// Miuix Library Imports
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardColors
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
+
+private sealed interface BranchConfirmation {
+    data class Delete(val branch: BranchModel) : BranchConfirmation
+    data class Merge(val branch: BranchModel) : BranchConfirmation
+    data class Rebase(val branch: BranchModel) : BranchConfirmation
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,58 +95,67 @@ fun BranchManagerScreen(
 
     var selectedTab by remember { mutableIntStateOf(0) }
     var searchQuery by remember { mutableStateOf("") }
-
     var showCreateDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var branchToRename by remember { mutableStateOf<BranchModel?>(null) }
-    var branchToDelete by remember { mutableStateOf<BranchModel?>(null) }
+    var confirmation by remember { mutableStateOf<BranchConfirmation?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.loadBranches()
     }
 
-    // Only intercept back if it's currently loading, otherwise let predictive back work
-    BackHandler(enabled = isLoading) { }
+    val currentBranch = (viewModel.dashboardState as? DashboardState.Success)?.branch
+    val localCount = branches.count { it.type == BranchType.LOCAL }
+    val remoteCount = branches.count { it.type == BranchType.REMOTE }
 
     BranchDialogs(
         showCreateDialog = showCreateDialog,
         showRenameDialog = showRenameDialog,
         branchToRename = branchToRename,
+        isBusy = isLoading,
         onDismissCreate = { showCreateDialog = false },
-        onDismissRename = { showRenameDialog = false; branchToRename = null },
-        onCreate = { name -> viewModel.createBranch(name) },
-        onRename = { name -> viewModel.renameBranch(name) }
+        onDismissRename = {
+            showRenameDialog = false
+            branchToRename = null
+        },
+        onCreate = { name ->
+            showCreateDialog = false
+            viewModel.createBranch(name)
+        },
+        onRename = { name ->
+            showRenameDialog = false
+            branchToRename = null
+            viewModel.renameBranch(name)
+        }
     )
 
-    if (branchToDelete != null) {
-        AlertDialog(
-            onDismissRequest = { if (!isLoading) branchToDelete = null },
-            title = { Text(stringResource(R.string.branch_delete_title)) },
-            text = { Text(stringResource(R.string.branch_delete_msg, branchToDelete!!.name)) },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val branch = branchToDelete ?: return@Button
-                        branchToDelete = null
-                        viewModel.deleteBranch(branch.name)
-                    },
-                    enabled = !isLoading,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) { Text(stringResource(R.string.branch_delete_confirm)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { branchToDelete = null }, enabled = !isLoading) {
-                    Text(stringResource(R.string.action_cancel))
+    confirmation?.let { pending ->
+        BranchConfirmationDialog(
+            confirmation = pending,
+            isBusy = isLoading,
+            onDismiss = { if (!isLoading) confirmation = null },
+            onConfirm = {
+                confirmation = null
+                when (pending) {
+                    is BranchConfirmation.Delete -> viewModel.deleteBranch(pending.branch.fullPath)
+                    is BranchConfirmation.Merge -> viewModel.mergeBranch(pending.branch.fullPath)
+                    is BranchConfirmation.Rebase -> viewModel.rebaseBranch(pending.branch.fullPath)
                 }
             },
-            icon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
+            onForceDelete = {
+                val branch = (pending as? BranchConfirmation.Delete)?.branch
+                if (branch != null) {
+                    confirmation = null
+                    viewModel.forceDeleteBranch(branch.fullPath)
+                }
+            }
         )
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.branch_title)) },
+                title = { Text(stringResource(R.string.branch_title), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack, enabled = !isLoading) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
@@ -104,39 +166,51 @@ fun BranchManagerScreen(
                         onClick = { viewModel.fetchAll() },
                         enabled = !isLoading
                     ) {
-                        Icon(Icons.Default.CloudDownload, contentDescription = stringResource(R.string.dashboard_tool_fetch))
+                        Icon(Icons.Default.CloudDownload, contentDescription = stringResource(R.string.branch_fetch))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { if (!isLoading) showCreateDialog = true }, containerColor = MaterialTheme.colorScheme.primary) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.branch_dialog_create_title))
-            }
+            androidx.compose.material3.ExtendedFloatingActionButton(
+                onClick = { if (!isLoading) showCreateDialog = true },
+                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                text = { Text(stringResource(R.string.branch_create_action)) },
+                expanded = !isLoading,
+                containerColor = MaterialTheme.colorScheme.primary
+            )
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-            BranchListContent(
-                branches = branches,
-                searchQuery = searchQuery,
-                selectedTab = selectedTab,
-                isLoading = isLoading,
-                onSearchChange = { searchQuery = it },
-                onTabChange = { selectedTab = it },
-                onAction = { action, branch ->
-                    when (action) {
-                        BranchAction.CHECKOUT -> viewModel.checkoutBranch(branch.name)
-                        BranchAction.DELETE -> branchToDelete = branch
-                        BranchAction.MERGE -> viewModel.mergeBranch(branch.fullPath)
-                        BranchAction.REBASE -> viewModel.rebaseBranch(branch.fullPath)
-                        BranchAction.RENAME -> {
-                            branchToRename = branch
-                            showRenameDialog = true
+            Column(modifier = Modifier.fillMaxSize()) {
+                BranchHeader(
+                    currentBranch = currentBranch,
+                    localCount = localCount,
+                    remoteCount = remoteCount,
+                    isLoading = isLoading
+                )
+                BranchListContent(
+                    branches = branches,
+                    searchQuery = searchQuery,
+                    selectedTab = selectedTab,
+                    isLoading = isLoading,
+                    onSearchChange = { searchQuery = it },
+                    onTabChange = { selectedTab = it },
+                    onAction = { action, branch ->
+                        when (action) {
+                            BranchAction.CHECKOUT -> viewModel.checkoutBranch(branch.fullPath)
+                            BranchAction.DELETE -> confirmation = BranchConfirmation.Delete(branch)
+                            BranchAction.MERGE -> confirmation = BranchConfirmation.Merge(branch)
+                            BranchAction.REBASE -> confirmation = BranchConfirmation.Rebase(branch)
+                            BranchAction.RENAME -> {
+                                branchToRename = branch
+                                showRenameDialog = true
+                            }
                         }
                     }
-                }
-            )
+                )
+            }
 
             Box(modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)) {
                 AppSnackbar(message = statusMessage, type = statusType, onDismiss = { viewModel.clearStatus() })
@@ -146,10 +220,54 @@ fun BranchManagerScreen(
 }
 
 @Composable
+private fun BranchHeader(
+    currentBranch: String?,
+    localCount: Int,
+    remoteCount: Int,
+    isLoading: Boolean
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text(
+            text = if (currentBranch.isNullOrBlank()) {
+                stringResource(R.string.branch_no_current)
+            } else {
+                stringResource(R.string.branch_current_fmt, currentBranch)
+            },
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = true,
+                onClick = {},
+                enabled = false,
+                label = { Text(stringResource(R.string.branch_local_count, localCount)) },
+                leadingIcon = { Icon(Icons.Default.Computer, contentDescription = null, modifier = Modifier.size(16.dp)) }
+            )
+            FilterChip(
+                selected = false,
+                onClick = {},
+                enabled = false,
+                label = { Text(stringResource(R.string.branch_remote_count, remoteCount)) },
+                leadingIcon = { Icon(Icons.Default.Cloud, contentDescription = null, modifier = Modifier.size(16.dp)) }
+            )
+            if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+        }
+    }
+}
+
+@Composable
 private fun BranchDialogs(
     showCreateDialog: Boolean,
     showRenameDialog: Boolean,
     branchToRename: BranchModel?,
+    isBusy: Boolean,
     onDismissCreate: () -> Unit,
     onDismissRename: () -> Unit,
     onCreate: (String) -> Unit,
@@ -159,6 +277,8 @@ private fun BranchDialogs(
         InputBranchDialog(
             title = stringResource(R.string.branch_dialog_create_title),
             confirmText = stringResource(R.string.action_create),
+            initialValue = "",
+            isBusy = isBusy,
             onDismiss = onDismissCreate,
             onConfirm = onCreate
         )
@@ -169,6 +289,8 @@ private fun BranchDialogs(
             title = stringResource(R.string.branch_dialog_rename_title),
             textPrefix = stringResource(R.string.branch_dialog_rename_prefix, branchToRename.name),
             confirmText = stringResource(R.string.action_rename),
+            initialValue = branchToRename.name,
+            isBusy = isBusy,
             onDismiss = onDismissRename,
             onConfirm = onRename
         )
@@ -176,47 +298,116 @@ private fun BranchDialogs(
 }
 
 @Composable
+private fun BranchConfirmationDialog(
+    confirmation: BranchConfirmation,
+    isBusy: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    onForceDelete: () -> Unit
+) {
+    val branch = when (confirmation) {
+        is BranchConfirmation.Delete -> confirmation.branch
+        is BranchConfirmation.Merge -> confirmation.branch
+        is BranchConfirmation.Rebase -> confirmation.branch
+    }
+    val isDelete = confirmation is BranchConfirmation.Delete
+    val title = when (confirmation) {
+        is BranchConfirmation.Delete -> stringResource(R.string.branch_delete_title)
+        is BranchConfirmation.Merge -> stringResource(R.string.branch_merge_confirm_title)
+        is BranchConfirmation.Rebase -> stringResource(R.string.branch_rebase_confirm_title)
+    }
+    val message = when (confirmation) {
+        is BranchConfirmation.Delete -> stringResource(R.string.branch_delete_msg, branch.name)
+        is BranchConfirmation.Merge -> stringResource(R.string.branch_merge_confirm_msg, branch.name)
+        is BranchConfirmation.Rebase -> stringResource(R.string.branch_rebase_confirm_msg, branch.name)
+    }
+    val confirmText = when (confirmation) {
+        is BranchConfirmation.Delete -> stringResource(R.string.branch_delete_confirm)
+        is BranchConfirmation.Merge -> stringResource(R.string.branch_merge_confirm)
+        is BranchConfirmation.Rebase -> stringResource(R.string.branch_rebase_confirm)
+    }
+
+    AlertDialog(
+        onDismissRequest = { if (!isBusy) onDismiss() },
+        title = { Text(title) },
+        text = { Text(message) },
+        icon = {
+            Icon(
+                imageVector = if (isDelete) Icons.Default.Delete else Icons.Default.Warning,
+                contentDescription = null,
+                tint = if (isDelete) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                enabled = !isBusy,
+                colors = if (isDelete) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                else ButtonDefaults.buttonColors()
+            ) { Text(confirmText) }
+        },
+        dismissButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (isDelete) {
+                    TextButton(onClick = onForceDelete, enabled = !isBusy) {
+                        Text(stringResource(R.string.branch_force_delete), color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                TextButton(onClick = onDismiss, enabled = !isBusy) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        }
+    )
+}
+
+@Composable
 private fun InputBranchDialog(
     title: String,
     textPrefix: String? = null,
     confirmText: String,
+    initialValue: String,
+    isBusy: Boolean,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
-    var textValue by remember { mutableStateOf("") }
+    var textValue by remember(title, initialValue) { mutableStateOf(initialValue) }
+    val trimmedValue = textValue.trim()
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!isBusy) onDismiss() },
         title = { Text(title) },
         text = {
             Column {
                 if (textPrefix != null) {
-                    Text(textPrefix)
+                    Text(textPrefix, style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(8.dp))
                 }
                 OutlinedTextField(
                     value = textValue,
                     onValueChange = { textValue = it },
                     label = { Text(stringResource(R.string.branch_dialog_create_label)) },
+                    supportingText = { Text(stringResource(R.string.branch_name_help)) },
                     singleLine = true,
+                    enabled = !isBusy,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
         },
         confirmButton = {
-            Button(onClick = {
-                if (textValue.isNotEmpty()) {
-                    onConfirm(textValue)
-                    onDismiss()
-                    textValue = ""
-                }
-            }) { Text(confirmText) }
+            Button(
+                onClick = { onConfirm(trimmedValue) },
+                enabled = trimmedValue.isNotEmpty() && !isBusy
+            ) { Text(confirmText) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } }
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isBusy) { Text(stringResource(R.string.action_cancel)) }
+        }
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BranchListContent(
     branches: List<BranchModel>,
@@ -231,14 +422,21 @@ private fun BranchListContent(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchChange,
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             placeholder = { Text(stringResource(R.string.branch_search_hint)) },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { onSearchChange("") }) {
+                        Text("×", style = MaterialTheme.typography.titleLarge)
+                    }
+                }
+            },
             shape = RoundedCornerShape(12.dp),
-            singleLine = true
+            singleLine = true,
+            enabled = !isLoading
         )
 
-        // Updated to PrimaryTabRow to fix deprecation warning
         PrimaryTabRow(selectedTabIndex = selectedTab) {
             Tab(
                 selected = selectedTab == 0,
@@ -255,17 +453,30 @@ private fun BranchListContent(
         }
 
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            if (isLoading) {
+            if (isLoading && branches.isEmpty()) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else {
                 val targetType = if (selectedTab == 0) BranchType.LOCAL else BranchType.REMOTE
-                val filteredBranches = branches.filter {
-                    it.type == targetType && it.name.contains(searchQuery, ignoreCase = true)
+                val normalizedQuery = searchQuery.trim()
+                val filteredBranches = branches.filter { branch ->
+                    branch.type == targetType && (
+                        normalizedQuery.isBlank() ||
+                            branch.name.contains(normalizedQuery, ignoreCase = true) ||
+                            branch.fullPath.contains(normalizedQuery, ignoreCase = true) ||
+                            branch.remoteName.orEmpty().contains(normalizedQuery, ignoreCase = true)
+                        )
                 }
 
                 if (filteredBranches.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(stringResource(R.string.branch_empty_search), color = MaterialTheme.colorScheme.secondary)
+                        Text(
+                            text = if (normalizedQuery.isBlank()) {
+                                stringResource(R.string.branch_empty_tab)
+                            } else {
+                                stringResource(R.string.branch_empty_search)
+                            },
+                            color = MaterialTheme.colorScheme.secondary
+                        )
                     }
                 } else {
                     LazyColumn(
@@ -273,9 +484,10 @@ private fun BranchListContent(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(vertical = 12.dp)
                     ) {
-                        items(filteredBranches) { branch ->
+                        items(filteredBranches, key = { it.fullPath }) { branch ->
                             BranchItemRich(
                                 branch = branch,
+                                enabled = !isLoading,
                                 onAction = { action -> onAction(action, branch) }
                             )
                         }
@@ -291,9 +503,10 @@ enum class BranchAction { CHECKOUT, MERGE, REBASE, RENAME, DELETE }
 @Composable
 fun BranchItemRich(
     branch: BranchModel,
+    enabled: Boolean = true,
     onAction: (BranchAction) -> Unit
 ) {
-    var showMenu by remember { mutableStateOf(false) }
+    var showMenu by remember(branch.fullPath) { mutableStateOf(false) }
     val isRemote = branch.type == BranchType.REMOTE
 
     Card(
@@ -304,7 +517,7 @@ fun BranchItemRich(
             contentColor = MaterialTheme.colorScheme.onSurface
         ),
         pressFeedbackType = PressFeedbackType.Sink,
-        onClick = { showMenu = true }
+        onClick = { if (enabled) showMenu = true }
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -312,7 +525,7 @@ fun BranchItemRich(
         ) {
             Icon(
                 imageVector = if (isRemote) Icons.Default.Cloud else Icons.Default.Computer,
-                contentDescription = null,
+                contentDescription = if (isRemote) stringResource(R.string.branch_remote) else stringResource(R.string.branch_local),
                 tint = if (branch.isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
             )
 
@@ -323,29 +536,86 @@ fun BranchItemRich(
                     text = branch.name,
                     fontWeight = if (branch.isCurrent) FontWeight.Bold else FontWeight.Normal,
                     color = if (branch.isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                    fontSize = 16.sp
+                    fontSize = 16.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
+                val remoteName = branch.remoteName
+                val trackingName = branch.trackingName
+                val secondary = when {
+                    isRemote && !remoteName.isNullOrBlank() ->
+                        stringResource(R.string.branch_remote_fmt, remoteName)
+                    !trackingName.isNullOrBlank() ->
+                        stringResource(R.string.branch_tracking_fmt, trackingName)
+                    else -> null
+                }
+                if (secondary != null) {
+                    Text(
+                        text = secondary,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 if (branch.isCurrent) {
                     Text(
                         text = stringResource(R.string.branch_current_label),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary
                     )
+                } else if (branch.isUpstreamGone) {
+                    Text(
+                        text = stringResource(R.string.branch_upstream_gone),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+                if (!isRemote && !branch.isUpstreamGone && (branch.aheadCount > 0 || branch.behindCount > 0)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (branch.aheadCount > 0) {
+                            BranchCount(
+                                icon = Icons.Default.ArrowUpward,
+                                text = stringResource(R.string.branch_ahead_fmt, branch.aheadCount),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        if (branch.behindCount > 0) {
+                            BranchCount(
+                                icon = Icons.Default.ArrowDownward,
+                                text = stringResource(R.string.branch_behind_fmt, branch.behindCount),
+                                tint = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
+                    }
                 }
             }
 
-            IconButton(onClick = { showMenu = true }) {
-                Icon(Icons.Default.MoreVert, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            IconButton(onClick = { if (enabled) showMenu = true }, enabled = enabled) {
+                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.branch_actions))
             }
 
             BranchActionMenu(
-                expanded = showMenu,
+                expanded = showMenu && enabled,
                 branch = branch,
                 isRemote = isRemote,
                 onDismiss = { showMenu = false },
                 onAction = onAction
             )
         }
+    }
+}
+
+@Composable
+private fun BranchCount(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    tint: androidx.compose.ui.graphics.Color
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(12.dp), tint = tint)
+        Spacer(Modifier.width(2.dp))
+        Text(text, style = MaterialTheme.typography.labelSmall, color = tint)
     }
 }
 
@@ -357,13 +627,21 @@ private fun BranchActionMenu(
     onDismiss: () -> Unit,
     onAction: (BranchAction) -> Unit
 ) {
-    DropdownMenu(
-        expanded = expanded,
-        onDismissRequest = onDismiss
-    ) {
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         DropdownMenuItem(
-            text = { Text(branch.name, fontWeight = FontWeight.Bold) },
-            onClick = { },
+            text = {
+                Column {
+                    Text(branch.name, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        text = branch.fullPath,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            },
+            onClick = {},
             enabled = false
         )
         HorizontalDivider()
@@ -371,7 +649,6 @@ private fun BranchActionMenu(
         if (!branch.isCurrent) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.branch_menu_checkout)) },
-                leadingIcon = { Icon(Icons.Default.Check, contentDescription = null) },
                 onClick = { onDismiss(); onAction(BranchAction.CHECKOUT) }
             )
             DropdownMenuItem(
@@ -386,7 +663,7 @@ private fun BranchActionMenu(
             )
         }
 
-        if (!isRemote && branch.isCurrent) {
+        if (!isRemote) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.action_rename)) },
                 leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
