@@ -380,10 +380,15 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
                 return@launch
             }
             isLoading = true
-            val result = manager.pull(auth)
-            isLoading = false
-            showStatus(result, resultSnackbarType(result))
-            loadDashboard()
+            try {
+                val result = manager.pull(auth)
+                showStatus(result, resultSnackbarType(result))
+                refreshBranchData(manager)
+            } catch (e: Exception) {
+                showStatus(errorMessage(e, "Pull failed"), SnackbarType.ERROR)
+            } finally {
+                isLoading = false
+            }
         }
     }
 
@@ -482,6 +487,13 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         }
     }
 
+    private suspend fun refreshBranchData(manager: GitManager) {
+        branchList = manager.getRichBranches()
+        if (manager.isGitRepo()) {
+            dashboardState = manager.getDashboardStats()
+        }
+    }
+
     private fun errorMessage(error: Throwable, fallback: String): String {
         val message = generateSequence(error) { it.cause }
             .mapNotNull { it.message?.trim()?.takeIf(String::isNotEmpty) }
@@ -501,11 +513,18 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
             }
             if (configured) {
                 isLoading = true
-                val result = manager.fetchAll(auth)
-                showStatus(result, resultSnackbarType(result))
-                loadBranches()
-                loadDashboard()
-                isLoading = false
+                try {
+                    val result = manager.fetchAll(auth)
+                    showStatus(result, resultSnackbarType(result))
+                    // Do not call loadBranches() here: it intentionally ignores
+                    // requests while isLoading is true. Refresh synchronously so
+                    // pruned refs disappear from Branch Manager immediately.
+                    refreshBranchData(manager)
+                } catch (e: Exception) {
+                    showStatus(errorMessage(e, "Fetch failed"), SnackbarType.ERROR)
+                } finally {
+                    isLoading = false
+                }
             } else {
                 showStatus(
                     if (auth.mode == GitAuthMode.SSH) context.getString(R.string.error_set_ssh_key)

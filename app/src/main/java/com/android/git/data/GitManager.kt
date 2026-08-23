@@ -372,10 +372,13 @@ class GitManager(
     suspend fun fetchAll(auth: GitAuthConfig): String = withContext(Dispatchers.IO) {
         runGitOperation {
             withAuth(auth) {
-                val cmd = git?.fetch()?.setCheckFetchedObjects(true)
+                val cmd = git?.fetch()
+                    ?.setCheckFetchedObjects(true)
+                    // Remove refs/remotes/* entries that no longer exist on the server.
+                    ?.setRemoveDeletedRefs(true)
                 applyCredentials(cmd, auth)
                 cmd?.call()
-                "Fetched all"
+                "Fetched all (pruned deleted remote branches)"
             }
         }
     }
@@ -412,7 +415,14 @@ class GitManager(
             withAuth(auth) {
                 val cmd = git?.pull() ?: throw Exception("Pull command unavailable")
                 applyCredentials(cmd, auth)
-                val pullResult = cmd.call()
+                val pullResult = try {
+                    cmd.call()
+                } finally {
+                    // PullCommand does not expose FetchCommand's prune option.
+                    // Run a small pruned fetch after pull so deleted remote branches
+                    // disappear even when the user refreshes through Pull.
+                    runCatching { pruneRemoteTrackingRefs(auth) }
+                }
                 if (pullResult.isSuccessful) {
                     "Pulled!"
                 } else {
@@ -538,6 +548,16 @@ class GitManager(
         }
     }
     
+    private fun pruneRemoteTrackingRefs(auth: GitAuthConfig) {
+        withAuth(auth) {
+            val fetch = git?.fetch()
+                ?.setCheckFetchedObjects(true)
+                ?.setRemoveDeletedRefs(true)
+            applyCredentials(fetch, auth)
+            fetch?.call()
+        }
+    }
+
     private fun <T> withAuth(auth: GitAuthConfig, block: () -> T): T {
         // Keep the SSH factory alive for the repository session. Closing it in
         // finally can race with JGit/SSHD transport cleanup and causes
