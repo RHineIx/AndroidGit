@@ -1,8 +1,12 @@
+@file:Suppress("SpellCheckingInspection")
+
 package com.android.git.ui.components
 
+import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
+import android.os.Environment
+import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -41,9 +45,11 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import com.android.git.R
 import com.android.git.model.UpdateInfo
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 enum class SnackbarType {
     SUCCESS, ERROR, INFO, WARNING
@@ -57,7 +63,7 @@ fun AppSnackbar(
 ) {
     LaunchedEffect(message, type) {
         if (message.isNotEmpty()) {
-            val duration = if (type == SnackbarType.ERROR) 4000L else 2500L
+            val duration = if (type == SnackbarType.ERROR) 4000.milliseconds else 2500.milliseconds
             delay(duration)
             onDismiss()
         }
@@ -134,18 +140,18 @@ fun UpdateBottomSheet(
 ) {
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    
+
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                return available 
+                return available
             }
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
                 return available
             }
         }
     }
-    
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -178,21 +184,21 @@ fun UpdateBottomSheet(
                         modifier = Modifier.size(64.dp),
                         tint = MaterialTheme.colorScheme.primary
                     )
-                    
+
                     Spacer(modifier = Modifier.height(16.dp))
-                    
+
                     Text(
                         text = stringResource(R.string.update_new_version),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    
+
                     val versionLabel = remember(updateInfo) {
-                        if (updateInfo.versionCode > 0) "v${updateInfo.versionName} (Build ${updateInfo.versionCode})"
+                        if (updateInfo.versionCode > 0) "v${updateInfo.versionName} (Build${updateInfo.versionCode})"
                         else "v${updateInfo.versionName}"
                     }
-                    
+
                     Text(
                         text = versionLabel,
                         style = MaterialTheme.typography.titleMedium,
@@ -224,12 +230,12 @@ fun UpdateBottomSheet(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    
+
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 12.dp),
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     )
-                    
+
                     Column(
                         modifier = Modifier
                             .weight(1f, fill = false)
@@ -240,11 +246,14 @@ fun UpdateBottomSheet(
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
                         )
                     }
-                    
+
                     Spacer(modifier = Modifier.height(24.dp))
-                    
+
                     Button(
-                        onClick = { openLink(context, updateInfo.downloadUrl) },
+                        onClick = {
+                            downloadApk(context, updateInfo.downloadUrl, updateInfo.versionName)
+                            onDismiss()
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp)
@@ -349,12 +358,30 @@ fun parseMarkdown(text: String, defaultColor: Color): AnnotatedString {
     }
 }
 
-private fun openLink(context: Context, url: String) {
+private fun downloadApk(context: Context, url: String, versionName: String) {
     try {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
+        val request = DownloadManager.Request(url.toUri()).apply {
+            setTitle("AndroidGit v$versionName")
+            setDescription("Downloading update...")
+            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "AndroidGit-v$versionName.apk")
+            setAllowedOverMetered(true)
+            setAllowedOverRoaming(true)
+        }
+
+        val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        downloadManager.enqueue(request)
+
+        Toast.makeText(context, "Download started...", Toast.LENGTH_SHORT).show()
     } catch (e: Exception) {
         e.printStackTrace()
+        // Fallback to browser if DownloadManager fails or is disabled
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, url.toUri())
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+        }
     }
 }

@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.PlayArrow
@@ -25,9 +26,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,7 +49,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -57,6 +57,9 @@ import com.android.git.model.GitHubWorkflowInput
 import com.android.git.model.GitHubWorkflowRun
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.viewmodel.MainViewModel
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -205,11 +208,18 @@ private fun WorkflowRunDialog(
     val workflow = viewModel.selectedWorkflow ?: return
     val repository = viewModel.githubWorkflowRepository
     var ref by remember(workflow.id, repository?.ref) { mutableStateOf(repository?.ref ?: "main") }
+    var refExpanded by remember { mutableStateOf(false) }
+
+    // Get unique branch names from ViewModel's loaded branches
+    val availableBranches = remember(viewModel.branchList) {
+        viewModel.branchList.map { it.name }.distinct()
+    }
+
     var inputValues by remember(workflow.id, viewModel.githubWorkflowInputs) {
         mutableStateOf(viewModel.githubWorkflowInputs.associate { it.name to it.defaultValue })
     }
-    val context = LocalContext.current
-    var validationError by remember(workflow.id) { mutableStateOf("") }
+
+    var missingInputName by remember(workflow.id) { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -222,13 +232,49 @@ private fun WorkflowRunDialog(
                         Text(stringResource(R.string.workflow_loading_inputs))
                     }
                 } else {
-                    OutlinedTextField(
-                        value = ref,
-                        onValueChange = { ref = it },
-                        label = { Text(stringResource(R.string.workflow_ref)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
+                    // Ref Selection with Editable Dropdown
+                    ExposedDropdownMenuBox(
+                        expanded = refExpanded,
+                        onExpandedChange = { refExpanded = it }
+                    ) {
+                        OutlinedTextField(
+                            value = ref,
+                            onValueChange = { ref = it },
+                            label = { Text(stringResource(R.string.workflow_ref)) },
+                            modifier = Modifier
+                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                                .fillMaxWidth(),
+                            singleLine = true,
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = refExpanded) },
+                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                        )
+                        if (availableBranches.isNotEmpty()) {
+                            ExposedDropdownMenu(
+                                expanded = refExpanded,
+                                onDismissRequest = { refExpanded = false }
+                            ) {
+                                availableBranches.forEach { branchName ->
+                                    DropdownMenuItem(
+                                        text = { Text(branchName) },
+                                        onClick = {
+                                            ref = branchName
+                                            refExpanded = false
+                                        },
+                                        trailingIcon = {
+                                            if (ref == branchName) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Check,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     viewModel.githubWorkflowInputs.forEach { input ->
                         WorkflowInputField(
                             input = input,
@@ -240,7 +286,12 @@ private fun WorkflowRunDialog(
                         Text(stringResource(R.string.workflow_no_inputs), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                if (validationError.isNotBlank()) Text(validationError, color = MaterialTheme.colorScheme.error)
+                if (missingInputName.isNotBlank()) {
+                    Text(
+                        text = stringResource(R.string.workflow_required_input, missingInputName),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         },
         confirmButton = {
@@ -248,8 +299,9 @@ private fun WorkflowRunDialog(
                 onClick = {
                     val missing = viewModel.githubWorkflowInputs.firstOrNull { it.required && inputValues[it.name].orEmpty().isBlank() }
                     if (missing != null) {
-                        validationError = context.getString(R.string.workflow_required_input, missing.name)
+                        missingInputName = missing.name
                     } else {
+                        missingInputName = ""
                         onRun(ref, inputValues.filterValues { it.isNotBlank() })
                     }
                 },
@@ -295,7 +347,7 @@ private fun WorkflowInputField(
                     label = { Text(label) },
                     supportingText = { if (input.description.isNotBlank()) Text(input.description) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                    modifier = Modifier.menuAnchor().fillMaxWidth()
+                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
                 )
                 ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     input.options.forEach { option ->
@@ -339,9 +391,27 @@ private fun WorkflowRunCard(run: GitHubWorkflowRun) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (run.createdAt.isNotBlank()) Text(run.createdAt, style = MaterialTheme.typography.labelSmall)
+                if (run.createdAt.isNotBlank()) {
+                    Text(
+                        text = formatGithubDate(run.createdAt),
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
             }
         }
         HorizontalDivider()
+    }
+}
+
+private fun formatGithubDate(dateString: String): String {
+    if (dateString.isBlank()) return ""
+    return try {
+        val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
+        parser.timeZone = TimeZone.getTimeZone("UTC")
+        val date = parser.parse(dateString) ?: return dateString
+        val formatter = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
+        formatter.format(date)
+    } catch (_: Exception) {
+        dateString
     }
 }

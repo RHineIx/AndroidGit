@@ -7,13 +7,16 @@ import android.os.Environment
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.core.net.toUri
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
@@ -67,6 +70,7 @@ fun MainAppContent(
     val context = LocalContext.current
     val navController = rememberNavController()
     val prefs = remember { PreferencesManager(context) }
+    val focusManager = LocalFocusManager.current
 
     var hasPermission by remember { mutableStateOf(checkPermission()) }
 
@@ -101,7 +105,17 @@ fun MainAppContent(
 
     // Apply the Theme dynamically
     AndroidGitTheme(darkTheme = isDarkTheme) {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                // Clear focus globally when tapping outside of input fields
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = {
+                        focusManager.clearFocus()
+                    })
+                },
+            color = MaterialTheme.colorScheme.background
+        ) {
             if (!hasPermission) {
                 PermissionScreen { requestPermission() }
             } else {

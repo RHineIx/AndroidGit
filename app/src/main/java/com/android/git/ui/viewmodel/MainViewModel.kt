@@ -1,10 +1,12 @@
+@file:Suppress("SpellCheckingInspection")
+
 package com.android.git.ui.viewmodel
 
 import android.app.Application
 import android.content.pm.PackageManager
 import android.os.Build
-import android.os.Environment
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
@@ -14,6 +16,7 @@ import com.android.git.R
 import com.android.git.data.GitAuthConfig
 import com.android.git.data.GitAuthMode
 import com.android.git.data.GitHubUpdateManager
+import com.android.git.data.UpdateResult
 import com.android.git.data.GitHubWorkflowApiManager
 import com.android.git.data.GitHubWorkflowException
 import com.android.git.data.GitRemoteUrl
@@ -33,7 +36,6 @@ import com.android.git.ui.components.SnackbarType
 import com.android.git.utils.isGitFailureMessage
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.generationConfig
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -68,7 +70,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     var statusType: SnackbarType by mutableStateOf(SnackbarType.INFO)
         private set
 
-    var cloneProgress: Float by mutableStateOf(0f)
+    var cloneProgress by mutableFloatStateOf(0f)
         private set
     var cloneTaskName: String by mutableStateOf("")
         private set
@@ -113,7 +115,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
 
     private var logCurrentOffset = 0
     private var logHasMore = true
-    private val LOG_PAGE_SIZE = 50
+    private val logPageSize = 50
 
     var updateInfo: UpdateInfo? by mutableStateOf(null)
         private set
@@ -131,16 +133,6 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         checkForUpdates(isManual = false)
     }
 
-    fun getToken(): String = prefs.getToken()
-
-    fun saveToken(token: String) = prefs.saveToken(token)
-
-    fun clearToken() = prefs.clearToken()
-
-    fun getLastValidToken(): String = prefs.getLastValidToken()
-
-    fun restoreLastToken(): String = prefs.restoreLastToken()
-
     fun getAuthConfig(): GitAuthConfig {
         return when (prefs.getAuthMode()) {
             GitAuthMode.SSH -> GitAuthConfig(
@@ -154,8 +146,6 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
             )
         }
     }
-
-    fun saveAuthMode(mode: GitAuthMode) = prefs.setAuthMode(mode)
 
     fun updateThemeMode(mode: ThemeMode) {
         themeMode = mode
@@ -244,7 +234,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
                     return@launch
                 }
                 val customPrompt = prefs.getGeminiPrompt()
-                val basePrompt = if (customPrompt.isNotBlank()) customPrompt else
+                val basePrompt = customPrompt.ifBlank {
                     "You are an expert developer. Generate a Conventional Commit message based on the following git diff.\n" +
                             "Format requirements:\n" +
                             "1. A concise subject line (e.g., feat: ..., fix: ...).\n" +
@@ -252,6 +242,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
                             "3. A concise bulleted list summarizing ALL notable changes.\n" +
                             "Keep the bullet points strictly short and to the point.\n" +
                             "Output ONLY the commit message without any markdown formatting like ``` ."
+                }
                 val generativeModel = GenerativeModel(
                     modelName = prefs.getGeminiModel(),
                     apiKey = apiKey,
@@ -289,7 +280,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
                 } else {
                     context.packageManager.getPackageInfo(context.packageName, 0)
                 }
-            } catch (e: Exception) { null }
+            } catch (_: Exception) { null }
 
             val currentVersion = packageInfo?.versionName ?: "1.0.0"
 
@@ -299,15 +290,21 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
                 currentVersionName = currentVersion
             )
 
-            val result = updateManager.checkForUpdate()
-
-            if (result != null) {
-                updateInfo = result
-                showUpdateSheet = true
-                if (isManual) clearStatus()
-            } else {
-                if (isManual) {
-                    showStatus(context.getString(R.string.update_latest), SnackbarType.SUCCESS)
+            when (val result = updateManager.checkForUpdate()) {
+                is UpdateResult.Available -> {
+                    updateInfo = result.updateInfo
+                    showUpdateSheet = true
+                    if (isManual) clearStatus()
+                }
+                is UpdateResult.UpToDate -> {
+                    if (isManual) {
+                        showStatus(context.getString(R.string.update_latest), SnackbarType.SUCCESS)
+                    }
+                }
+                is UpdateResult.Error -> {
+                    if (isManual) {
+                        showStatus("Update check failed: ${result.message}", SnackbarType.ERROR)
+                    }
                 }
             }
         }
@@ -515,7 +512,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
             .mapNotNull { it.message?.trim()?.takeIf(String::isNotEmpty) }
             .distinct()
             .joinToString(" -> ")
-        return "Error: ${if (message.isBlank()) fallback else message}"
+        return "Error: ${message.ifBlank { fallback }}"
     }
 
     fun fetchAll() {
@@ -597,8 +594,8 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         viewModelScope.launch {
             isLogLoading = true
             try {
-                val newLogs = manager.getCommits(limit = LOG_PAGE_SIZE, offset = logCurrentOffset)
-                if (newLogs.size < LOG_PAGE_SIZE) {
+                val newLogs = manager.getCommits(limit = logPageSize, offset = logCurrentOffset)
+                if (newLogs.size < logPageSize) {
                     logHasMore = false
                 }
                 logList = if (reset) newLogs else logList + newLogs

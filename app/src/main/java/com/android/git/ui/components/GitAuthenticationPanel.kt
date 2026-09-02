@@ -61,8 +61,9 @@ fun GitAuthenticationPanel(
 
     // Internal states managed entirely by the component
     var tokenVisible by remember { mutableStateOf(false) }
-    var sshGenerationInfo by remember { mutableStateOf("") }
+    var generatedAlgorithm by remember { mutableStateOf("") }
     var sshGenerationError by remember { mutableStateOf("") }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     val textFieldColors = TextFieldDefaults.colors(
         focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -70,6 +71,36 @@ fun GitAuthenticationPanel(
         focusedIndicatorColor = Color.Transparent,
         unfocusedIndicatorColor = Color.Transparent
     )
+
+    // SSH Key Deletion Confirmation Dialog
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text(stringResource(R.string.repo_settings_ssh_clear)) },
+            text = { Text("Are you sure you want to remove the SSH keys from this device? This action cannot be undone.") },
+            icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteDialog = false
+                        onSshPrivateKeyChange("")
+                        onSshPublicKeyChange("")
+                        onSshPassphraseChange("")
+                        onAuthModeChange(GitAuthMode.HTTPS)
+                        onClearSshData()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(stringResource(R.string.action_delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
+    }
 
     Column(modifier = modifier.fillMaxWidth()) {
 
@@ -199,7 +230,7 @@ fun GitAuthenticationPanel(
                         value = sshPrivateKey,
                         onValueChange = {
                             onSshPrivateKeyChange(it)
-                            sshGenerationInfo = ""
+                            generatedAlgorithm = ""
                             sshGenerationError = ""
                         },
                         label = { Text(stringResource(R.string.ssh_private_key_label)) },
@@ -235,7 +266,7 @@ fun GitAuthenticationPanel(
                             value = sshPublicKey,
                             onValueChange = {
                                 onSshPublicKeyChange(it)
-                                sshGenerationInfo = ""
+                                generatedAlgorithm = ""
                                 sshGenerationError = ""
                             },
                             label = { Text(stringResource(R.string.ssh_public_key_label)) },
@@ -280,9 +311,9 @@ fun GitAuthenticationPanel(
                                 onSshPrivateKeyChange(generated.privateKey)
                                 onSshPublicKeyChange(generated.publicKey)
                                 sshGenerationError = ""
-                                sshGenerationInfo = context.getString(R.string.ssh_generated_fmt, generated.algorithm)
+                                generatedAlgorithm = generated.algorithm
                             }.onFailure { error ->
-                                sshGenerationInfo = ""
+                                generatedAlgorithm = ""
                                 sshGenerationError = buildString {
                                     append(error::class.java.simpleName)
                                     error.message?.takeIf { it.isNotBlank() }?.let {
@@ -301,7 +332,7 @@ fun GitAuthenticationPanel(
                         Text(stringResource(R.string.ssh_generate_key), fontWeight = FontWeight.Bold)
                     }
 
-                    if (sshGenerationInfo.isNotBlank()) {
+                    if (generatedAlgorithm.isNotBlank()) {
                         Spacer(Modifier.height(12.dp))
                         Surface(
                             color = Color(0xFFE8F5E9),
@@ -312,7 +343,7 @@ fun GitAuthenticationPanel(
                                 Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF2E7D32), modifier = Modifier.size(20.dp))
                                 Spacer(Modifier.width(12.dp))
                                 Text(
-                                    text = sshGenerationInfo,
+                                    text = stringResource(R.string.ssh_generated_fmt, generatedAlgorithm),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = Color(0xFF2E7D32),
                                     fontWeight = FontWeight.Medium
@@ -344,13 +375,7 @@ fun GitAuthenticationPanel(
                     if (sshPrivateKey.isNotBlank()) {
                         Spacer(Modifier.height(16.dp))
                         OutlinedButton(
-                            onClick = {
-                                onSshPrivateKeyChange("")
-                                onSshPublicKeyChange("")
-                                onSshPassphraseChange("")
-                                onAuthModeChange(GitAuthMode.HTTPS)
-                                onClearSshData()
-                            },
+                            onClick = { showDeleteDialog = true },
                             enabled = !isBusy,
                             modifier = Modifier.fillMaxWidth().height(50.dp),
                             shape = modernShape,

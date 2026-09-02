@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.CallMerge
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Computer
@@ -460,11 +461,11 @@ private fun BranchListContent(
                 val normalizedQuery = searchQuery.trim()
                 val filteredBranches = branches.filter { branch ->
                     branch.type == targetType && (
-                        normalizedQuery.isBlank() ||
-                            branch.name.contains(normalizedQuery, ignoreCase = true) ||
-                            branch.fullPath.contains(normalizedQuery, ignoreCase = true) ||
-                            branch.remoteName.orEmpty().contains(normalizedQuery, ignoreCase = true)
-                        )
+                            normalizedQuery.isBlank() ||
+                                    branch.name.contains(normalizedQuery, ignoreCase = true) ||
+                                    branch.fullPath.contains(normalizedQuery, ignoreCase = true) ||
+                                    branch.remoteName.orEmpty().contains(normalizedQuery, ignoreCase = true)
+                            )
                 }
 
                 if (filteredBranches.isEmpty()) {
@@ -627,28 +628,34 @@ private fun BranchActionMenu(
     onDismiss: () -> Unit,
     onAction: (BranchAction) -> Unit
 ) {
-    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
-        DropdownMenuItem(
-            text = {
-                Column {
-                    Text(branch.name, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(
-                        text = branch.fullPath,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            },
-            onClick = {},
-            enabled = false
-        )
-        HorizontalDivider()
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(16.dp),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Text(
+                text = branch.name,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = branch.fullPath,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
         if (!branch.isCurrent) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.branch_menu_checkout)) },
+                leadingIcon = { Icon(Icons.Default.Check, contentDescription = null) },
                 onClick = { onDismiss(); onAction(BranchAction.CHECKOUT) }
             )
             DropdownMenuItem(
@@ -672,7 +679,7 @@ private fun BranchActionMenu(
         }
 
         if (!branch.isCurrent && !isRemote) {
-            HorizontalDivider()
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error) },
                 leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
