@@ -3,7 +3,11 @@ package com.android.git.ui.screens
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.os.Environment
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -11,6 +15,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,8 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.git.R
@@ -43,9 +48,10 @@ import com.android.git.data.GitAuthManager
 import com.android.git.data.GitAuthMode
 import com.android.git.data.GitRemoteUrl
 import com.android.git.data.PreferencesManager
-import com.android.git.ui.components.ExpandableSshTextField
+import com.android.git.ui.components.GitAuthenticationPanel
 import com.android.git.ui.components.SnackbarType
 import com.android.git.ui.viewmodel.MainViewModel
+import com.android.git.utils.FileUtils
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -73,21 +79,45 @@ fun CloneScreen(
     var sshPrivateKey by remember { mutableStateOf(prefsManager.getSshPrivateKey()) }
     var sshPublicKey by remember { mutableStateOf(prefsManager.getSshPublicKey()) }
     var sshPassphrase by remember { mutableStateOf(prefsManager.getSshPassphrase()) }
-    var sshGenerationError by remember { mutableStateOf("") }
-    var sshGenerationInfo by remember { mutableStateOf("") }
 
-    // State to track if the token is visible or hidden
-    var tokenVisible by remember { mutableStateOf(false) }
+    var cloneParentDir by remember {
+        mutableStateOf(prefsManager.getDefaultCloneDir()?.let { File(it) } ?: Environment.getExternalStorageDirectory())
+    }
+
+    val dirLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+                FileUtils.getFileFromUri(uri)?.let { file ->
+                    if (file.exists() && file.isDirectory) {
+                        cloneParentDir = file
+                        prefsManager.setDefaultCloneDir(file.absolutePath)
+                    }
+                }
+            } catch (e: Exception) {
+                // Ignore failure and fallback to previous selection
+            }
+        }
+    }
 
     val isLoading = viewModel.isLoading
     val statusMessage = viewModel.statusMessage
     val statusType = viewModel.statusType
-    
+
     val cloneProgress = viewModel.cloneProgress
     val cloneTaskName = viewModel.cloneTaskName
     val cloneTaskDetails = viewModel.cloneTaskDetails
 
     val textFieldShape = RoundedCornerShape(16.dp)
+    val textFieldColors = TextFieldDefaults.colors(
+        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        focusedIndicatorColor = Color.Transparent,
+        unfocusedIndicatorColor = Color.Transparent
+    )
 
     val parsedRemoteUrl = remember(repoUrl) { GitRemoteUrl.parse(repoUrl) }
     val sshRemoteUrl = remember(repoUrl) { GitRemoteUrl.toSshUrl(repoUrl) }
@@ -103,10 +133,8 @@ fun CloneScreen(
         }
     }
 
-    // Only intercept and block back press if loading is true
     BackHandler(enabled = isLoading) { }
 
-    // Clear state smoothly when leaving the screen naturally
     DisposableEffect(Unit) {
         onDispose { viewModel.clearStatus() }
     }
@@ -157,7 +185,7 @@ fun CloneScreen(
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
 
-                    OutlinedTextField(
+                    TextField(
                         value = repoUrl,
                         onValueChange = { repoUrl = it },
                         label = { Text(stringResource(R.string.clone_url_label)) },
@@ -209,6 +237,7 @@ fun CloneScreen(
                         },
                         modifier = Modifier.fillMaxWidth(),
                         shape = textFieldShape,
+                        colors = textFieldColors,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Uri,
                             imeAction = ImeAction.Next
@@ -222,14 +251,41 @@ fun CloneScreen(
 
                     Spacer(Modifier.height(16.dp))
 
-                    OutlinedTextField(
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceContainerHighest, textFieldShape)
+                            .clip(textFieldShape)
+                            .clickable(enabled = !isLoading) { dirLauncher.launch(null) }
+                            .padding(16.dp)
+                    ) {
+                        Icon(Icons.Default.FolderOpen, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Base Directory", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                            Text(
+                                text = cloneParentDir.absolutePath,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        Icon(Icons.Default.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    TextField(
                         value = folderName,
                         onValueChange = { folderName = it },
                         label = { Text(stringResource(R.string.clone_folder_label)) },
                         placeholder = { Text(stringResource(R.string.clone_folder_hint)) },
-                        leadingIcon = { Icon(Icons.Default.Folder, contentDescription = null) },
+                        leadingIcon = { Icon(Icons.Default.CreateNewFolder, contentDescription = null) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = textFieldShape,
+                        colors = textFieldColors,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Text,
                             imeAction = ImeAction.Next
@@ -250,213 +306,67 @@ fun CloneScreen(
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        FilterChip(
-                            selected = authMode == GitAuthMode.HTTPS,
-                            onClick = { authMode = GitAuthMode.HTTPS },
-                            label = { Text(stringResource(R.string.auth_mode_https)) },
-                            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) }
-                        )
-                        FilterChip(
-                            selected = authMode == GitAuthMode.SSH,
-                            onClick = { authMode = GitAuthMode.SSH },
-                            label = { Text(stringResource(R.string.auth_mode_ssh)) },
-                            leadingIcon = { Icon(Icons.Default.Key, contentDescription = null) }
-                        )
-                    }
-
-                    Spacer(Modifier.height(12.dp))
-
-                    if (authMode == GitAuthMode.HTTPS) {
-                    OutlinedTextField(
-                        value = token,
-                        onValueChange = { token = it },
-                        label = { Text(stringResource(R.string.clone_token_label)) },
-                        leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null) },
-                        trailingIcon = {
-                            val image = if (tokenVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
-                            val description = if (tokenVisible) "Hide token" else "Show token"
-
-                            IconButton(onClick = { tokenVisible = !tokenVisible }) {
-                                Icon(imageVector = image, contentDescription = description)
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = textFieldShape,
-                        visualTransformation = if (tokenVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Password,
-                            imeAction = ImeAction.Done
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onDone = { focusManager.clearFocus() }
-                        ),
-                        enabled = !isLoading,
-                        singleLine = true // Ensures password dots align perfectly
-                    )
-
-                    AnimatedVisibility(
-                        visible = token.isEmpty() && lastUsedToken.isNotEmpty(),
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(top = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Use last token?",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            SuggestionChip(
-                                onClick = { token = lastUsedToken },
-                                label = { Text("Restore", fontSize = 12.sp) },
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                        }
-                    }
-
-                    Spacer(Modifier.height(12.dp))
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Switch(
-                            checked = saveToken,
-                            onCheckedChange = { isChecked ->
-                                saveToken = isChecked
-                            },
-                            enabled = !isLoading
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Text(
-                            text = stringResource(R.string.clone_remember_token),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    } else {
-                        Text(
-                            text = stringResource(R.string.ssh_clone_help),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.height(10.dp))
-                        ExpandableSshTextField(
-                            value = sshPrivateKey,
-                            onValueChange = { sshPrivateKey = it },
-                            label = { Text(stringResource(R.string.ssh_private_key_label)) },
-                            leadingIcon = Icons.Default.Key,
-                            enabled = !isLoading,
-                            isSecret = true,
-                            showDescription = stringResource(R.string.ssh_show_value),
-                            hideDescription = stringResource(R.string.ssh_hide_value),
-                            modifier = Modifier,
-                            maxExpandedLines = 10
-                        )
-                        Spacer(Modifier.height(10.dp))
-                        ExpandableSshTextField(
-                            value = sshPassphrase,
-                            onValueChange = { sshPassphrase = it },
-                            label = { Text(stringResource(R.string.ssh_passphrase_label)) },
-                            leadingIcon = Icons.Default.Password,
-                            enabled = !isLoading,
-                            isSecret = true,
-                            showDescription = stringResource(R.string.ssh_show_value),
-                            hideDescription = stringResource(R.string.ssh_hide_value),
-                            modifier = Modifier,
-                            maxExpandedLines = 3,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-                        )
-                        Spacer(Modifier.height(10.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            ExpandableSshTextField(
-                                value = sshPublicKey,
-                                onValueChange = { sshPublicKey = it },
-                                label = { Text(stringResource(R.string.ssh_public_key_label)) },
-                                leadingIcon = Icons.Default.Key,
-                                enabled = !isLoading,
-                                showDescription = stringResource(R.string.ssh_show_value),
-                                hideDescription = stringResource(R.string.ssh_hide_value),
-                                modifier = Modifier.weight(1f),
-                                maxExpandedLines = 4
-                            )
-                            IconButton(
-                                onClick = {
-                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                                    clipboard?.setPrimaryClip(
-                                        ClipData.newPlainText("AndroidGit SSH public key", sshPublicKey)
-                                    )
-                                },
-                                enabled = !isLoading && sshPublicKey.isNotBlank()
+                    GitAuthenticationPanel(
+                        authManager = authManager,
+                        userEmail = prefsManager.getUserEmail(),
+                        authMode = authMode,
+                        onAuthModeChange = { authMode = it },
+                        token = token,
+                        onTokenChange = { token = it },
+                        sshPrivateKey = sshPrivateKey,
+                        onSshPrivateKeyChange = { sshPrivateKey = it },
+                        sshPublicKey = sshPublicKey,
+                        onSshPublicKeyChange = { sshPublicKey = it },
+                        sshPassphrase = sshPassphrase,
+                        onSshPassphraseChange = { sshPassphrase = it },
+                        isBusy = isLoading,
+                        onClearSshData = { prefsManager.clearSshKey() },
+                        httpsFooter = {
+                            AnimatedVisibility(
+                                visible = token.isEmpty() && lastUsedToken.isNotEmpty(),
+                                enter = fadeIn() + expandVertically(),
+                                exit = fadeOut() + shrinkVertically()
                             ) {
-                                Icon(
-                                    Icons.Default.ContentCopy,
-                                    contentDescription = stringResource(R.string.repo_settings_ssh_copy_public)
+                                Row(
+                                    modifier = Modifier.padding(top = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Use last token?",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    SuggestionChip(
+                                        onClick = { token = lastUsedToken },
+                                        label = { Text("Restore", fontSize = 12.sp) },
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(Modifier.height(12.dp))
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Switch(
+                                    checked = saveToken,
+                                    onCheckedChange = { isChecked ->
+                                        saveToken = isChecked
+                                    },
+                                    enabled = !isLoading
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Text(
+                                    text = stringResource(R.string.clone_remember_token),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
-                        Text(
-                            text = stringResource(R.string.ssh_public_key_help),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 6.dp)
-                        )
-                        OutlinedButton(
-                            onClick = {
-                                val result = runCatching {
-                                    authManager.generateKeyPair(
-                                        passphrase = sshPassphrase,
-                                        email = prefsManager.getUserEmail()
-                                    )
-                                }
-                                result.onSuccess { generated ->
-                                    sshPrivateKey = generated.privateKey
-                                    sshPublicKey = generated.publicKey
-                                    sshGenerationError = ""
-                                    sshGenerationInfo = context.getString(R.string.ssh_generated_fmt, generated.algorithm)
-                                }.onFailure { error ->
-                                    sshGenerationInfo = ""
-                                    sshGenerationError = buildString {
-                                        append(error::class.java.simpleName)
-                                        error.message?.takeIf { it.isNotBlank() }?.let {
-                                            append(": ")
-                                            append(it)
-                                        }
-                                    }
-                                }
-                            },
-                            enabled = !isLoading,
-                            modifier = Modifier.padding(top = 10.dp),
-                            shape = textFieldShape
-                        ) {
-                            Icon(Icons.Default.AutoFixHigh, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.ssh_generate_key))
-                        }
-                        if (sshGenerationInfo.isNotBlank()) {
-                            Text(
-                                text = sshGenerationInfo,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
-                        }
-                        if (sshGenerationError.isNotBlank()) {
-                            Text(
-                                text = sshGenerationError,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
-                        }
-                    }
+                    )
                 }
             }
 
@@ -476,6 +386,7 @@ fun CloneScreen(
                         }
                         viewModel.cloneRepository(
                             repoUrl.trim(),
+                            cloneParentDir,
                             folderName,
                             GitAuthConfig(GitAuthMode.HTTPS, token = token),
                             onCloneSuccess
@@ -485,6 +396,7 @@ fun CloneScreen(
                         prefsManager.saveSshKey(sshPrivateKey, sshPublicKey, sshPassphrase)
                         viewModel.cloneRepository(
                             repoUrl.trim(),
+                            cloneParentDir,
                             folderName,
                             GitAuthConfig(GitAuthMode.SSH, privateKey = sshPrivateKey, passphrase = sshPassphrase),
                             onCloneSuccess
@@ -496,7 +408,7 @@ fun CloneScreen(
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 enabled = !isLoading && parsedRemoteUrl != null &&
-                    (authMode == GitAuthMode.HTTPS || sshPrivateKey.isNotBlank())
+                        (authMode == GitAuthMode.HTTPS || sshPrivateKey.isNotBlank())
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
@@ -563,9 +475,9 @@ fun CloneScreen(
                                     color = contentColor
                                 )
                             }
-                            
+
                             Spacer(Modifier.height(12.dp))
-                            
+
                             LinearProgressIndicator(
                                 progress = { cloneProgress },
                                 modifier = Modifier
@@ -575,7 +487,7 @@ fun CloneScreen(
                                 color = MaterialTheme.colorScheme.primary,
                                 trackColor = contentColor.copy(alpha = 0.2f)
                             )
-                            
+
                             if (cloneTaskDetails.isNotEmpty()) {
                                 Text(
                                     text = cloneTaskDetails,

@@ -1,7 +1,5 @@
 package com.android.git.ui.screens
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -43,7 +41,7 @@ import com.android.git.data.GitAuthMode
 import com.android.git.data.PreferencesManager
 import com.android.git.data.ThemeMode
 import com.android.git.ui.components.AppSnackbar
-import com.android.git.ui.components.ExpandableSshTextField
+import com.android.git.ui.components.GitAuthenticationPanel
 import com.android.git.ui.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -69,27 +67,23 @@ fun GeneralSettingsScreen(
     var userEmail by remember { mutableStateOf(prefs.getUserEmail()) }
     var authMode by remember { mutableStateOf(prefs.getAuthMode()) }
     var token by remember { mutableStateOf(prefs.getToken()) }
-    var tokenVisible by remember { mutableStateOf(false) }
     var sshPrivateKey by remember { mutableStateOf(prefs.getSshPrivateKey()) }
     var sshPublicKey by remember { mutableStateOf(prefs.getSshPublicKey()) }
     var sshPassphrase by remember { mutableStateOf(prefs.getSshPassphrase()) }
     var authSaving by remember { mutableStateOf(false) }
     var authSaved by remember { mutableStateOf(false) }
-    var sshGenerationError by remember { mutableStateOf("") }
-    var sshGenerationInfo by remember { mutableStateOf("") }
 
     var geminiApiKey by remember { mutableStateOf(prefs.getGeminiApiKey()) }
     var geminiModel by remember { mutableStateOf(prefs.getGeminiModel()) }
     var geminiPrompt by remember { mutableStateOf(prefs.getGeminiPrompt()) }
     var aiModelExpanded by remember { mutableStateOf(false) }
-    
-    // State to track API key visibility
+
     var apiKeyVisible by remember { mutableStateOf(false) }
-    
+
     val aiModels = listOf(
-        "gemini-2.5-flash", 
-        "gemini-2.5-pro", 
-        "gemini-flash-latest", 
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
+        "gemini-flash-latest",
         "gemini-3.1-flash-preview",
         "gemma-3-27b-it"
     )
@@ -213,81 +207,80 @@ fun GeneralSettingsScreen(
                     }
                 }
 
-                    SettingsSection(title = stringResource(R.string.settings_ai_section)) {
-                        OutlinedTextField(
-                            value = geminiApiKey,
-                            onValueChange = { geminiApiKey = it },
-                            label = { Text(stringResource(R.string.settings_gemini_api_key)) },
-                            leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null) },
-                            trailingIcon = {
-                                val image = if (apiKeyVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
-                                val description = stringResource(if (apiKeyVisible) R.string.settings_hide_api_key else R.string.settings_show_api_key)
-                                IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
-                                    Icon(imageVector = image, contentDescription = description)
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                            singleLine = true
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        ExposedDropdownMenuBox(expanded = aiModelExpanded, onExpandedChange = { aiModelExpanded = it }) {
-                            OutlinedTextField(
-                                value = geminiModel,
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text(stringResource(R.string.settings_ai_model)) },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = aiModelExpanded) },
-                                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
-                                shape = RoundedCornerShape(16.dp)
-                            )
-                            ExposedDropdownMenu(expanded = aiModelExpanded, onDismissRequest = { aiModelExpanded = false }, modifier = Modifier.fillMaxWidth(0.85f)) {
-                                aiModels.forEach { model ->
-                                    DropdownMenuItem(
-                                        text = { Text(model) },
-                                        onClick = { geminiModel = model; aiModelExpanded = false },
-                                        trailingIcon = { if (geminiModel == model) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
-                                    )
-                                }
+                SettingsSection(title = stringResource(R.string.settings_ai_section)) {
+                    OutlinedTextField(
+                        value = geminiApiKey,
+                        onValueChange = { geminiApiKey = it },
+                        label = { Text(stringResource(R.string.settings_gemini_api_key)) },
+                        leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null) },
+                        trailingIcon = {
+                            val image = if (apiKeyVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
+                            val description = stringResource(if (apiKeyVisible) R.string.settings_hide_api_key else R.string.settings_show_api_key)
+                            IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
+                                Icon(imageVector = image, contentDescription = description)
                             }
-                        }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        singleLine = true
+                    )
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    ExposedDropdownMenuBox(expanded = aiModelExpanded, onExpandedChange = { aiModelExpanded = it }) {
                         OutlinedTextField(
-                            value = geminiPrompt,
-                            onValueChange = { geminiPrompt = it },
-                            label = { Text(stringResource(R.string.settings_custom_prompt)) },
-                            placeholder = { Text(stringResource(R.string.settings_custom_prompt_hint)) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            minLines = 3,
-                            maxLines = 6
+                            value = geminiModel,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(stringResource(R.string.settings_ai_model)) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = aiModelExpanded) },
+                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp)
                         )
-
-                        Spacer(modifier = Modifier.height(20.dp))
-                        Button(
-                            onClick = { focusManager.clearFocus(); viewModel.verifyGeminiSettings(geminiApiKey, geminiModel, geminiPrompt) },
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            enabled = !isLoading
-                        ) {
-                            if (isLoading) {
-                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(stringResource(R.string.settings_verifying))
-                            } else {
-                                Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(20.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(stringResource(R.string.settings_verify_save), fontWeight = FontWeight.Bold)
+                        ExposedDropdownMenu(expanded = aiModelExpanded, onDismissRequest = { aiModelExpanded = false }, modifier = Modifier.fillMaxWidth(0.85f)) {
+                            aiModels.forEach { model ->
+                                DropdownMenuItem(
+                                    text = { Text(model) },
+                                    onClick = { geminiModel = model; aiModelExpanded = false },
+                                    trailingIcon = { if (geminiModel == model) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                                )
                             }
                         }
                     }
 
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = geminiPrompt,
+                        onValueChange = { geminiPrompt = it },
+                        label = { Text(stringResource(R.string.settings_custom_prompt)) },
+                        placeholder = { Text(stringResource(R.string.settings_custom_prompt_hint)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        minLines = 3,
+                        maxLines = 6
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Button(
+                        onClick = { focusManager.clearFocus(); viewModel.verifyGeminiSettings(geminiApiKey, geminiModel, geminiPrompt) },
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = !isLoading
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(R.string.settings_verifying))
+                        } else {
+                            Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(R.string.settings_verify_save), fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
                 GlobalAuthenticationSection(
-                    context = context,
                     prefs = prefs,
                     authManager = authManager,
                     userName = userName,
@@ -298,8 +291,6 @@ fun GeneralSettingsScreen(
                     onAuthModeChange = { authMode = it },
                     token = token,
                     onTokenChange = { token = it },
-                    tokenVisible = tokenVisible,
-                    onTokenVisibilityChange = { tokenVisible = it },
                     sshPrivateKey = sshPrivateKey,
                     onSshPrivateKeyChange = { sshPrivateKey = it },
                     sshPublicKey = sshPublicKey,
@@ -309,11 +300,7 @@ fun GeneralSettingsScreen(
                     authSaving = authSaving,
                     onAuthSavingChange = { authSaving = it },
                     authSaved = authSaved,
-                    onAuthSavedChange = { authSaved = it },
-                    sshGenerationInfo = sshGenerationInfo,
-                    onSshGenerationInfoChange = { sshGenerationInfo = it },
-                    sshGenerationError = sshGenerationError,
-                    onSshGenerationErrorChange = { sshGenerationError = it }
+                    onAuthSavedChange = { authSaved = it }
                 )
 
                 DeveloperSection(context)
@@ -339,7 +326,6 @@ fun GeneralSettingsScreen(
 
 @Composable
 private fun GlobalAuthenticationSection(
-    context: Context,
     prefs: PreferencesManager,
     authManager: GitAuthManager,
     userName: String,
@@ -350,8 +336,6 @@ private fun GlobalAuthenticationSection(
     onAuthModeChange: (GitAuthMode) -> Unit,
     token: String,
     onTokenChange: (String) -> Unit,
-    tokenVisible: Boolean,
-    onTokenVisibilityChange: (Boolean) -> Unit,
     sshPrivateKey: String,
     onSshPrivateKeyChange: (String) -> Unit,
     sshPublicKey: String,
@@ -361,11 +345,7 @@ private fun GlobalAuthenticationSection(
     authSaving: Boolean,
     onAuthSavingChange: (Boolean) -> Unit,
     authSaved: Boolean,
-    onAuthSavedChange: (Boolean) -> Unit,
-    sshGenerationInfo: String,
-    onSshGenerationInfoChange: (String) -> Unit,
-    sshGenerationError: String,
-    onSshGenerationErrorChange: (String) -> Unit
+    onAuthSavedChange: (Boolean) -> Unit
 ) {
     SettingsSection(title = stringResource(R.string.settings_auth_section)) {
         OutlinedTextField(
@@ -393,115 +373,27 @@ private fun GlobalAuthenticationSection(
         Spacer(Modifier.height(12.dp))
         Text(stringResource(R.string.settings_auth_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(12.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(
-                selected = authMode == GitAuthMode.HTTPS,
-                onClick = { onAuthModeChange(GitAuthMode.HTTPS); onAuthSavedChange(false) },
-                label = { Text(stringResource(R.string.auth_mode_https)) },
-                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) }
-            )
-            FilterChip(
-                selected = authMode == GitAuthMode.SSH,
-                onClick = { onAuthModeChange(GitAuthMode.SSH); onAuthSavedChange(false) },
-                label = { Text(stringResource(R.string.auth_mode_ssh)) },
-                leadingIcon = { Icon(Icons.Default.Key, contentDescription = null) }
-            )
-        }
-        Spacer(Modifier.height(12.dp))
-        if (authMode == GitAuthMode.HTTPS) {
-            OutlinedTextField(
-                value = token,
-                onValueChange = { onTokenChange(it); onAuthSavedChange(false) },
-                label = { Text(stringResource(R.string.repo_settings_label_token)) },
-                leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null) },
-                trailingIcon = {
-                    IconButton(onClick = { onTokenVisibilityChange(!tokenVisible) }) {
-                        Icon(if (tokenVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, contentDescription = null)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                visualTransformation = if (tokenVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                singleLine = true,
-                enabled = !authSaving
-            )
-        } else {
-            ExpandableSshTextField(
-                value = sshPrivateKey,
-                onValueChange = { onSshPrivateKeyChange(it); onAuthSavedChange(false) },
-                label = { Text(stringResource(R.string.repo_settings_ssh_private_key)) },
-                leadingIcon = Icons.Default.Key,
-                enabled = !authSaving,
-                isSecret = true,
-                showDescription = stringResource(R.string.ssh_show_value),
-                hideDescription = stringResource(R.string.ssh_hide_value),
-                maxExpandedLines = 10
-            )
-            Spacer(Modifier.height(12.dp))
-            ExpandableSshTextField(
-                value = sshPassphrase,
-                onValueChange = { onSshPassphraseChange(it); onAuthSavedChange(false) },
-                label = { Text(stringResource(R.string.repo_settings_ssh_passphrase)) },
-                leadingIcon = Icons.Default.Password,
-                enabled = !authSaving,
-                isSecret = true,
-                showDescription = stringResource(R.string.ssh_show_value),
-                hideDescription = stringResource(R.string.ssh_hide_value),
-                maxExpandedLines = 3,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-            )
-            Spacer(Modifier.height(12.dp))
-            ExpandableSshTextField(
-                value = sshPublicKey,
-                onValueChange = { onSshPublicKeyChange(it); onAuthSavedChange(false) },
-                label = { Text(stringResource(R.string.repo_settings_ssh_public_key)) },
-                leadingIcon = Icons.Default.Key,
-                enabled = !authSaving,
-                showDescription = stringResource(R.string.ssh_show_value),
-                hideDescription = stringResource(R.string.ssh_hide_value),
-                maxExpandedLines = 4
-            )
-            Row(modifier = Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = {
-                        runCatching { authManager.generateKeyPair(sshPassphrase, userEmail) }
-                            .onSuccess { generated ->
-                                onSshPrivateKeyChange(generated.privateKey)
-                                onSshPublicKeyChange(generated.publicKey)
-                                onSshGenerationErrorChange("")
-                                onSshGenerationInfoChange(context.getString(R.string.repo_settings_ssh_generated_fmt, generated.algorithm))
-                            }
-                            .onFailure { error ->
-                                onSshGenerationInfoChange("")
-                                onSshGenerationErrorChange(error.message.orEmpty())
-                            }
-                    },
-                    modifier = Modifier.weight(1f),
-                    enabled = !authSaving,
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.AutoFixHigh, contentDescription = null)
-                    Spacer(Modifier.width(4.dp))
-                    Text(stringResource(R.string.repo_settings_ssh_generate))
-                }
-                OutlinedButton(
-                    onClick = {
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                        clipboard?.setPrimaryClip(ClipData.newPlainText("AndroidGit SSH public key", sshPublicKey))
-                    },
-                    modifier = Modifier.weight(1f),
-                    enabled = !authSaving && sshPublicKey.isNotBlank(),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.ContentCopy, contentDescription = null)
-                    Spacer(Modifier.width(4.dp))
-                    Text(stringResource(R.string.repo_settings_ssh_copy_public))
-                }
+
+        GitAuthenticationPanel(
+            authManager = authManager,
+            userEmail = userEmail,
+            authMode = authMode,
+            onAuthModeChange = { onAuthModeChange(it); onAuthSavedChange(false) },
+            token = token,
+            onTokenChange = { onTokenChange(it); onAuthSavedChange(false) },
+            sshPrivateKey = sshPrivateKey,
+            onSshPrivateKeyChange = { onSshPrivateKeyChange(it); onAuthSavedChange(false) },
+            sshPublicKey = sshPublicKey,
+            onSshPublicKeyChange = { onSshPublicKeyChange(it); onAuthSavedChange(false) },
+            sshPassphrase = sshPassphrase,
+            onSshPassphraseChange = { onSshPassphraseChange(it); onAuthSavedChange(false) },
+            isBusy = authSaving,
+            onClearSshData = {
+                prefs.clearSshKey()
+                onAuthSavedChange(false)
             }
-            if (sshGenerationInfo.isNotBlank()) Text(sshGenerationInfo, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
-            if (sshGenerationError.isNotBlank()) Text(sshGenerationError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-        }
+        )
+
         Spacer(Modifier.height(16.dp))
         Button(
             onClick = {
@@ -576,8 +468,8 @@ fun AppVersionFooter(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center
                 )
-                        Text(
-                            text = stringResource(R.string.settings_check_updates_hint),
+                Text(
+                    text = stringResource(R.string.settings_check_updates_hint),
                     style = MaterialTheme.typography.labelSmall,
                     fontSize = 10.sp,
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)

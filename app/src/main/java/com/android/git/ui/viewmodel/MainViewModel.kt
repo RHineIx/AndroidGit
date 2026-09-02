@@ -62,7 +62,6 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     var isAIGenerating: Boolean by mutableStateOf(false)
         private set
 
-
     var statusMessage: String by mutableStateOf("")
         private set
 
@@ -133,13 +132,13 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     }
 
     fun getToken(): String = prefs.getToken()
-    
+
     fun saveToken(token: String) = prefs.saveToken(token)
-    
+
     fun clearToken() = prefs.clearToken()
-    
+
     fun getLastValidToken(): String = prefs.getLastValidToken()
-    
+
     fun restoreLastToken(): String = prefs.restoreLastToken()
 
     fun getAuthConfig(): GitAuthConfig {
@@ -161,6 +160,43 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     fun updateThemeMode(mode: ThemeMode) {
         themeMode = mode
         prefs.setThemeMode(mode)
+    }
+
+    /**
+     * Centralized Git Authentication wrapper.
+     * Validates the presence of required credentials before launching the operation in viewModelScope.
+     */
+    private inline fun executeWithValidGitAuth(
+        crossinline block: suspend (GitAuthConfig) -> Unit
+    ) {
+        val context = getApplication<Application>()
+        val auth = getAuthConfig()
+        if (auth.mode == GitAuthMode.HTTPS && auth.token.isEmpty()) {
+            showStatus(context.getString(R.string.error_set_token), SnackbarType.ERROR)
+            return
+        }
+        if (auth.mode == GitAuthMode.SSH && auth.privateKey.isEmpty()) {
+            showStatus(context.getString(R.string.error_set_ssh_key), SnackbarType.ERROR)
+            return
+        }
+        viewModelScope.launch {
+            block(auth)
+        }
+    }
+
+    /**
+     * Centralized GitHub Token validation wrapper for GitHub API operations.
+     */
+    private inline fun validateGitHubToken(
+        onInvalid: (String) -> Unit = { showStatus(it, SnackbarType.ERROR) },
+        block: (String) -> Unit
+    ) {
+        val token = prefs.getToken()
+        if (token.isBlank()) {
+            onInvalid(getApplication<Application>().getString(R.string.workflow_no_token))
+            return
+        }
+        block(token)
     }
 
     fun verifyGeminiSettings(apiKey: String, modelName: String, prompt: String) {
@@ -210,12 +246,12 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
                 val customPrompt = prefs.getGeminiPrompt()
                 val basePrompt = if (customPrompt.isNotBlank()) customPrompt else
                     "You are an expert developer. Generate a Conventional Commit message based on the following git diff.\n" +
-                        "Format requirements:\n" +
-                        "1. A concise subject line (e.g., feat: ..., fix: ...).\n" +
-                        "2. A blank line.\n" +
-                        "3. A concise bulleted list summarizing ALL notable changes.\n" +
-                        "Keep the bullet points strictly short and to the point.\n" +
-                        "Output ONLY the commit message without any markdown formatting like ``` ."
+                            "Format requirements:\n" +
+                            "1. A concise subject line (e.g., feat: ..., fix: ...).\n" +
+                            "2. A blank line.\n" +
+                            "3. A concise bulleted list summarizing ALL notable changes.\n" +
+                            "Keep the bullet points strictly short and to the point.\n" +
+                            "Output ONLY the commit message without any markdown formatting like ``` ."
                 val generativeModel = GenerativeModel(
                     modelName = prefs.getGeminiModel(),
                     apiKey = apiKey,
@@ -306,7 +342,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
 
     fun loadDashboard() {
         val manager = gitManager ?: return
-        dashboardState = DashboardState.Loading 
+        dashboardState = DashboardState.Loading
         viewModelScope.launch {
             try {
                 if (manager.isGitRepo()) {
@@ -333,7 +369,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         }
     }
 
-    fun cloneRepository(url: String, folderName: String, auth: GitAuthConfig, onSuccess: (File) -> Unit) {
+    fun cloneRepository(url: String, parentDir: File, folderName: String, auth: GitAuthConfig, onSuccess: (File) -> Unit) {
         if (isLoading) return
         viewModelScope.launch {
             val context = getApplication<Application>()
@@ -341,12 +377,12 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
             cloneProgress = 0f
             cloneTaskName = context.getString(R.string.clone_progress)
             cloneTaskDetails = ""
-            
+
             showStatus(context.getString(R.string.clone_progress), SnackbarType.INFO)
-            
+
             val result = GitManager.cloneRepo(
                 url = url,
-                parentDir = Environment.getExternalStorageDirectory(),
+                parentDir = parentDir,
                 folderName = folderName,
                 auth = auth,
                 secureStorageDir = context.filesDir
@@ -355,7 +391,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
                 cloneProgress = progress
                 cloneTaskDetails = details
             }
-            
+
             isLoading = false
             if (result.first != null) {
                 showStatus(context.getString(R.string.clone_success), SnackbarType.SUCCESS)
@@ -368,17 +404,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
 
     fun pullChanges() {
         val manager = gitManager ?: return
-        viewModelScope.launch {
-            val context = getApplication<Application>()
-            val auth = getAuthConfig()
-            if (auth.mode == GitAuthMode.HTTPS && auth.token.isEmpty()) {
-                showStatus(context.getString(R.string.error_set_token), SnackbarType.ERROR)
-                return@launch
-            }
-            if (auth.mode == GitAuthMode.SSH && auth.privateKey.isEmpty()) {
-                showStatus(context.getString(R.string.error_set_ssh_key), SnackbarType.ERROR)
-                return@launch
-            }
+        executeWithValidGitAuth { auth ->
             isLoading = true
             try {
                 val result = manager.pull(auth)
@@ -394,17 +420,7 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
 
     fun pushChanges(force: Boolean = false) {
         val manager = gitManager ?: return
-        viewModelScope.launch {
-            val context = getApplication<Application>()
-            val auth = getAuthConfig()
-            if (auth.mode == GitAuthMode.HTTPS && auth.token.isEmpty()) {
-                showStatus(context.getString(R.string.error_set_token), SnackbarType.ERROR)
-                return@launch
-            }
-            if (auth.mode == GitAuthMode.SSH && auth.privateKey.isEmpty()) {
-                showStatus(context.getString(R.string.error_set_ssh_key), SnackbarType.ERROR)
-                return@launch
-            }
+        executeWithValidGitAuth { auth ->
             isLoading = true
             val result = manager.push(auth, force)
             isLoading = false
@@ -504,33 +520,19 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
 
     fun fetchAll() {
         val manager = gitManager ?: return
-        viewModelScope.launch {
-            val context = getApplication<Application>()
-            val auth = getAuthConfig()
-            val configured = when (auth.mode) {
-                GitAuthMode.HTTPS -> auth.token.isNotEmpty()
-                GitAuthMode.SSH -> auth.privateKey.isNotEmpty()
-            }
-            if (configured) {
-                isLoading = true
-                try {
-                    val result = manager.fetchAll(auth)
-                    showStatus(result, resultSnackbarType(result))
-                    // Do not call loadBranches() here: it intentionally ignores
-                    // requests while isLoading is true. Refresh synchronously so
-                    // pruned refs disappear from Branch Manager immediately.
-                    refreshBranchData(manager)
-                } catch (e: Exception) {
-                    showStatus(errorMessage(e, "Fetch failed"), SnackbarType.ERROR)
-                } finally {
-                    isLoading = false
-                }
-            } else {
-                showStatus(
-                    if (auth.mode == GitAuthMode.SSH) context.getString(R.string.error_set_ssh_key)
-                    else context.getString(R.string.error_set_token),
-                    SnackbarType.ERROR
-                )
+        executeWithValidGitAuth { auth ->
+            isLoading = true
+            try {
+                val result = manager.fetchAll(auth)
+                showStatus(result, resultSnackbarType(result))
+                // Do not call loadBranches() here: it intentionally ignores
+                // requests while isLoading is true. Refresh synchronously so
+                // pruned refs disappear from Branch Manager immediately.
+                refreshBranchData(manager)
+            } catch (e: Exception) {
+                showStatus(errorMessage(e, "Fetch failed"), SnackbarType.ERROR)
+            } finally {
+                isLoading = false
             }
         }
     }
@@ -614,56 +616,54 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
 
     fun loadWorkflowsForCurrentRepository() {
         val manager = gitManager ?: return
-        val token = prefs.getToken()
-        if (token.isBlank()) {
-            workflowErrorMessage = getApplication<Application>().getString(R.string.workflow_no_token)
-            githubWorkflows = emptyList()
-            githubWorkflowRuns = emptyList()
-            return
-        }
-        viewModelScope.launch {
-            isWorkflowsLoading = true
-            workflowErrorMessage = ""
-            try {
-                val remote = manager.getRemoteUrl()
-                val parsed = GitRemoteUrl.parse(remote)
-                val path = parsed?.path?.trim('/')?.removeSuffix(".git")?.split('/') ?: emptyList()
-                if (parsed == null || !parsed.host.equals("github.com", ignoreCase = true) || path.size < 2) {
-                    throw GitHubWorkflowException(getApplication<Application>().getString(R.string.workflow_github_remote_required))
-                }
-                val ref = manager.getCurrentBranch().ifBlank { "main" }
-                val repository = GitHubRepositoryRef(path[0], path[1], ref)
-                val api = GitHubWorkflowApiManager(token)
-                githubWorkflowRepository = repository
-                githubWorkflows = api.listWorkflows(repository)
-                githubWorkflowRuns = api.recentRuns(repository).take(5)
-            } catch (error: Exception) {
-                workflowErrorMessage = error.message ?: getApplication<Application>().getString(R.string.workflow_load_failed)
+        validateGitHubToken(
+            onInvalid = { errorMsg ->
+                workflowErrorMessage = errorMsg
                 githubWorkflows = emptyList()
                 githubWorkflowRuns = emptyList()
-            } finally {
-                isWorkflowsLoading = false
+            }
+        ) { token ->
+            viewModelScope.launch {
+                isWorkflowsLoading = true
+                workflowErrorMessage = ""
+                try {
+                    val remote = manager.getRemoteUrl()
+                    val parsed = GitRemoteUrl.parse(remote)
+                    val path = parsed?.path?.trim('/')?.removeSuffix(".git")?.split('/') ?: emptyList()
+                    if (parsed == null || !parsed.host.equals("github.com", ignoreCase = true) || path.size < 2) {
+                        throw GitHubWorkflowException(getApplication<Application>().getString(R.string.workflow_github_remote_required))
+                    }
+                    val ref = manager.getCurrentBranch().ifBlank { "main" }
+                    val repository = GitHubRepositoryRef(path[0], path[1], ref)
+                    val api = GitHubWorkflowApiManager(token)
+                    githubWorkflowRepository = repository
+                    githubWorkflows = api.listWorkflows(repository)
+                    githubWorkflowRuns = api.recentRuns(repository).take(5)
+                } catch (error: Exception) {
+                    workflowErrorMessage = error.message ?: getApplication<Application>().getString(R.string.workflow_load_failed)
+                    githubWorkflows = emptyList()
+                    githubWorkflowRuns = emptyList()
+                } finally {
+                    isWorkflowsLoading = false
+                }
             }
         }
     }
 
     fun prepareWorkflowRun(workflow: GitHubWorkflow) {
         val repository = githubWorkflowRepository ?: return
-        val token = prefs.getToken()
-        if (token.isBlank()) {
-            showStatus(getApplication<Application>().getString(R.string.workflow_no_token), SnackbarType.ERROR)
-            return
-        }
-        selectedWorkflow = workflow
-        githubWorkflowInputs = emptyList()
-        isWorkflowInputLoading = true
-        viewModelScope.launch {
-            try {
-                githubWorkflowInputs = GitHubWorkflowApiManager(token).readWorkflowInputs(repository, workflow)
-            } catch (error: Exception) {
-                workflowErrorMessage = error.message ?: getApplication<Application>().getString(R.string.workflow_inputs_load_failed)
-            } finally {
-                isWorkflowInputLoading = false
+        validateGitHubToken { token ->
+            selectedWorkflow = workflow
+            githubWorkflowInputs = emptyList()
+            isWorkflowInputLoading = true
+            viewModelScope.launch {
+                try {
+                    githubWorkflowInputs = GitHubWorkflowApiManager(token).readWorkflowInputs(repository, workflow)
+                } catch (error: Exception) {
+                    workflowErrorMessage = error.message ?: getApplication<Application>().getString(R.string.workflow_inputs_load_failed)
+                } finally {
+                    isWorkflowInputLoading = false
+                }
             }
         }
     }
@@ -677,22 +677,19 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     fun runWorkflow(ref: String, inputs: Map<String, String>) {
         val workflow = selectedWorkflow ?: return
         val repository = githubWorkflowRepository ?: return
-        val token = prefs.getToken()
-        if (token.isBlank()) {
-            showStatus(getApplication<Application>().getString(R.string.workflow_no_token), SnackbarType.ERROR)
-            return
-        }
-        viewModelScope.launch {
-            isWorkflowRunning = true
-            try {
-                GitHubWorkflowApiManager(token).dispatchWorkflow(repository, workflow, ref, inputs)
-                closeWorkflowRunDialog()
-                showStatus(getApplication<Application>().getString(R.string.workflow_started), SnackbarType.SUCCESS)
-                githubWorkflowRuns = GitHubWorkflowApiManager(token).recentRuns(repository).take(5)
-            } catch (error: Exception) {
-                showStatus(error.message ?: getApplication<Application>().getString(R.string.workflow_run_failed), SnackbarType.ERROR)
-            } finally {
-                isWorkflowRunning = false
+        validateGitHubToken { token ->
+            viewModelScope.launch {
+                isWorkflowRunning = true
+                try {
+                    GitHubWorkflowApiManager(token).dispatchWorkflow(repository, workflow, ref, inputs)
+                    closeWorkflowRunDialog()
+                    showStatus(getApplication<Application>().getString(R.string.workflow_started), SnackbarType.SUCCESS)
+                    githubWorkflowRuns = GitHubWorkflowApiManager(token).recentRuns(repository).take(5)
+                } catch (error: Exception) {
+                    showStatus(error.message ?: getApplication<Application>().getString(R.string.workflow_run_failed), SnackbarType.ERROR)
+                } finally {
+                    isWorkflowRunning = false
+                }
             }
         }
     }

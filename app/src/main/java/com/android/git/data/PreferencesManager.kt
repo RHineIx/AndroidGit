@@ -8,7 +8,7 @@ import androidx.security.crypto.MasterKey
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
 class PreferencesManager(context: Context) {
-    
+
     // Use EncryptedSharedPreferences to securely store sensitive data (Tokens & API Keys)
     private val masterKey = MasterKey.Builder(context)
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
@@ -42,6 +42,8 @@ class PreferencesManager(context: Context) {
         private const val KEY_GEMINI_API_KEY = "gemini_api_key"
         private const val KEY_GEMINI_MODEL = "gemini_model"
         private const val KEY_GEMINI_PROMPT = "gemini_prompt"
+
+        private const val KEY_DEFAULT_CLONE_DIR = "default_clone_dir"
     }
 
     fun saveToken(token: String) {
@@ -168,4 +170,6 @@ class PreferencesManager(context: Context) {
     fun getGeminiPrompt(): String = prefs.getString(KEY_GEMINI_PROMPT, "") ?: ""
     fun setGeminiPrompt(prompt: String) = prefs.edit().putString(KEY_GEMINI_PROMPT, prompt).apply()
 
+    fun getDefaultCloneDir(): String? = prefs.getString(KEY_DEFAULT_CLONE_DIR, null)
+    fun setDefaultCloneDir(path: String) = prefs.edit().putString(KEY_DEFAULT_CLONE_DIR, path).apply()
 }
