@@ -31,7 +31,6 @@ class PreferencesManager(context: Context) {
         private const val KEY_SSH_PASSPHRASE = "ssh_passphrase"
         private const val KEY_USERNAME = "git_username"
         private const val KEY_EMAIL = "git_email"
-        private const val KEY_THEME_DARK = "app_theme_dark"
 
         private const val KEY_AUTO_OPEN = "auto_open_last_project"
         private const val KEY_LAST_PROJECT_PATH = "last_project_path"
@@ -60,14 +59,6 @@ class PreferencesManager(context: Context) {
     fun clearToken() = prefs.edit().remove(KEY_TOKEN).apply()
 
     fun getLastValidToken(): String = prefs.getString(KEY_LAST_VALID_TOKEN, "") ?: ""
-
-    fun restoreLastToken(): String {
-        val lastToken = getLastValidToken()
-        if (lastToken.isNotEmpty()) {
-            saveToken(lastToken)
-        }
-        return lastToken
-    }
 
     fun getAuthMode(): GitAuthMode {
         return runCatching { GitAuthMode.valueOf(prefs.getString(KEY_AUTH_MODE, GitAuthMode.HTTPS.name) ?: GitAuthMode.HTTPS.name) }

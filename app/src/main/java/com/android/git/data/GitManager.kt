@@ -63,7 +63,7 @@ class GitManager(
 
     private fun openRepoInternal() {
         if (isClosed.get()) throw IllegalStateException("Manager is closed")
-        
+
         if (isGitRepo()) {
             git?.close()
             git = Git.open(rootDir)
@@ -88,7 +88,7 @@ class GitManager(
         try {
             runSafeRead {
                 val repo = git?.repository ?: return@runSafeRead DashboardState.Error("Repo closed")
-                
+
                 val status = git?.status()?.call()
                 val changedPaths = linkedSetOf<String>().apply {
                     addAll(status?.untracked.orEmpty())
@@ -100,7 +100,7 @@ class GitManager(
                     addAll(status?.conflicting.orEmpty())
                 }
                 val changedCount = changedPaths.size
-                
+
                 val branchName = repo.branch ?: "Unknown"
 
                 var unpushedCount = 0
@@ -110,7 +110,7 @@ class GitManager(
                         val localHead = repo.resolve("HEAD")
                         val remoteBranch = "origin/$branchName"
                         val remoteHead = repo.resolve("refs/remotes/$remoteBranch")
-                        
+
                         if (localHead != null) {
                             unpushedCount = if (remoteHead != null) {
                                 git?.log()?.addRange(remoteHead, localHead)?.call()?.count() ?: 0
@@ -150,7 +150,7 @@ class GitManager(
             val out = ByteArrayOutputStream()
             val df = DiffFormatter(out)
             df.setRepository(repo)
-            
+
             try {
                 val headId = repo.resolve("HEAD^{tree}")
                 val headTree = if (headId != null) {
@@ -158,12 +158,12 @@ class GitManager(
                 } else {
                     EmptyTreeIterator()
                 }
-                
+
                 val workTree = FileTreeIterator(repo)
                 val diffEntries = df.scan(headTree, workTree)
-                
+
                 val maxDiffSize = 100 * 1024 // Increased limit to 100KB, but strictly bounded in memory
-                
+
                 for (entry in diffEntries) {
                     if (selectedPaths.contains(entry.newPath) || selectedPaths.contains(entry.oldPath)) {
                         df.format(entry)
@@ -172,7 +172,7 @@ class GitManager(
                         }
                     }
                 }
-                
+
                 val fullDiff = out.toString("UTF-8")
                 // Truncate safely before sending to AI to prevent token limits
                 if (fullDiff.length > 6000) {
@@ -262,13 +262,13 @@ class GitManager(
                 }
                 val isPushed = isSynced
 
-               commits.add(CommitItem(
-                   message = rev.fullMessage.trim(),
-                   author = rev.authorIdent.name ?: "Unknown",
-                   date = java.util.Date.from(rev.authorIdent.whenAsInstant),
-                   hash = hash,
-                   isPushed = isPushed
-               ))
+                commits.add(CommitItem(
+                    message = rev.fullMessage.trim(),
+                    author = rev.authorIdent.name ?: "Unknown",
+                    date = java.util.Date.from(rev.authorIdent.whenAsInstant),
+                    hash = hash,
+                    isPushed = isPushed
+                ))
             }
             commits
         }
@@ -276,9 +276,9 @@ class GitManager(
 
     suspend fun getLastCommitMessage(): String = withContext(Dispatchers.IO) {
         runSafeRead {
-             try {
-                 git?.log()?.setMaxCount(1)?.call()?.firstOrNull()?.fullMessage ?: ""
-             } catch (e: NoHeadException) { "" }
+            try {
+                git?.log()?.setMaxCount(1)?.call()?.firstOrNull()?.fullMessage ?: ""
+            } catch (e: NoHeadException) { "" }
         }
     }
 
@@ -286,10 +286,10 @@ class GitManager(
         runGitOperation {
             val addCommand = git?.add()
             val rmCommand = git?.rm()
-            
+
             var hasAdds = false
             var hasRms = false
-            
+
             files.forEach { file ->
                 if (file.type == ChangeType.DELETED || file.type == ChangeType.MISSING) {
                     rmCommand?.addFilepattern(file.path)
@@ -312,27 +312,12 @@ class GitManager(
         }
     }
 
-    suspend fun checkoutCommit(hash: String): String = withContext(Dispatchers.IO) {
-        runGitOperation {
-            git?.checkout()?.setName(hash)?.call()
-            "Checked out $hash"
-        }
-    }
-
     suspend fun revertCommit(hash: String): String = withContext(Dispatchers.IO) {
         runGitOperation {
             val objId = git?.repository?.resolve(hash) ?: throw Exception("Commit not found")
             val revertedCommit = git?.revert()?.include(objId)?.call()
                 ?: throw Exception("Revert produced no commit")
             "Reverted commit ${revertedCommit.name.take(7)}"
-        }
-    }
-
-    suspend fun cherryPickCommit(hash: String): String = withContext(Dispatchers.IO) {
-        runGitOperation {
-            val objId = git?.repository?.resolve(hash) ?: throw Exception("Commit not found")
-            val res = git?.cherryPick()?.include(objId)?.call()
-            if (res?.status == org.eclipse.jgit.api.CherryPickResult.CherryPickStatus.OK) "Cherry-picked!" else "Failed: ${res?.status}"
         }
     }
 
@@ -345,28 +330,12 @@ class GitManager(
         }
     }
 
-    suspend fun hasRemote(): Boolean = withContext(Dispatchers.IO) {
-        runSafeRead {
-             !git?.repository?.config?.getString("remote", "origin", "url").isNullOrEmpty()
-        }
-    }
-
     suspend fun getRemoteUrl(): String = withContext(Dispatchers.IO) {
         runSafeRead { git?.repository?.config?.getString("remote", "origin", "url") ?: "" }
     }
 
     suspend fun getCurrentBranch(): String = withContext(Dispatchers.IO) {
         runSafeRead { git?.repository?.branch ?: "" }
-    }
-
-    suspend fun addRemote(url: String): String = withContext(Dispatchers.IO) {
-        runGitOperation {
-            val config = git?.repository?.config
-            config?.setString("remote", "origin", "url", url)
-            config?.setString("remote", "origin", "fetch", "+refs/heads/*:refs/remotes/origin/*")
-            config?.save()
-            "Remote linked!"
-        }
     }
 
     suspend fun fetchAll(auth: GitAuthConfig): String = withContext(Dispatchers.IO) {
@@ -440,50 +409,55 @@ class GitManager(
             status?.conflicting?.toList() ?: emptyList()
         }
     }
-    
+
     suspend fun resolveUsingOurs(path: String) = withContext(Dispatchers.IO) {
         runGitOperation {
-             git?.checkout()?.setStage(org.eclipse.jgit.api.CheckoutCommand.Stage.OURS)?.addPath(path)?.call()
-             git?.add()?.addFilepattern(path)?.call() 
-             "Resolved (Ours)"
-         }
+            git?.checkout()?.setStage(org.eclipse.jgit.api.CheckoutCommand.Stage.OURS)?.addPath(path)?.call()
+            git?.add()?.addFilepattern(path)?.call()
+            "Resolved (Ours)"
+        }
     }
 
     suspend fun resolveUsingTheirs(path: String) = withContext(Dispatchers.IO) {
         runGitOperation {
-             git?.checkout()?.setStage(org.eclipse.jgit.api.CheckoutCommand.Stage.THEIRS)?.addPath(path)?.call()
-             git?.add()?.addFilepattern(path)?.call() 
-             "Resolved (Theirs)"
-         }
+            git?.checkout()?.setStage(org.eclipse.jgit.api.CheckoutCommand.Stage.THEIRS)?.addPath(path)?.call()
+            git?.add()?.addFilepattern(path)?.call()
+            "Resolved (Theirs)"
+        }
     }
-    
-    suspend fun readFileContent(path: String): String = withContext(Dispatchers.IO) {
-         try {
-             val file = File(rootDir, path)
-             if (!file.exists()) return@withContext "File not found."
-             if (isBinaryFile(file)) {
-                 return@withContext "Binary file detected (Image/PDF/Exec). \nCannot display content."
-             }
 
-             val maxLength = 50 * 1024 // 50KB limit to prevent Memory exhaustion
-             // Memory optimization: using BufferedReader to read chunk by chunk instead of file.readText()
-             file.bufferedReader().use { reader ->
-                 val buffer = CharArray(maxLength)
-                 val charsRead = reader.read(buffer, 0, maxLength)
-                 
-                 if (charsRead == -1) return@withContext ""
-                 
-                 val content = String(buffer, 0, charsRead)
-                 // Check if there is still more content to read
-                 if (reader.ready() || file.length() > maxLength) {
-                     "$content\n\n... [File truncated because it is too large] ..."
-                 } else {
-                     content
-                 }
-             }
-         } catch (e: Exception) { 
-             "Error reading file: ${e.message}" 
-         }
+    suspend fun readFileContent(path: String): String = withContext(Dispatchers.IO) {
+        try {
+            val file = File(rootDir, path)
+            if (!file.exists()) return@withContext "File not found."
+            if (isBinaryFile(file)) {
+                return@withContext "Binary file detected (Image/PDF/Exec). \nCannot display content."
+            }
+
+            val maxLength = 50 * 1024 // 50KB limit to prevent Memory exhaustion
+            val fileLength = file.length()
+            val bufferSize = minOf(fileLength, maxLength.toLong()).toInt()
+
+            if (bufferSize == 0) return@withContext ""
+
+            // Memory optimization: Dynamically allocate buffer based on actual file size up to a strict limit
+            file.bufferedReader().use { reader ->
+                val buffer = CharArray(bufferSize)
+                val charsRead = reader.read(buffer, 0, bufferSize)
+
+                if (charsRead == -1) return@withContext ""
+
+                val content = String(buffer, 0, charsRead)
+                // Check if there is still more content to read beyond the safe boundary limit
+                if (reader.ready() || fileLength > maxLength) {
+                    "$content\n\n... [File truncated because it is too large] ..."
+                } else {
+                    content
+                }
+            }
+        } catch (e: Exception) {
+            "Error reading file: ${e.message}"
+        }
     }
 
     private fun isBinaryFile(file: File): Boolean {
@@ -547,7 +521,7 @@ class GitManager(
             "Error: ${e.message ?: "Unknown"}"
         }
     }
-    
+
     private fun pruneRemoteTrackingRefs(auth: GitAuthConfig) {
         withAuth(auth) {
             val fetch = git?.fetch()
@@ -651,7 +625,7 @@ class GitManager(
                     onProgress(currentTask, 1f, "")
                 }
                 override fun isCancelled(): Boolean = false
-                
+
                 // Added to satisfy JGit 7+ interface requirements
                 override fun showDuration(enabled: Boolean) {}
             }

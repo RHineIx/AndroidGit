@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.semantics.Role
-
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -31,8 +30,10 @@ import com.android.git.model.DashboardState
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.viewmodel.MainViewModel
 import java.io.File
-// Explicitly import Miuix Checkbox to override Material 3 Checkbox
 import top.yukonga.miuix.kmp.basic.Checkbox
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardColors
+import top.yukonga.miuix.kmp.utils.PressFeedbackType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -221,26 +222,35 @@ fun DashboardScreen(
                         )
 
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            ElevatedCard(
-                                modifier = Modifier.weight(1f).clickable { onManageBranches() },
-                                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                                shape = cardShape,
-                                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                insideMargin = PaddingValues(16.dp),
+                                colors = CardColors(
+                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                ),
+                                pressFeedbackType = PressFeedbackType.Sink,
+                                onClick = onManageBranches
                             ) {
-                                Column(Modifier.padding(16.dp)) {
+                                Column(Modifier.fillMaxWidth()) {
                                     Icon(Icons.AutoMirrored.Filled.CallSplit, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
                                     Spacer(Modifier.height(8.dp))
                                     Text(stringResource(R.string.dashboard_card_branch), style = MaterialTheme.typography.labelMedium)
                                     Text(dashboardState.branch, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, maxLines = 1)
                                 }
                             }
-                            ElevatedCard(
-                                modifier = Modifier.weight(1f).clickable { onViewChanges() },
-                                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
-                                shape = cardShape,
-                                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                insideMargin = PaddingValues(16.dp),
+                                colors = CardColors(
+                                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                ),
+                                pressFeedbackType = PressFeedbackType.Sink,
+                                onClick = onViewChanges
                             ) {
-                                Column(Modifier.padding(16.dp)) {
+                                Column(Modifier.fillMaxWidth()) {
                                     Icon(Icons.Default.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
                                     Spacer(Modifier.height(8.dp))
                                     Text(stringResource(R.string.dashboard_card_changes), style = MaterialTheme.typography.labelMedium)
@@ -251,13 +261,17 @@ fun DashboardScreen(
 
                         Spacer(Modifier.height(12.dp))
 
-                        ElevatedCard(
-                            modifier = Modifier.fillMaxWidth().clickable { onViewLog() },
-                            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                            shape = cardShape,
-                            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            insideMargin = PaddingValues(16.dp),
+                            colors = CardColors(
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            ),
+                            pressFeedbackType = PressFeedbackType.Sink,
+                            onClick = onViewLog
                         ) {
-                            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.History, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                                 Spacer(Modifier.width(16.dp))
                                 Column {

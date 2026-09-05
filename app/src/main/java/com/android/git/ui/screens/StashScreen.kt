@@ -13,7 +13,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -34,21 +33,23 @@ fun StashScreen(
     onBack: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
 
     var stashes by remember { mutableStateOf<List<StashItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
-    
+
     var statusMessage by remember { mutableStateOf("") }
     var statusType by remember { mutableStateOf(SnackbarType.INFO) }
 
     var showCreateDialog by remember { mutableStateOf(false) }
     var stashMessage by remember { mutableStateOf("") }
-    
+
     var showActionDialog by remember { mutableStateOf(false) }
     var showDropDialog by remember { mutableStateOf(false) }
     var selectedStash by remember { mutableStateOf<StashItem?>(null) }
     var isActionRunning by remember { mutableStateOf(false) }
+
+    // Fetch the string resource outside of the Coroutine to satisfy Lint requirements
+    val errorMsgTemplate = stringResource(R.string.stash_load_error)
 
     fun loadStashes() {
         scope.launch {
@@ -58,7 +59,7 @@ fun StashScreen(
                 statusMessage = ""
             } catch (e: Exception) {
                 stashes = emptyList()
-                statusMessage = context.getString(R.string.stash_load_error, e.message ?: "Unknown error")
+                statusMessage = errorMsgTemplate.format(e.message ?: "Unknown error")
                 statusType = SnackbarType.ERROR
             } finally {
                 isLoading = false
@@ -270,7 +271,7 @@ fun StashItemView(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        
+
         IconButton(onClick = onDrop) {
             Icon(Icons.Default.Delete, stringResource(R.string.action_delete), tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
         }

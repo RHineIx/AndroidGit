@@ -1,14 +1,14 @@
 [versions]
 # Core Build System
-agp = "9.1.0"
-kotlin = "2.3.20"
+agp = "9.4.0"
+kotlin = "2.4.10"
 
 # AndroidX & Compose
-coreKtx = "1.18.0"
-lifecycleRuntimeKtx = "2.10.0"
+coreKtx = "1.19.0"
+lifecycleRuntimeKtx = "2.11.0"
 activityCompose = "1.13.0"
-composeBom = "2026.03.01"
-navigationCompose = "2.9.7"
+composeBom = "2026.08.00"
+navigationCompose = "2.10.0"
 
 # Security
 androidxSecurity = "1.1.0-alpha06"
@@ -16,15 +16,16 @@ androidxSecurity = "1.1.0-alpha06"
 # Git Engine & Crypto Dependencies
 jgit = "7.6.0.202603022253-r"
 jgitSsh = "7.6.0.202603022253-r"
-sshd = "2.17.1"
-bouncycastle = "1.83"
+sshd = "2.19.0"
+# Separated Bouncy Castle versions to resolve Maven availability mismatch
+bcprov = "1.85.2"
+bcpkix = "1.85"
 
 # Logging
-slf4j-simple = "2.0.17"
-junit = "4.13.2"
+slf4j-simple = "2.0.19"
 
 # Miuix
-miuix = "0.9.0"
+miuix = "0.9.3"
 
 # Google Generative AI (Gemini)
 generativeai = "0.9.0"
@@ -63,10 +64,9 @@ androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-man
 jgit = { group = "org.eclipse.jgit", name = "org.eclipse.jgit", version.ref = "jgit" }
 jgit-ssh = { group = "org.eclipse.jgit", name = "org.eclipse.jgit.ssh.apache", version.ref = "jgitSsh" }
 sshd-osgi = { group = "org.apache.sshd", name = "sshd-osgi", version.ref = "sshd" }
-bcprov = { group = "org.bouncycastle", name = "bcprov-jdk18on", version.ref = "bouncycastle" }
-bcpkix = { group = "org.bouncycastle", name = "bcpkix-jdk18on", version.ref = "bouncycastle" }
+bcprov = { group = "org.bouncycastle", name = "bcprov-jdk18on", version.ref = "bcprov" }
+bcpkix = { group = "org.bouncycastle", name = "bcpkix-jdk18on", version.ref = "bcpkix" }
 slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j-simple" }
-junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 # AI Integration
 generativeai = { group = "com.google.ai.client.generativeai", name = "generativeai", version.ref = "generativeai" }

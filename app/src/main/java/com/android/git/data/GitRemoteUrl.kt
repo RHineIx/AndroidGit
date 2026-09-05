@@ -3,8 +3,6 @@ package com.android.git.data
 import java.net.URI
 
 object GitRemoteUrl {
-    fun isValid(raw: String): Boolean = parse(raw) != null
-
     fun isSsh(raw: String): Boolean {
         val value = raw.trim()
         return value.startsWith("git@") || value.startsWith("ssh://")

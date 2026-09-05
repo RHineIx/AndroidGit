@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.text.KeyboardOptions
 
 @Composable
 fun ExpandableSshTextField(
@@ -28,15 +29,15 @@ fun ExpandableSshTextField(
     label: @Composable () -> Unit,
     leadingIcon: ImageVector,
     enabled: Boolean,
-    isSecret: Boolean = false,
-    isError: Boolean = false,
-    supportingText: (@Composable (() -> Unit))? = null,
     showDescription: String,
     hideDescription: String,
     modifier: Modifier = Modifier,
+    isSecret: Boolean = false,
+    isError: Boolean = false,
+    supportingText: (@Composable (() -> Unit))? = null,
     shape: Shape = RoundedCornerShape(16.dp),
     maxExpandedLines: Int = 8,
-    keyboardOptions: androidx.compose.foundation.text.KeyboardOptions = androidx.compose.foundation.text.KeyboardOptions.Default
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default
 ) {
     var focused by remember { mutableStateOf(false) }
     var visible by remember { mutableStateOf(false) }

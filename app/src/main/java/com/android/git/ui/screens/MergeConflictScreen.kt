@@ -33,13 +33,15 @@ fun MergeConflictScreen(
     onResolveFile: (String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    val context = androidx.compose.ui.platform.LocalContext.current
 
     var conflicts by remember { mutableStateOf<List<String>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var statusMessage by remember { mutableStateOf("") }
     var statusType by remember { mutableStateOf(SnackbarType.INFO) }
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Fetch the string resource outside of the Coroutine to satisfy Lint requirements
+    val errorMsgTemplate = stringResource(R.string.conflict_load_error)
 
     fun loadConflicts() {
         scope.launch {
@@ -49,7 +51,7 @@ fun MergeConflictScreen(
                 statusMessage = ""
             } catch (e: Exception) {
                 conflicts = emptyList()
-                statusMessage = context.getString(R.string.conflict_load_error, e.message ?: "Unknown error")
+                statusMessage = errorMsgTemplate.format(e.message ?: "Unknown error")
                 statusType = SnackbarType.ERROR
             } finally {
                 isLoading = false
@@ -92,7 +94,7 @@ fun MergeConflictScreen(
                         Icon(Icons.Default.Warning, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.surfaceVariant)
                         Spacer(Modifier.height(16.dp))
                         Text(stringResource(R.string.conflict_none), color = MaterialTheme.colorScheme.secondary)
-                        
+
                         Button(onClick = onBack, modifier = Modifier.padding(top = 16.dp)) {
                             Text(stringResource(R.string.action_back))
                         }
@@ -110,14 +112,14 @@ fun MergeConflictScreen(
                                 color = MaterialTheme.colorScheme.error
                             )
                         }
-                        
+
                         items(conflicts) { filePath ->
                             ConflictItem(filePath = filePath, onClick = { onResolveFile(filePath) })
                         }
                     }
                 }
             }
-            
+
             Box(modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)) {
                 if (statusMessage.isNotEmpty()) {
                     AppSnackbar(message = statusMessage, type = statusType) { statusMessage = "" }

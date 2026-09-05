@@ -3,7 +3,6 @@ package com.android.git.ui.screens
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -35,6 +34,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import com.android.git.R
 import com.android.git.data.GitAuthManager
 import com.android.git.data.GitAuthMode
@@ -538,7 +538,7 @@ fun DeveloperSection(context: Context) {
             ) {
                 SocialButton(
                     iconRes = R.drawable.ic_github,
-                    label = stringResource(R.string.settings_social_github),
+                    label = "GitHub",
                     onClick = { openUrl(context, "https://github.com/RHineix") }
                 )
 
@@ -546,7 +546,7 @@ fun DeveloperSection(context: Context) {
 
                 SocialButton(
                     iconRes = R.drawable.ic_telegram,
-                    label = stringResource(R.string.settings_social_telegram),
+                    label = "Telegram",
                     onClick = { openUrl(context, "https://t.me/RHineix") }
                 )
             }
@@ -575,7 +575,7 @@ fun SocialButton(iconRes: Int, label: String, onClick: () -> Unit) {
 
 fun openUrl(context: Context, url: String) {
     try {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        val intent = Intent(Intent.ACTION_VIEW, url.toUri())
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(intent)
     } catch (e: Exception) { }
