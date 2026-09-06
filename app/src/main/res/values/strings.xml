@@ -15,6 +15,8 @@
     <string name="action_refresh">Refresh</string>
     <string name="action_copy">Copy</string>
     <string name="action_loading">Loading...</string>
+    <string name="action_discard">Discard</string>
+    <string name="action_cancel_clone">Cancel Clone</string>
 
     <string name="settings_title">Settings</string>
     <string name="error_set_token">Set Token in Settings</string>
@@ -54,6 +56,7 @@
     <string name="update_latest">You are using the latest version</string>
     <string name="clone_progress">Cloning...</string>
     <string name="clone_success">Cloned successfully!</string>
+    <string name="clone_status_cancelled">Clone cancelled by user.</string>
     <string name="clone_title">Clone Repository</string>
     <string name="clone_url_label">Repository URL</string>
     <string name="clone_url_placeholder">https://github.com/user/repo.git or git@github.com:user/repo.git</string>
@@ -134,6 +137,10 @@
     <string name="changes_status_missing">Missing</string>
     <string name="changes_action_ignore">Add to .gitignore</string>
     <string name="changes_ignore_success">Added %1$s to .gitignore</string>
+    <string name="changes_action_discard">Discard changes</string>
+    <string name="changes_discard_title">Discard Changes?</string>
+    <string name="changes_discard_msg">Are you sure you want to discard changes in %1$s? This action cannot be undone.</string>
+    <string name="changes_discard_success">Discarded changes in %1$s</string>
 
     <string name="branch_title">Branch Manager</string>
     <string name="branch_dialog_create_title">Create Branch</string>
@@ -273,7 +280,7 @@
     <string name="workflow_runs">Latest 5 Workflow runs</string>
     <string name="workflow_no_runs">No recent Workflow runs.</string>
     <string name="workflow_started">Workflow started successfully.</string>
-    <string name="workflow_status_fmt">%1$s · %2$s · %3$s</string>
+    <string name="workflow_status_fmt">%1$s · %2$s · \%3$s</string>
 
     <string name="stash_title">Stashes</string>
     <string name="stash_dialog_create_title">Create Stash</string>

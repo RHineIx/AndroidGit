@@ -496,6 +496,19 @@ fun CloneScreen(
                                     modifier = Modifier.padding(top = 8.dp).align(Alignment.Start)
                                 )
                             }
+                            
+                            Spacer(Modifier.height(16.dp))
+                            
+                            OutlinedButton(
+                                onClick = { viewModel.cancelClone() },
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                            ) {
+                                Icon(Icons.Default.Stop, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(R.string.action_cancel_clone), fontWeight = FontWeight.Bold)
+                            }
                         } else {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(

@@ -40,6 +40,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 
 class MainViewModel(application: Application, private val savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
 
@@ -71,6 +72,8 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
 
     var statusType: SnackbarType by mutableStateOf(SnackbarType.INFO)
         private set
+
+    private val isCloneCancelled = AtomicBoolean(false)
 
     var cloneProgress by mutableFloatStateOf(0f)
         private set
@@ -368,11 +371,16 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         }
     }
 
+    fun cancelClone() {
+        isCloneCancelled.set(true)
+    }
+
     fun cloneRepository(url: String, parentDir: File, folderName: String, auth: GitAuthConfig, onSuccess: (File) -> Unit) {
         if (isLoading) return
         viewModelScope.launch {
             val context = getApplication<Application>()
             isLoading = true
+            isCloneCancelled.set(false)
             cloneProgress = 0f
             cloneTaskName = context.getString(R.string.clone_progress)
             cloneTaskDetails = ""
@@ -384,7 +392,8 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
                 parentDir = parentDir,
                 folderName = folderName,
                 auth = auth,
-                secureStorageDir = context.filesDir
+                secureStorageDir = context.filesDir,
+                isCancelledSignal = { isCloneCancelled.get() }
             ) { task, progress, details ->
                 cloneTaskName = task
                 cloneProgress = progress
@@ -396,7 +405,8 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
                 showStatus(context.getString(R.string.clone_success), SnackbarType.SUCCESS)
                 onSuccess(result.first!!)
             } else {
-                showStatus(result.second, SnackbarType.ERROR)
+                val isCancelled = isCloneCancelled.get() || result.second.contains("cancelled", ignoreCase = true)
+                showStatus(result.second, if (isCancelled) SnackbarType.WARNING else SnackbarType.ERROR)
             }
         }
     }
@@ -594,6 +604,26 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
                 }
             } catch (e: Exception) {
                 showStatus(e.message ?: "Failed to update .gitignore", SnackbarType.ERROR)
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+    
+    fun discardFile(file: GitFile) {
+        val manager = gitManager ?: return
+        viewModelScope.launch {
+            isLoading = true
+            try {
+                val result = manager.discardFile(file)
+                if (isFailure(result)) {
+                    showStatus(result, SnackbarType.ERROR)
+                } else {
+                    showStatus(getApplication<Application>().getString(R.string.changes_discard_success, file.path), SnackbarType.SUCCESS)
+                    changedFiles = manager.getChangedFiles()
+                }
+            } catch (e: Exception) {
+                showStatus(e.message ?: "Failed to discard file", SnackbarType.ERROR)
             } finally {
                 isLoading = false
             }

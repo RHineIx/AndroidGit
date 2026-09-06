@@ -55,12 +55,15 @@ fun ChangesScreen(
     var showExtensionDialog by remember { mutableStateOf(false) }
 
     var isMessageExpanded by remember { mutableStateOf(false) }
+    
+    var fileToDiscard by remember { mutableStateOf<GitFile?>(null) }
 
     val commonShape = RoundedCornerShape(16.dp)
 
-    BackHandler(enabled = isLoading || isMessageExpanded || isAIGenerating) {
-        if (isMessageExpanded) {
-            isMessageExpanded = false
+    BackHandler(enabled = isLoading || isMessageExpanded || isAIGenerating || fileToDiscard != null) {
+        when {
+            fileToDiscard != null -> fileToDiscard = null
+            isMessageExpanded -> isMessageExpanded = false
         }
     }
 
@@ -110,6 +113,31 @@ fun ChangesScreen(
                     Text(stringResource(R.string.action_cancel))
                 }
             }
+        )
+    }
+
+    if (fileToDiscard != null) {
+        AlertDialog(
+            onDismissRequest = { fileToDiscard = null },
+            title = { Text(stringResource(R.string.changes_discard_title)) },
+            text = { Text(stringResource(R.string.changes_discard_msg, fileToDiscard!!.path)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.discardFile(fileToDiscard!!)
+                        fileToDiscard = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(stringResource(R.string.action_discard))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { fileToDiscard = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+            icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
         )
     }
 
@@ -311,6 +339,9 @@ fun ChangesScreen(
                                 },
                                 onIgnore = {
                                     viewModel.addToGitIgnore(file.path)
+                                },
+                                onDiscard = {
+                                    fileToDiscard = file
                                 }
                             )
                         }
@@ -425,7 +456,8 @@ fun FileChangeItem(
     file: GitFile,
     isSelected: Boolean,
     onToggle: () -> Unit,
-    onIgnore: () -> Unit
+    onIgnore: () -> Unit,
+    onDiscard: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -491,6 +523,13 @@ fun FileChangeItem(
                 onClick = {
                     showMenu = false
                     onIgnore()
+                }
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.changes_action_discard), color = MaterialTheme.colorScheme.error) },
+                onClick = {
+                    showMenu = false
+                    onDiscard()
                 }
             )
         }
