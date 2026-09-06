@@ -7,8 +7,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,7 +34,6 @@ import com.android.git.model.ChangeType
 import com.android.git.model.GitFile
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.viewmodel.MainViewModel
-import top.yukonga.miuix.kmp.basic.Checkbox
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +44,7 @@ fun ChangesScreen(
     val files = viewModel.changedFiles
     val isLoading = viewModel.isLoading
     val statusMessage = viewModel.statusMessage
-    val statusType = viewModel.statusType // Added to support local snackbar
+    val statusType = viewModel.statusType 
     val isAIGenerating = viewModel.isAIGenerating
 
     var selectedFiles by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -308,6 +308,9 @@ fun ChangesScreen(
                                 isSelected = isSelected,
                                 onToggle = {
                                     selectedFiles = if (isSelected) selectedFiles - file.path else selectedFiles + file.path
+                                },
+                                onIgnore = {
+                                    viewModel.addToGitIgnore(file.path)
                                 }
                             )
                         }
@@ -401,7 +404,6 @@ fun ChangesScreen(
             }
         }
 
-        // AppSnackbar is now correctly placed in the screen's main Box
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -417,52 +419,80 @@ fun ChangesScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun FileChangeItem(file: GitFile, isSelected: Boolean, onToggle: () -> Unit) {
-    ElevatedCard(
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = if (isSelected) 2.dp else 0.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = if (isSelected)
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
-            else
-                MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .animateContentSize()
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp).fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+fun FileChangeItem(
+    file: GitFile,
+    isSelected: Boolean,
+    onToggle: () -> Unit,
+    onIgnore: () -> Unit
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
+    Box {
+        ElevatedCard(
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = if (isSelected) 2.dp else 0.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = if (isSelected)
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                else
+                    MaterialTheme.colorScheme.surfaceContainerLow
+            ),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .combinedClickable(
+                    onClick = onToggle,
+                    onLongClick = { showMenu = true }
+                )
+                .animateContentSize()
         ) {
-            Box(
-                modifier = Modifier.size(32.dp),
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Checkbox(
-                    checked = isSelected,
-                    onCheckedChange = { _ -> onToggle() }
-                )
+                Box(
+                    modifier = Modifier.size(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Checkbox(
+                        checked = isSelected,
+                        onCheckedChange = { _ -> onToggle() }
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                StatusIcon(file.type)
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = file.path,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = getFriendlyStatusName(file.type),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = getStatusColor(file.type),
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            StatusIcon(file.type)
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = file.path,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = getFriendlyStatusName(file.type),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = getStatusColor(file.type),
-                    modifier = Modifier.padding(top = 2.dp)
-                )
-            }
+        }
+
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.changes_action_ignore)) },
+                onClick = {
+                    showMenu = false
+                    onIgnore()
+                }
+            )
         }
     }
 }

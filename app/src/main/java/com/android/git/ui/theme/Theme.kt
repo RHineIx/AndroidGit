@@ -20,9 +20,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.theme.darkColorScheme as miuixDarkColorScheme
-import top.yukonga.miuix.kmp.theme.lightColorScheme as miuixLightColorScheme
 
 val LocalAndroidGitDarkTheme = staticCompositionLocalOf { false }
 
@@ -37,9 +34,6 @@ private val LightColorScheme = lightColorScheme(
     secondary = PurpleGrey40,
     tertiary = Pink40
 )
-
-// A distinct, strong active color for Miuix components (HyperOS Blue)
-private val MiuixActiveColor = Color(0xFF007AFF)
 
 private val AndroidGitShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
@@ -86,26 +80,11 @@ fun AndroidGitTheme(
         }
     }
 
-    // Theme Bridge: Decoupling Miuix primary color from Material 3 to ensure strong visibility
-    val miuixColors = if (darkTheme) {
-        miuixDarkColorScheme(
-            primary = MiuixActiveColor
-        )
-    } else {
-        miuixLightColorScheme(
-            primary = MiuixActiveColor
-        )
-    }
-
     CompositionLocalProvider(LocalAndroidGitDarkTheme provides darkTheme) {
         MaterialTheme(
             colorScheme = colorScheme,
-            shapes = AndroidGitShapes
-        ) {
-            MiuixTheme(
-                colors = miuixColors,
-                content = content
-            )
-        }
+            shapes = AndroidGitShapes,
+            content = content
+        )
     }
 }

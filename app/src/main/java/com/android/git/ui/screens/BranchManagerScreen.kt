@@ -35,9 +35,11 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -65,6 +67,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.git.R
@@ -73,9 +76,6 @@ import com.android.git.model.BranchType
 import com.android.git.model.DashboardState
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.viewmodel.MainViewModel
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.CardColors
-import top.yukonga.miuix.kmp.utils.PressFeedbackType
 
 private sealed interface BranchConfirmation {
     data class Delete(val branch: BranchModel) : BranchConfirmation
@@ -510,18 +510,17 @@ fun BranchItemRich(
     var showMenu by remember(branch.fullPath) { mutableStateOf(false) }
     val isRemote = branch.type == BranchType.REMOTE
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        insideMargin = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-        colors = CardColors(
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth().clickable(enabled = enabled) { if (enabled) showMenu = true },
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             contentColor = MaterialTheme.colorScheme.onSurface
         ),
-        pressFeedbackType = PressFeedbackType.Sink,
-        onClick = { if (enabled) showMenu = true }
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(16.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(

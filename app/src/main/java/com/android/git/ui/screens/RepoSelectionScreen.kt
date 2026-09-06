@@ -41,11 +41,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
-// Miuix Library Imports for interactive cards
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.CardColors
-import top.yukonga.miuix.kmp.utils.PressFeedbackType
-
 // Global in-memory cache for project icons to prevent scroll jank
 object ProjectImageCache {
     val memoryCache = LruCache<String, Bitmap>(30) // Cache up to 30 decoded icons
@@ -213,18 +208,17 @@ fun RepoSelectionScreen(
 
 @Composable
 fun ActionCard(title: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Card(
-        modifier = modifier.height(100.dp),
-        insideMargin = PaddingValues(16.dp),
-        colors = CardColors(
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
+    ElevatedCard(
+        modifier = modifier.height(100.dp).clickable { onClick() },
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             contentColor = MaterialTheme.colorScheme.onSurface
         ),
-        pressFeedbackType = PressFeedbackType.Tilt,
-        onClick = onClick
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(16.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {

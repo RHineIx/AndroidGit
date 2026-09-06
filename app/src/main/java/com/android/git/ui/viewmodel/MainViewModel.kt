@@ -36,7 +36,9 @@ import com.android.git.ui.components.SnackbarType
 import com.android.git.utils.isGitFailureMessage
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.generationConfig
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 class MainViewModel(application: Application, private val savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
@@ -570,6 +572,31 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
             changedFiles = manager.getChangedFiles()
             loadDashboard()
             isLoading = false
+        }
+    }
+
+    fun addToGitIgnore(filePath: String) {
+        val manager = gitManager ?: return
+        viewModelScope.launch {
+            isLoading = true
+            try {
+                var content = manager.readGitIgnore()
+                if (content.isNotEmpty() && !content.endsWith("\n")) {
+                    content += "\n"
+                }
+                content += "$filePath\n"
+                val result = manager.saveGitIgnore(content)
+                if (isFailure(result)) {
+                    showStatus(result, SnackbarType.ERROR)
+                } else {
+                    showStatus(getApplication<Application>().getString(R.string.changes_ignore_success, filePath), SnackbarType.SUCCESS)
+                    changedFiles = manager.getChangedFiles()
+                }
+            } catch (e: Exception) {
+                showStatus(e.message ?: "Failed to update .gitignore", SnackbarType.ERROR)
+            } finally {
+                isLoading = false
+            }
         }
     }
 

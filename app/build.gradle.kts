@@ -35,7 +35,7 @@ android {
         abi {
             isEnable = true
             reset()
-            include("arm64-v8a", "x86_64")
+            include("arm64-v8a")
             isUniversalApk = false
         }
     }
@@ -56,9 +56,6 @@ android {
             excludes += "META-INF/DEPENDENCIES"
             // JGit and jgit-ssh.apache both contain this duplicate OSGi metadata file.
             excludes += "OSGI-INF/l10n/plugin.properties"
-            // BouncyCastle duplicate license and notice files
-            excludes += "META-INF/LICENSE.md"
-            excludes += "META-INF/NOTICE.md"
         }
         jniLibs {
             useLegacyPackaging = true
@@ -72,7 +69,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
-
+    
     // EncryptedSharedPreferences for secure token/API key storage
     implementation(libs.androidx.security.crypto)
 
@@ -96,7 +93,6 @@ dependencies {
     implementation(libs.generativeai)
 
     implementation(libs.slf4j.simple)
-    implementation(libs.miuix)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)

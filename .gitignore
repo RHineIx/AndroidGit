@@ -11,3 +11,5 @@ captures/
 .cxx/
 .acside/
 .kotlin/
+.clangd
+.clang-tidy
