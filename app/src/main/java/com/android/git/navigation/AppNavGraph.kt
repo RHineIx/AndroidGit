@@ -1,11 +1,12 @@
 package com.android.git.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -23,36 +24,56 @@ fun AppNavGraph(
     viewModel: MainViewModel = viewModel(),
     startDestination: String = Screen.Selection.route
 ) {
-    val context = LocalContext.current
     val manager = viewModel.gitManager
 
-    // SINGLE SOURCE OF TRUTH: التوجيه المبني على الحالة
+    // State-driven routing: Navigate automatically based on repository state
     LaunchedEffect(viewModel.currentRepoFile) {
         val currentRoute = navController.currentBackStackEntry?.destination?.route ?: return@LaunchedEffect
         
         if (viewModel.currentRepoFile != null) {
-            // الانتقال للوحة القيادة فقط إذا كنا في شاشة الاختيار أو الاستنساخ
             if (currentRoute == Screen.Selection.route || currentRoute == Screen.Clone.route) {
                 navController.navigate(Screen.Dashboard.route) {
-                    popUpTo(0) { inclusive = true } // تنظيف المكدس بالكامل
+                    popUpTo(0) { inclusive = true }
                     launchSingleTop = true
                 }
             }
         } else {
-            // العودة لشاشة الاختيار عند إغلاق المشروع
             if (currentRoute != Screen.Selection.route && currentRoute != Screen.Clone.route && currentRoute != Screen.GeneralSettings.route) {
                 navController.navigate(Screen.Selection.route) {
-                    popUpTo(0) { inclusive = true } // تنظيف المكدس لمنع الشاشات الشبحية
+                    popUpTo(0) { inclusive = true }
                     launchSingleTop = true
                 }
             }
         }
     }
 
-    // Removed custom animations to rely entirely on system default (Predictive Back safe)
     NavHost(
         navController = navController,
-        startDestination = startDestination
+        startDestination = startDestination,
+        enterTransition = {
+            slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = tween(300)
+            )
+        },
+        exitTransition = {
+            slideOutOfContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = tween(300)
+            )
+        },
+        popEnterTransition = {
+            slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                animationSpec = tween(300)
+            )
+        },
+        popExitTransition = {
+            slideOutOfContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                animationSpec = tween(300)
+            )
+        }
     ) {
         
         composable(Screen.Selection.route) {
@@ -61,14 +82,10 @@ fun AppNavGraph(
                     FileUtils.getFileFromUri(uri)?.let { viewModel.openProject(it) }
                 },
                 onCloneRequest = { 
-                    navController.navigate(Screen.Clone.route) {
-                        launchSingleTop = true // منع فتح الشاشة مرتين
-                    }
+                    navController.navigate(Screen.Clone.route) { launchSingleTop = true }
                 },
                 onGeneralSettingsClick = { 
-                    navController.navigate(Screen.GeneralSettings.route) {
-                        launchSingleTop = true
-                    }
+                    navController.navigate(Screen.GeneralSettings.route) { launchSingleTop = true }
                 }
             )
         }
@@ -77,10 +94,7 @@ fun AppNavGraph(
             CloneScreen(
                 viewModel = viewModel,
                 onBack = { navController.popBackStack() },
-                onCloneSuccess = { file ->
-                    // تم إزالة التوجيه اليدوي لتجنب التضارب، الـ LaunchedEffect سيتكفل بالباقي
-                    viewModel.openProject(file)
-                }
+                onCloneSuccess = { file -> viewModel.openProject(file) }
             )
         }
 
@@ -118,7 +132,6 @@ fun AppNavGraph(
                     onOpenWorkflows = { navController.navigate(Screen.Workflows.route) { launchSingleTop = true } }
                 )
             } else {
-                // تم إزالة الـ LaunchedEffect المتعارض من هنا
                 Box(modifier = Modifier.fillMaxSize())
             }
         }
