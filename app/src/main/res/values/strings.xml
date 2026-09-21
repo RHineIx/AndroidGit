@@ -295,4 +295,10 @@
     <string name="stash_drop_confirm">Drop</string>
     <string name="stash_load_error">Unable to load stashes: %1$s</string>
     <string name="stash_wip_prefix">WIP on</string>
+    
+    <string name="clone_browse_repos">Browse My Repositories</string>
+    <string name="clone_my_repos_title">My Repositories</string>
+    <string name="clone_my_repos_empty">No repositories found.</string>
+    <string name="repo_settings_err_fetch_repos">Unable to fetch repositories.</string>
+
 </resources>

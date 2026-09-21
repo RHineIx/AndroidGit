@@ -31,6 +31,7 @@ import com.android.git.model.GitHubRepositoryRef
 import com.android.git.model.GitHubWorkflow
 import com.android.git.model.GitHubWorkflowInput
 import com.android.git.model.GitHubWorkflowRun
+import com.android.git.model.GitHubRepoModel
 import com.android.git.model.UpdateInfo
 import com.android.git.ui.components.SnackbarType
 import com.android.git.utils.isGitFailureMessage
@@ -131,6 +132,17 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     var themeMode: ThemeMode by mutableStateOf(prefs.getThemeMode())
         private set
 
+    // [New] State for GitHub Repositories
+    var myGitHubRepos: List<GitHubRepoModel> by mutableStateOf(emptyList())
+        private set
+    
+    var isMyReposLoading: Boolean by mutableStateOf(false)
+        private set
+
+    var myReposErrorMessage: String by mutableStateOf("")
+        private set
+
+
     init {
         savedStateHandle.get<String>("current_repo_path")?.let { path ->
             File(path).takeIf { it.exists() }?.let { openProject(it) }
@@ -157,10 +169,6 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         prefs.setThemeMode(mode)
     }
 
-    /**
-     * Centralized Git Authentication wrapper.
-     * Validates the presence of required credentials before launching the operation in viewModelScope.
-     */
     private inline fun executeWithValidGitAuth(
         crossinline block: suspend (GitAuthConfig) -> Unit
     ) {
@@ -179,9 +187,6 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         }
     }
 
-    /**
-     * Centralized GitHub Token validation wrapper for GitHub API operations.
-     */
     private inline fun validateGitHubToken(
         onInvalid: (String) -> Unit = { showStatus(it, SnackbarType.ERROR) },
         block: (String) -> Unit
@@ -192,6 +197,30 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
             return
         }
         block(token)
+    }
+
+    // [New] Fetch my repositories from GitHub
+    fun fetchMyRepositories() {
+        validateGitHubToken(
+            onInvalid = { errorMsg ->
+                myReposErrorMessage = errorMsg
+                myGitHubRepos = emptyList()
+            }
+        ) { token ->
+            viewModelScope.launch {
+                isMyReposLoading = true
+                myReposErrorMessage = ""
+                try {
+                    val api = GitHubWorkflowApiManager(token)
+                    myGitHubRepos = api.getMyRepositories()
+                } catch (error: Exception) {
+                    myReposErrorMessage = error.message ?: getApplication<Application>().getString(R.string.repo_settings_err_fetch_repos)
+                    myGitHubRepos = emptyList()
+                } finally {
+                    isMyReposLoading = false
+                }
+            }
+        }
     }
 
     fun verifyGeminiSettings(apiKey: String, modelName: String, prompt: String) {
@@ -500,7 +529,6 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
             try {
                 val result = operation(manager)
                 showStatus(result, resultSnackbarType(result))
-                // Keep the list and dashboard in sync before controls become active again.
                 branchList = manager.getRichBranches()
                 if (manager.isGitRepo()) dashboardState = manager.getDashboardStats()
             } catch (e: Exception) {
@@ -534,9 +562,6 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
             try {
                 val result = manager.fetchAll(auth)
                 showStatus(result, resultSnackbarType(result))
-                // Do not call loadBranches() here: it intentionally ignores
-                // requests while isLoading is true. Refresh synchronously so
-                // pruned refs disappear from Branch Manager immediately.
                 refreshBranchData(manager)
             } catch (e: Exception) {
                 showStatus(errorMessage(e, "Fetch failed"), SnackbarType.ERROR)

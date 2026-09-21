@@ -1,6 +1,7 @@
 package com.android.git.data
 
 import android.util.Base64
+import com.android.git.model.GitHubRepoModel
 import com.android.git.model.GitHubRepositoryRef
 import com.android.git.model.GitHubWorkflow
 import com.android.git.model.GitHubWorkflowInput
@@ -15,87 +16,132 @@ import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
-class GitHubWorkflowApiManager(private val token: String) {
+class GitHubWorkflowApiManager(
+    private val token: String,
+) {
     companion object {
         private const val API_ROOT = "https://api.github.com"
         private const val TIMEOUT_MS = 15_000
     }
 
-    suspend fun listWorkflows(repository: GitHubRepositoryRef): List<GitHubWorkflow> = withContext(Dispatchers.IO) {
-        val json = requestJson("/repos/${repository.owner}/${repository.repository}/actions/workflows?per_page=100")
-        val workflows = json.optJSONArray("workflows") ?: JSONArray()
-        buildList {
-            for (index in 0 until workflows.length()) {
-                val item = workflows.optJSONObject(index) ?: continue
-                add(
-                    GitHubWorkflow(
-                        id = item.optLong("id"),
-                        name = item.optString("name", item.optString("path", "Workflow")),
-                        path = item.optString("path"),
-                        state = item.optString("state", "unknown"),
-                        htmlUrl = item.optString("html_url")
+    // [New] Fetch user's repositories
+    suspend fun getMyRepositories(): List<GitHubRepoModel> =
+        withContext(Dispatchers.IO) {
+            val jsonArray = requestJsonArray("/user/repos?sort=updated&per_page=100")
+            buildList {
+                for (index in 0 until jsonArray.length()) {
+                    val item = jsonArray.optJSONObject(index) ?: continue
+                    add(
+                        GitHubRepoModel(
+                            id = item.optLong("id"),
+                            name = item.optString("name"),
+                            description = item.optString("description", ""),
+                            isPrivate = item.optBoolean("private", false),
+                            htmlUrl = item.optString("html_url", ""),
+                            cloneUrl = item.optString("clone_url", ""),
+                            sshUrl = item.optString("ssh_url", ""),
+                            updatedAt = item.optString("updated_at", ""),
+                        ),
                     )
+                }
+            }
+        }
+
+    suspend fun listWorkflows(repository: GitHubRepositoryRef): List<GitHubWorkflow> =
+        withContext(Dispatchers.IO) {
+            val json = requestJson("/repos/${repository.owner}/${repository.repository}/actions/workflows?per_page=100")
+            val workflows = json.optJSONArray("workflows") ?: JSONArray()
+            buildList {
+                for (index in 0 until workflows.length()) {
+                    val item = workflows.optJSONObject(index) ?: continue
+                    add(
+                        GitHubWorkflow(
+                            id = item.optLong("id"),
+                            name = item.optString("name", item.optString("path", "Workflow")),
+                            path = item.optString("path"),
+                            state = item.optString("state", "unknown"),
+                            htmlUrl = item.optString("html_url"),
+                        ),
+                    )
+                }
+            }
+        }
+
+    suspend fun recentRuns(repository: GitHubRepositoryRef): List<GitHubWorkflowRun> =
+        withContext(Dispatchers.IO) {
+            val json = requestJson("/repos/${repository.owner}/${repository.repository}/actions/runs?per_page=5")
+            val runs = json.optJSONArray("workflow_runs") ?: JSONArray()
+            buildList {
+                for (index in 0 until runs.length()) {
+                    val item = runs.optJSONObject(index) ?: continue
+                    add(item.toWorkflowRun())
+                }
+            }
+        }
+
+    suspend fun readWorkflowInputs(
+        repository: GitHubRepositoryRef,
+        workflow: GitHubWorkflow,
+    ): List<GitHubWorkflowInput> =
+        withContext(Dispatchers.IO) {
+            val contentJson =
+                requestJson(
+                    "/repos/${repository.owner}/${repository.repository}/contents/${encodePath(
+                        workflow.path,
+                    )}?ref=${encode(repository.ref)}",
                 )
-            }
+            val encoded = contentJson.optString("content")
+            if (encoded.isBlank()) return@withContext emptyList()
+            val yaml = String(Base64.decode(encoded.replace("\\s".toRegex(), ""), Base64.DEFAULT), StandardCharsets.UTF_8)
+            parseWorkflowDispatchInputs(yaml)
         }
-    }
-
-    suspend fun recentRuns(repository: GitHubRepositoryRef): List<GitHubWorkflowRun> = withContext(Dispatchers.IO) {
-        val json = requestJson("/repos/${repository.owner}/${repository.repository}/actions/runs?per_page=5")
-        val runs = json.optJSONArray("workflow_runs") ?: JSONArray()
-        buildList {
-            for (index in 0 until runs.length()) {
-                val item = runs.optJSONObject(index) ?: continue
-                add(item.toWorkflowRun())
-            }
-        }
-    }
-
-    suspend fun readWorkflowInputs(repository: GitHubRepositoryRef, workflow: GitHubWorkflow): List<GitHubWorkflowInput> = withContext(Dispatchers.IO) {
-        val contentJson = requestJson(
-            "/repos/${repository.owner}/${repository.repository}/contents/${encodePath(workflow.path)}?ref=${encode(repository.ref)}"
-        )
-        val encoded = contentJson.optString("content")
-        if (encoded.isBlank()) return@withContext emptyList()
-        val yaml = String(Base64.decode(encoded.replace("\\s".toRegex(), ""), Base64.DEFAULT), StandardCharsets.UTF_8)
-        parseWorkflowDispatchInputs(yaml)
-    }
 
     suspend fun dispatchWorkflow(
         repository: GitHubRepositoryRef,
         workflow: GitHubWorkflow,
         ref: String,
-        inputs: Map<String, String>
+        inputs: Map<String, String>,
     ) = withContext(Dispatchers.IO) {
-        val payload = JSONObject().apply {
-            put("ref", ref.ifBlank { repository.ref.ifBlank { "main" } })
-            put("inputs", JSONObject(inputs))
-        }
+        val payload =
+            JSONObject().apply {
+                put("ref", ref.ifBlank { repository.ref.ifBlank { "main" } })
+                put("inputs", JSONObject(inputs))
+            }
         request(
             method = "POST",
             path = "/repos/${repository.owner}/${repository.repository}/actions/workflows/${workflow.id}/dispatches",
-            body = payload.toString()
+            body = payload.toString(),
         )
     }
 
-    private fun requestJson(path: String): JSONObject {
-        return JSONObject(request("GET", path, null).body)
+    private fun requestJson(path: String): JSONObject = JSONObject(request("GET", path, null).body)
+
+    // [New] Added requestJsonArray to support /user/repos which returns an array directly
+    private fun requestJsonArray(path: String): JSONArray {
+        val response = request("GET", path, null).body
+        if (response.isBlank()) return JSONArray()
+        return JSONArray(response)
     }
 
-    private fun request(method: String, path: String, body: String?): HttpResponse {
-        val connection = (URL(API_ROOT + path).openConnection() as HttpURLConnection).apply {
-            requestMethod = method
-            connectTimeout = TIMEOUT_MS
-            readTimeout = TIMEOUT_MS
-            setRequestProperty("Accept", "application/vnd.github+json")
-            setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
-            setRequestProperty("Authorization", "Bearer $token")
-            setRequestProperty("User-Agent", "AndroidGit-App")
-            if (body != null) {
-                doOutput = true
-                setRequestProperty("Content-Type", "application/json")
+    private fun request(
+        method: String,
+        path: String,
+        body: String?,
+    ): HttpResponse {
+        val connection =
+            (URL(API_ROOT + path).openConnection() as HttpURLConnection).apply {
+                requestMethod = method
+                connectTimeout = TIMEOUT_MS
+                readTimeout = TIMEOUT_MS
+                setRequestProperty("Accept", "application/vnd.github+json")
+                setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
+                setRequestProperty("Authorization", "Bearer $token")
+                setRequestProperty("User-Agent", "AndroidGit-App")
+                if (body != null) {
+                    doOutput = true
+                    setRequestProperty("Content-Type", "application/json")
+                }
             }
-        }
         return try {
             if (body != null) {
                 connection.outputStream.use { it.write(body.toByteArray(StandardCharsets.UTF_8)) }
@@ -199,29 +245,44 @@ class GitHubWorkflowApiManager(private val token: String) {
 
     private fun parseInlineOptions(value: String): List<String> {
         if (!value.startsWith("[") || !value.endsWith("]")) return emptyList()
-        return value.removePrefix("[").removeSuffix("]").split(',').map { cleanScalar(it.trim()) }.filter { it.isNotBlank() }
+        return value
+            .removePrefix("[")
+            .removeSuffix("]")
+            .split(',')
+            .map { cleanScalar(it.trim()) }
+            .filter { it.isNotBlank() }
     }
 
-    private fun cleanScalar(value: String): String {
-        return value.substringBefore(" #").trim().removeSurrounding("\"").removeSurrounding("'")
-    }
+    private fun cleanScalar(value: String): String =
+        value
+            .substringBefore(" #")
+            .trim()
+            .removeSurrounding("\"")
+            .removeSurrounding("'")
 
     private fun encode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8.name())
 
     private fun encodePath(value: String): String = value.split('/').joinToString("/") { encode(it) }
 
-    private fun JSONObject.toWorkflowRun(): GitHubWorkflowRun = GitHubWorkflowRun(
-        id = optLong("id"),
-        name = optString("name", "Workflow run"),
-        status = optString("status", "unknown"),
-        conclusion = optString("conclusion", ""),
-        branch = optString("head_branch", ""),
-        runNumber = optInt("run_number"),
-        createdAt = optString("created_at", ""),
-        htmlUrl = optString("html_url", "")
-    )
+    private fun JSONObject.toWorkflowRun(): GitHubWorkflowRun =
+        GitHubWorkflowRun(
+            id = optLong("id"),
+            name = optString("name", "Workflow run"),
+            status = optString("status", "unknown"),
+            conclusion = optString("conclusion", ""),
+            branch = optString("head_branch", ""),
+            runNumber = optInt("run_number"),
+            createdAt = optString("created_at", ""),
+            htmlUrl = optString("html_url", ""),
+        )
 }
 
-data class HttpResponse(val status: Int, val body: String)
+data class HttpResponse(
+    val status: Int,
+    val body: String,
+)
 
-class GitHubWorkflowException(message: String, cause: Throwable? = null) : Exception(message, cause)
+class GitHubWorkflowException(
+    message: String,
+    cause: Throwable? = null,
+) : Exception(message, cause)
