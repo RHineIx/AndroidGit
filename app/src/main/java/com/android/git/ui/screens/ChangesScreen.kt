@@ -23,7 +23,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -34,6 +36,88 @@ import com.android.git.model.ChangeType
 import com.android.git.model.GitFile
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.viewmodel.MainViewModel
+
+/**
+ * Pure Kotlin vector representation of Phosphor selection-inverse bold icon.
+ * Avoids external library dependencies and XML drawables while ensuring exact visual fidelity.
+ */
+private val SelectionInverseIcon: ImageVector by lazy(LazyThreadSafetyMode.NONE) {
+    ImageVector.Builder(
+        name = "SelectionInverse",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 256f,
+        viewportHeight = 256f
+    ).apply {
+        // Top-left corner dash
+        path(fill = SolidColor(Color(0xFF000000))) {
+            moveTo(84f, 28f)
+            lineTo(48f, 28f)
+            arcTo(20f, 20f, 0f, false, false, 28f, 48f)
+            lineTo(28f, 84f)
+            arcTo(12f, 12f, 0f, false, false, 52f, 84f)
+            lineTo(52f, 52f)
+            lineTo(84f, 52f)
+            arcTo(12f, 12f, 0f, false, false, 84f, 28f)
+            close()
+        }
+        // Top-center dash
+        path(fill = SolidColor(Color(0xFF000000))) {
+            moveTo(116f, 28f)
+            lineTo(140f, 28f)
+            arcTo(12f, 12f, 0f, false, true, 140f, 52f)
+            lineTo(116f, 52f)
+            arcTo(12f, 12f, 0f, false, true, 116f, 28f)
+            close()
+        }
+        // Left-center dash
+        path(fill = SolidColor(Color(0xFF000000))) {
+            moveTo(52f, 116f)
+            lineTo(52f, 140f)
+            arcTo(12f, 12f, 0f, false, true, 28f, 140f)
+            lineTo(28f, 116f)
+            arcTo(12f, 12f, 0f, false, true, 52f, 116f)
+            close()
+        }
+        // Top-right corner dash
+        path(fill = SolidColor(Color(0xFF000000))) {
+            moveTo(172f, 28f)
+            lineTo(208f, 28f)
+            arcTo(20f, 20f, 0f, false, true, 228f, 48f)
+            lineTo(228f, 84f)
+            arcTo(12f, 12f, 0f, false, true, 204f, 84f)
+            lineTo(204f, 52f)
+            lineTo(172f, 52f)
+            arcTo(12f, 12f, 0f, false, true, 172f, 28f)
+            close()
+        }
+        // Bottom-left corner dash
+        path(fill = SolidColor(Color(0xFF000000))) {
+            moveTo(28f, 172f)
+            lineTo(28f, 208f)
+            arcTo(20f, 20f, 0f, false, false, 48f, 228f)
+            lineTo(84f, 228f)
+            arcTo(12f, 12f, 0f, false, false, 84f, 204f)
+            lineTo(52f, 204f)
+            lineTo(52f, 172f)
+            arcTo(12f, 12f, 0f, false, false, 28f, 172f)
+            close()
+        }
+        // Bottom-right inverted solid quadrant
+        path(fill = SolidColor(Color(0xFF000000))) {
+            moveTo(128f, 112f)
+            lineTo(212f, 112f)
+            arcTo(16f, 16f, 0f, false, true, 228f, 128f)
+            lineTo(228f, 208f)
+            arcTo(20f, 20f, 0f, false, true, 208f, 228f)
+            lineTo(128f, 228f)
+            arcTo(16f, 16f, 0f, false, true, 112f, 212f)
+            lineTo(112f, 128f)
+            arcTo(16f, 16f, 0f, false, true, 128f, 112f)
+            close()
+        }
+    }.build()
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -172,19 +256,23 @@ fun ChangesScreen(
                             ) {
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.changes_filter_select_all)) },
+                                    leadingIcon = { Icon(Icons.Default.SelectAll, contentDescription = null) },
                                     onClick = { selectedFiles = files.map { it.path }.toSet(); showFilterMenu = false }
                                 )
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.changes_filter_deselect_all)) },
+                                    leadingIcon = { Icon(Icons.Default.Deselect, contentDescription = null) },
                                     onClick = { selectedFiles = emptySet(); showFilterMenu = false }
                                 )
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.changes_filter_invert)) },
+                                    leadingIcon = { Icon(SelectionInverseIcon, contentDescription = null) },
                                     onClick = { selectedFiles = files.map { it.path }.toSet() - selectedFiles; showFilterMenu = false }
                                 )
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.changes_filter_extension)) },
+                                    leadingIcon = { Icon(Icons.Default.FilterAlt, contentDescription = null) },
                                     onClick = { showFilterMenu = false; showExtensionDialog = true }
                                 )
                             }
