@@ -1,6 +1,5 @@
 package com.android.git.ui.screens
 
-import com.android.git.ui.icons.AppIcons
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -31,7 +30,7 @@ fun IgnoreEditorScreen(
     onBack: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
-
+    
     var content by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
@@ -56,15 +55,15 @@ fun IgnoreEditorScreen(
                 title = { Text(stringResource(R.string.ignore_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(AppIcons.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 actions = {
                     Box {
                         IconButton(onClick = { showTemplateMenu = true }) {
-                            Icon(AppIcons.PlaylistAdd, contentDescription = stringResource(R.string.ignore_add_template))
+                            Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = stringResource(R.string.ignore_add_template))
                         }
-
+                        
                         DropdownMenu(
                             expanded = showTemplateMenu,
                             onDismissRequest = { showTemplateMenu = false }
@@ -96,7 +95,7 @@ fun IgnoreEditorScreen(
                         },
                         enabled = !isLoading && !isSaving
                     ) {
-                        Icon(AppIcons.Save, contentDescription = stringResource(R.string.action_save))
+                        Icon(Icons.Default.Save, contentDescription = stringResource(R.string.action_save))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)

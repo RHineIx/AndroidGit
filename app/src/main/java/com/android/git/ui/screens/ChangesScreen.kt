@@ -1,6 +1,5 @@
 package com.android.git.ui.screens
 
-import com.android.git.ui.icons.AppIcons
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -129,7 +128,7 @@ fun ChangesScreen(
     val files = viewModel.changedFiles
     val isLoading = viewModel.isLoading
     val statusMessage = viewModel.statusMessage
-    val statusType = viewModel.statusType
+    val statusType = viewModel.statusType 
     val isAIGenerating = viewModel.isAIGenerating
 
     var selectedFiles by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -140,7 +139,7 @@ fun ChangesScreen(
     var showExtensionDialog by remember { mutableStateOf(false) }
 
     var isMessageExpanded by remember { mutableStateOf(false) }
-
+    
     var fileToDiscard by remember { mutableStateOf<GitFile?>(null) }
 
     val commonShape = RoundedCornerShape(16.dp)
@@ -222,7 +221,7 @@ fun ChangesScreen(
                     Text(stringResource(R.string.action_cancel))
                 }
             },
-            icon = { Icon(AppIcons.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
+            icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
         )
     }
 
@@ -242,13 +241,13 @@ fun ChangesScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = onBack, enabled = !isLoading && !isAIGenerating) {
-                            Icon(AppIcons.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                         }
                     },
                     actions = {
                         Box {
                             IconButton(onClick = { showFilterMenu = true }) {
-                                Icon(AppIcons.FilterList, contentDescription = null)
+                                Icon(Icons.Default.FilterList, contentDescription = null)
                             }
                             DropdownMenu(
                                 expanded = showFilterMenu,
@@ -257,12 +256,12 @@ fun ChangesScreen(
                             ) {
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.changes_filter_select_all)) },
-                                    leadingIcon = { Icon(AppIcons.SelectAll, contentDescription = null) },
+                                    leadingIcon = { Icon(Icons.Default.SelectAll, contentDescription = null) },
                                     onClick = { selectedFiles = files.map { it.path }.toSet(); showFilterMenu = false }
                                 )
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.changes_filter_deselect_all)) },
-                                    leadingIcon = { Icon(AppIcons.Deselect, contentDescription = null) },
+                                    leadingIcon = { Icon(Icons.Default.Deselect, contentDescription = null) },
                                     onClick = { selectedFiles = emptySet(); showFilterMenu = false }
                                 )
                                 DropdownMenuItem(
@@ -273,7 +272,7 @@ fun ChangesScreen(
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.changes_filter_extension)) },
-                                    leadingIcon = { Icon(AppIcons.FilterAlt, contentDescription = null) },
+                                    leadingIcon = { Icon(Icons.Default.FilterAlt, contentDescription = null) },
                                     onClick = { showFilterMenu = false; showExtensionDialog = true }
                                 )
                             }
@@ -308,7 +307,7 @@ fun ChangesScreen(
                             ) {
                                 Checkbox(
                                     checked = isAmend,
-                                    onCheckedChange = { isAmend = it },
+                                    onCheckedChange = { isAmend = it }, 
                                     enabled = !isLoading && !isAIGenerating
                                 )
                             }
@@ -332,28 +331,28 @@ fun ChangesScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     if (isAIGenerating) {
                                         CircularProgressIndicator(
-                                            modifier = Modifier.size(20.dp).padding(end = 4.dp),
+                                            modifier = Modifier.size(20.dp).padding(end = 4.dp), 
                                             strokeWidth = 2.dp,
                                             color = MaterialTheme.colorScheme.primary
                                         )
                                     } else {
                                         IconButton(
-                                            onClick = {
-                                                viewModel.generateAICommitMessage(selectedFiles) { message ->
-                                                    commitMessage = message
+                                            onClick = { 
+                                                viewModel.generateAICommitMessage(selectedFiles) { message -> 
+                                                    commitMessage = message 
                                                 }
                                             },
                                             enabled = selectedFiles.isNotEmpty()
                                         ) {
                                             Icon(
-                                                imageVector = AppIcons.AutoAwesome,
+                                                imageVector = Icons.Default.AutoAwesome, 
                                                 contentDescription = stringResource(R.string.changes_ai_generate),
                                                 tint = if (selectedFiles.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                                             )
                                         }
                                     }
                                     IconButton(onClick = { isMessageExpanded = true }) {
-                                        Icon(AppIcons.Fullscreen, contentDescription = stringResource(R.string.changes_expand_message))
+                                        Icon(Icons.Default.Fullscreen, contentDescription = stringResource(R.string.changes_expand_message))
                                     }
                                 }
                             }
@@ -389,7 +388,7 @@ fun ChangesScreen(
                                 Spacer(Modifier.width(12.dp))
                                 Text(stringResource(R.string.changes_status_committing), style = MaterialTheme.typography.titleMedium)
                             } else {
-                                Icon(AppIcons.Check, contentDescription = null)
+                                Icon(Icons.Default.Check, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = if (isAmend) stringResource(R.string.changes_btn_amend) else stringResource(R.string.changes_btn_commit),
@@ -440,7 +439,7 @@ fun ChangesScreen(
                     Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(
-                                imageVector = AppIcons.CheckCircleOutline,
+                                imageVector = Icons.Default.CheckCircleOutline,
                                 contentDescription = null,
                                 modifier = Modifier.size(64.dp),
                                 tint = MaterialTheme.colorScheme.surfaceVariant
@@ -473,27 +472,27 @@ fun ChangesScreen(
                         },
                         navigationIcon = {
                             IconButton(onClick = { isMessageExpanded = false }) {
-                                Icon(AppIcons.Close, contentDescription = stringResource(R.string.action_close))
+                                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.action_close))
                             }
                         },
                         actions = {
                             if (isAIGenerating) {
                                 CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp).padding(end = 16.dp),
+                                    modifier = Modifier.size(24.dp).padding(end = 16.dp), 
                                     strokeWidth = 2.dp,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             } else {
                                 IconButton(
-                                    onClick = {
-                                        viewModel.generateAICommitMessage(selectedFiles) { message ->
-                                            commitMessage = message
+                                    onClick = { 
+                                        viewModel.generateAICommitMessage(selectedFiles) { message -> 
+                                            commitMessage = message 
                                         }
                                     },
                                     enabled = selectedFiles.isNotEmpty()
                                 ) {
                                     Icon(
-                                        imageVector = AppIcons.AutoAwesome,
+                                        imageVector = Icons.Default.AutoAwesome, 
                                         contentDescription = stringResource(R.string.changes_ai_generate),
                                         tint = if (selectedFiles.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                                     )
@@ -639,11 +638,11 @@ fun getFriendlyStatusName(type: ChangeType): String {
 @Composable
 fun StatusIcon(type: ChangeType) {
     val icon: ImageVector = when (type) {
-        ChangeType.ADDED -> AppIcons.AddCircleOutline
-        ChangeType.MODIFIED -> AppIcons.Create
-        ChangeType.DELETED -> AppIcons.Delete
-        ChangeType.UNTRACKED -> AppIcons.Add
-        ChangeType.MISSING -> AppIcons.Delete
+        ChangeType.ADDED -> Icons.Default.AddCircleOutline
+        ChangeType.MODIFIED -> Icons.Default.Create
+        ChangeType.DELETED -> Icons.Default.Delete
+        ChangeType.UNTRACKED -> Icons.Default.Add
+        ChangeType.MISSING -> Icons.Default.Delete
     }
     val color = getStatusColor(type)
 

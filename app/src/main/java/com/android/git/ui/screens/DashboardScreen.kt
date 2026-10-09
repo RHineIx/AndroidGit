@@ -1,6 +1,5 @@
 package com.android.git.ui.screens
 
-import com.android.git.ui.icons.AppIcons
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -82,7 +81,7 @@ fun DashboardScreen(
     if (showForcePushDialog) {
         AlertDialog(
             onDismissRequest = { showForcePushDialog = false },
-            icon = { Icon(AppIcons.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
             title = { Text(stringResource(R.string.dashboard_force_push_title)) },
             text = { Text(stringResource(R.string.dashboard_force_push_msg)) },
             confirmButton = {
@@ -118,10 +117,10 @@ fun DashboardScreen(
                 },
                 actions = {
                     IconButton(onClick = onRefresh, enabled = !isLoading) {
-                        Icon(AppIcons.Refresh, contentDescription = stringResource(R.string.action_refresh))
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh))
                     }
                     IconButton(onClick = onSettings) {
-                        Icon(AppIcons.Settings, contentDescription = stringResource(R.string.settings_title))
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -180,7 +179,7 @@ fun DashboardScreen(
                                         enabled = !isLoading,
                                         shape = cardShape
                                     ) {
-                                        Icon(AppIcons.CloudDownload, contentDescription = null, Modifier.size(20.dp))
+                                        Icon(Icons.Default.CloudDownload, contentDescription = null, Modifier.size(20.dp))
                                         Spacer(Modifier.width(8.dp))
                                         Text(stringResource(R.string.dashboard_action_pull))
                                     }
@@ -191,7 +190,7 @@ fun DashboardScreen(
                                         enabled = !isLoading,
                                         shape = cardShape
                                     ) {
-                                        Icon(AppIcons.CloudUpload, contentDescription = null, Modifier.size(20.dp))
+                                        Icon(Icons.Default.CloudUpload, contentDescription = null, Modifier.size(20.dp))
                                         Spacer(Modifier.width(8.dp))
                                         Text(if (isForcePushChecked) stringResource(R.string.dashboard_action_force) else stringResource(R.string.dashboard_action_push))
                                     }
@@ -226,13 +225,13 @@ fun DashboardScreen(
                                 elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
                             ) {
                                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                                    Icon(AppIcons.CallSplit, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    Icon(Icons.AutoMirrored.Filled.CallSplit, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
                                     Spacer(Modifier.height(8.dp))
                                     Text(stringResource(R.string.dashboard_card_branch), style = MaterialTheme.typography.labelMedium)
                                     Text(dashboardState.branch, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, maxLines = 1)
                                 }
                             }
-
+                            
                             ElevatedCard(
                                 modifier = Modifier.weight(1f).clickable { onViewChanges() },
                                 colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
@@ -240,7 +239,7 @@ fun DashboardScreen(
                                 elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
                             ) {
                                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                                    Icon(AppIcons.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
+                                    Icon(Icons.Default.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
                                     Spacer(Modifier.height(8.dp))
                                     Text(stringResource(R.string.dashboard_card_changes), style = MaterialTheme.typography.labelMedium)
                                     Text("${dashboardState.changes} ${stringResource(R.string.dashboard_card_changes_suffix)}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
@@ -257,7 +256,7 @@ fun DashboardScreen(
                             elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
                         ) {
                             Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(AppIcons.History, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                                Icon(Icons.Default.History, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                                 Spacer(Modifier.width(16.dp))
                                 Column {
                                     Text(stringResource(R.string.dashboard_card_history), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
@@ -275,7 +274,7 @@ fun DashboardScreen(
                                 elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
                             ) {
                                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(AppIcons.Upload, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
+                                    Icon(Icons.Default.Upload, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
                                     Spacer(Modifier.width(16.dp))
                                     Text(stringResource(R.string.dashboard_unpushed_commits, dashboardState.unpushedCount), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
                                 }
@@ -292,14 +291,14 @@ fun DashboardScreen(
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             DashboardToolCard(
                                 title = stringResource(R.string.dashboard_tool_stash),
-                                icon = AppIcons.Archive,
+                                icon = Icons.Default.Archive,
                                 modifier = Modifier.weight(1f),
                                 enabled = !isLoading,
                                 onClick = onOpenStash
                             )
                             DashboardToolCard(
                                 title = stringResource(R.string.dashboard_tool_merge),
-                                icon = AppIcons.Warning,
+                                icon = Icons.Default.Warning,
                                 modifier = Modifier.weight(1f),
                                 enabled = !isLoading,
                                 onClick = onMergeConflicts
@@ -311,14 +310,14 @@ fun DashboardScreen(
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             DashboardToolCard(
                                 title = stringResource(R.string.dashboard_tool_gitignore),
-                                icon = AppIcons.Code,
+                                icon = Icons.Default.Code,
                                 modifier = Modifier.weight(1f),
                                 enabled = !isLoading,
                                 onClick = onIgnoreEditor
                             )
                             DashboardToolCard(
                                 title = stringResource(R.string.dashboard_tool_fetch),
-                                icon = AppIcons.Sync,
+                                icon = Icons.Default.Sync,
                                 modifier = Modifier.weight(1f),
                                 enabled = !isLoading,
                                 onClick = { viewModel.fetchAll() }
@@ -330,7 +329,7 @@ fun DashboardScreen(
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             DashboardToolCard(
                                 title = stringResource(R.string.dashboard_tool_workflows),
-                                icon = AppIcons.PlayCircle,
+                                icon = Icons.Default.PlayCircle,
                                 modifier = Modifier.weight(1f),
                                 enabled = !isLoading,
                                 onClick = onOpenWorkflows

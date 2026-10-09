@@ -24,7 +24,6 @@ slf4j-simple = "2.0.17"
 
 # Google Generative AI (Gemini)
 generativeai = "0.9.0"
-lucide = "2.2.1"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -49,8 +48,6 @@ androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 
-# Lucide icons as Compose ImageVector
-lucide-icons = { group = "com.composables", name = "icons-lucide-cmp", version.ref = "lucide" }
 # Navigation
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 

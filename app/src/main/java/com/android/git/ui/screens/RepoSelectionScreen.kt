@@ -1,6 +1,5 @@
 package com.android.git.ui.screens
 
-import com.android.git.ui.icons.AppIcons
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -98,7 +97,7 @@ fun RepoSelectionScreen(
                 },
                 actions = {
                     IconButton(onClick = onGeneralSettingsClick) {
-                        Icon(AppIcons.Settings, contentDescription = stringResource(R.string.settings_title))
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -120,14 +119,14 @@ fun RepoSelectionScreen(
             ) {
                 ActionCard(
                     title = stringResource(R.string.selection_open_local),
-                    icon = AppIcons.FolderOpen,
+                    icon = Icons.Default.FolderOpen,
                     modifier = Modifier.weight(1f),
                     onClick = { launcher.launch(null) }
                 )
 
                 ActionCard(
                     title = stringResource(R.string.selection_clone_repo),
-                    icon = AppIcons.Download,
+                    icon = Icons.Default.Download,
                     modifier = Modifier.weight(1f),
                     onClick = onCloneRequest
                 )
@@ -169,7 +168,7 @@ fun RepoSelectionScreen(
                 Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
-                            imageVector = AppIcons.History,
+                            imageVector = Icons.Default.History,
                             contentDescription = null,
                             modifier = Modifier.size(64.dp),
                             tint = MaterialTheme.colorScheme.surfaceVariant
@@ -279,7 +278,7 @@ fun RecentProjectItem(file: File, isMissing: Boolean = false, onClick: () -> Uni
             }
             IconButton(onClick = onRemove) {
                 Icon(
-                    AppIcons.Delete,
+                    Icons.Default.Delete,
                     contentDescription = stringResource(R.string.action_delete),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -292,7 +291,7 @@ fun RecentProjectItem(file: File, isMissing: Boolean = false, onClick: () -> Uni
 fun ProjectIcon(projectDir: File, isMissing: Boolean) {
     val pathKey = projectDir.absolutePath
     var projectBitmap by remember(pathKey) { mutableStateOf(ProjectImageCache.memoryCache.get(pathKey)) }
-    var projectTypeIcon by remember { mutableStateOf(AppIcons.Folder) }
+    var projectTypeIcon by remember { mutableStateOf(Icons.Default.Folder) }
     var iconTint by remember { mutableStateOf(Color.Unspecified) }
     val primaryColor = MaterialTheme.colorScheme.primary
 
@@ -303,16 +302,16 @@ fun ProjectIcon(projectDir: File, isMissing: Boolean) {
 
                 // Determine Project Type
                 if (fileNames.contains("pubspec.yaml")) {
-                    projectTypeIcon = AppIcons.Smartphone
+                    projectTypeIcon = Icons.Default.Smartphone
                     iconTint = Color(0xFF02569B) // Flutter Blue
                 } else if (fileNames.any { it.contains("build.gradle") }) {
-                    projectTypeIcon = AppIcons.Android
+                    projectTypeIcon = Icons.Default.Android
                     iconTint = Color(0xFF3DDC84) // Android Green
                 } else if (fileNames.contains("package.json")) {
-                    projectTypeIcon = AppIcons.Language
+                    projectTypeIcon = Icons.Default.Language
                     iconTint = Color(0xFFF7DF1E) // JS Yellow
                 } else if (fileNames.contains(".git")) {
-                    projectTypeIcon = AppIcons.Code
+                    projectTypeIcon = Icons.Default.Code
                     iconTint = primaryColor
                 }
 
@@ -388,7 +387,7 @@ fun ProjectIcon(projectDir: File, isMissing: Boolean) {
             )
         } else {
             Icon(
-                imageVector = if (isMissing) AppIcons.CloudOff else projectTypeIcon,
+                imageVector = if (isMissing) Icons.Default.CloudOff else projectTypeIcon,
                 contentDescription = null,
                 tint = if (isMissing) MaterialTheme.colorScheme.onSurfaceVariant else if (iconTint != Color.Unspecified) iconTint else MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(28.dp)

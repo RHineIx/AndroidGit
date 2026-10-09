@@ -1,6 +1,5 @@
 package com.android.git.ui.screens
 
-import com.android.git.ui.icons.AppIcons
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -95,7 +94,7 @@ fun GeneralSettingsScreen(
                 title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(AppIcons.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -147,7 +146,7 @@ fun GeneralSettingsScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            Icon(AppIcons.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
 
                         DropdownMenu(
@@ -164,7 +163,7 @@ fun GeneralSettingsScreen(
                                     },
                                     trailingIcon = {
                                         if (viewModel.themeMode == mode) {
-                                            Icon(AppIcons.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                            Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                                         }
                                     }
                                 )
@@ -236,9 +235,9 @@ fun GeneralSettingsScreen(
                         value = geminiApiKey,
                         onValueChange = { geminiApiKey = it },
                         label = { Text(stringResource(R.string.settings_gemini_api_key)) },
-                        leadingIcon = { Icon(AppIcons.VpnKey, contentDescription = null) },
+                        leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null) },
                         trailingIcon = {
-                            val image = if (apiKeyVisible) AppIcons.Visibility else AppIcons.VisibilityOff
+                            val image = if (apiKeyVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
                             val description = stringResource(if (apiKeyVisible) R.string.settings_hide_api_key else R.string.settings_show_api_key)
                             IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
                                 Icon(imageVector = image, contentDescription = description)
@@ -267,7 +266,7 @@ fun GeneralSettingsScreen(
                                 DropdownMenuItem(
                                     text = { Text(model) },
                                     onClick = { geminiModel = model; aiModelExpanded = false },
-                                    trailingIcon = { if (geminiModel == model) Icon(AppIcons.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                                    trailingIcon = { if (geminiModel == model) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
                                 )
                             }
                         }
@@ -297,7 +296,7 @@ fun GeneralSettingsScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(stringResource(R.string.settings_verifying))
                         } else {
-                            Icon(AppIcons.VerifiedUser, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(stringResource(R.string.settings_verify_save), fontWeight = FontWeight.Bold)
                         }
@@ -353,7 +352,7 @@ private fun GlobalAuthenticationSection(
             value = userName,
             onValueChange = onUserNameChange,
             label = { Text(stringResource(R.string.settings_auth_user_name)) },
-            leadingIcon = { Icon(AppIcons.Person, contentDescription = null) },
+            leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             singleLine = true,
@@ -364,7 +363,7 @@ private fun GlobalAuthenticationSection(
             value = userEmail,
             onValueChange = onUserEmailChange,
             label = { Text(stringResource(R.string.settings_auth_user_email)) },
-            leadingIcon = { Icon(AppIcons.Email, contentDescription = null) },
+            leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             singleLine = true,
@@ -413,7 +412,7 @@ private fun GlobalAuthenticationSection(
         ) {
             if (authSaving) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
             else {
-                Icon(AppIcons.Save, contentDescription = null)
+                Icon(Icons.Default.Save, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.action_save), fontWeight = FontWeight.Bold)
             }

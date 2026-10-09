@@ -1,6 +1,5 @@
 package com.android.git.ui.screens
 
-import com.android.git.ui.icons.AppIcons
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -76,7 +75,7 @@ fun MergeConflictScreen(
                 title = { Text(stringResource(R.string.conflict_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(AppIcons.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.errorContainer)
@@ -92,7 +91,7 @@ fun MergeConflictScreen(
                         modifier = Modifier.align(Alignment.Center),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(AppIcons.Warning, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.surfaceVariant)
+                        Icon(Icons.Default.Warning, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.surfaceVariant)
                         Spacer(Modifier.height(16.dp))
                         Text(stringResource(R.string.conflict_none), color = MaterialTheme.colorScheme.secondary)
 
@@ -142,7 +141,7 @@ fun ConflictItem(filePath: String, onClick: () -> Unit) {
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(AppIcons.Warning, null, tint = MaterialTheme.colorScheme.error)
+            Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error)
             Spacer(Modifier.width(16.dp))
             Text(filePath, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
         }
