@@ -2,6 +2,7 @@
 
 package com.android.git.ui.components
 
+import com.android.git.ui.icons.AppIcons
 import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
@@ -70,10 +71,10 @@ fun AppSnackbar(
     }
 
     val (backgroundColor, contentColor, icon) = when (type) {
-        SnackbarType.SUCCESS -> Triple(Color(0xFFE8F5E9), Color(0xFF2E7D32), Icons.Default.CheckCircle)
-        SnackbarType.ERROR -> Triple(Color(0xFFFFEBEE), Color(0xFFC62828), Icons.Default.Error)
-        SnackbarType.WARNING -> Triple(Color(0xFFFFF8E1), Color(0xFFF57F17), Icons.Default.Warning)
-        SnackbarType.INFO -> Triple(MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurface, Icons.Default.Info)
+        SnackbarType.SUCCESS -> Triple(Color(0xFFE8F5E9), Color(0xFF2E7D32), AppIcons.CheckCircle)
+        SnackbarType.ERROR -> Triple(Color(0xFFFFEBEE), Color(0xFFC62828), AppIcons.Error)
+        SnackbarType.WARNING -> Triple(Color(0xFFFFF8E1), Color(0xFFF57F17), AppIcons.Warning)
+        SnackbarType.INFO -> Triple(MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurface, AppIcons.Info)
     }
 
     AnimatedVisibility(
@@ -124,7 +125,7 @@ fun AppSnackbar(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
-                        Icon(imageVector = Icons.Default.Close, contentDescription = stringResource(R.string.action_dismiss), tint = contentColor.copy(alpha = 0.6f))
+                        Icon(imageVector = AppIcons.Close, contentDescription = stringResource(R.string.action_dismiss), tint = contentColor.copy(alpha = 0.6f))
                     }
                 }
             }
@@ -179,7 +180,7 @@ fun UpdateBottomSheet(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
-                        imageVector = Icons.Default.SystemUpdate,
+                        imageVector = AppIcons.SystemUpdate,
                         contentDescription = null,
                         modifier = Modifier.size(64.dp),
                         tint = MaterialTheme.colorScheme.primary

@@ -1,5 +1,6 @@
 package com.android.git.ui.screens
 
+import com.android.git.ui.icons.AppIcons
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -56,7 +57,7 @@ fun RepoSettingsScreen(
                 title = { Text(stringResource(R.string.repo_settings_title), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(AppIcons.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -90,7 +91,7 @@ fun RepoSettingsScreen(
                         value = userName,
                         onValueChange = { userName = it },
                         label = { Text(stringResource(R.string.repo_settings_label_user)) },
-                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                        leadingIcon = { Icon(AppIcons.Person, contentDescription = null) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = textFieldShape,
                         singleLine = true,
@@ -103,7 +104,7 @@ fun RepoSettingsScreen(
                         value = userEmail,
                         onValueChange = { userEmail = it },
                         label = { Text(stringResource(R.string.repo_settings_label_email)) },
-                        leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                        leadingIcon = { Icon(AppIcons.Email, contentDescription = null) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = textFieldShape,
                         singleLine = true,
@@ -177,7 +178,7 @@ fun RepoSettingsScreen(
                         strokeWidth = 2.5.dp
                     )
                 } else {
-                    Icon(Icons.Default.Save, contentDescription = null)
+                    Icon(AppIcons.Save, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(stringResource(R.string.repo_settings_btn_save), style = MaterialTheme.typography.titleMedium)
                 }

@@ -1,5 +1,6 @@
 package com.android.git.ui.screens
 
+import com.android.git.ui.icons.AppIcons
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -30,7 +31,7 @@ fun ConflictResolverScreen(
     onBack: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    
+
     var fileContent by remember { mutableStateOf("") } // Init empty, load in LaunchedEffect
     var isResolving by remember { mutableStateOf(false) }
     var statusMessage by remember { mutableStateOf("") }
@@ -45,7 +46,7 @@ fun ConflictResolverScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Column {
                         Text(stringResource(R.string.conflict_resolver_title))
                         Text(filePath, style = MaterialTheme.typography.labelSmall)
@@ -53,7 +54,7 @@ fun ConflictResolverScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(AppIcons.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -87,7 +88,7 @@ fun ConflictResolverScreen(
                     ) {
                         Text(stringResource(R.string.conflict_btn_ours))
                     }
-                    
+
                     Button(
                         onClick = {
                             if (isResolving) return@Button
@@ -115,7 +116,7 @@ fun ConflictResolverScreen(
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
-            
+
             // Info Header
             Surface(
                 color = MaterialTheme.colorScheme.secondaryContainer,

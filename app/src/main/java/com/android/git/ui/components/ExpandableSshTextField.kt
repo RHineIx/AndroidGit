@@ -1,5 +1,6 @@
 package com.android.git.ui.components
 
+import com.android.git.ui.icons.AppIcons
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
@@ -52,7 +53,7 @@ fun ExpandableSshTextField(
             if (isSecret) {
                 androidx.compose.material3.IconButton(onClick = { visible = !visible }, enabled = enabled) {
                     Icon(
-                        imageVector = if (visible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                        imageVector = if (visible) AppIcons.Visibility else AppIcons.VisibilityOff,
                         contentDescription = if (visible) hideDescription else showDescription
                     )
                 }

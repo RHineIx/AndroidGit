@@ -80,6 +80,7 @@ dependencies {
     implementation(libs.androidx.material3)
 
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.lucide.icons)
     implementation(libs.androidx.material.icons.extended)
 
     // JGit & Required Crypto Dependencies for modern SSH support

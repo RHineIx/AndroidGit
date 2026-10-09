@@ -1,5 +1,6 @@
 package com.android.git.ui.components
 
+import com.android.git.ui.icons.AppIcons
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -78,7 +79,7 @@ fun GitAuthenticationPanel(
             onDismissRequest = { showDeleteDialog = false },
             title = { Text(stringResource(R.string.repo_settings_ssh_clear)) },
             text = { Text("Are you sure you want to remove the SSH keys from this device? This action cannot be undone.") },
-            icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            icon = { Icon(AppIcons.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -126,7 +127,7 @@ fun GitAuthenticationPanel(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        Icons.Default.Lock,
+                        AppIcons.Lock,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
                         tint = if (httpsSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
@@ -151,7 +152,7 @@ fun GitAuthenticationPanel(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        Icons.Default.Key,
+                        AppIcons.Key,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
                         tint = if (sshSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
@@ -181,9 +182,9 @@ fun GitAuthenticationPanel(
                         value = token,
                         onValueChange = onTokenChange,
                         label = { Text(stringResource(R.string.repo_settings_label_token)) },
-                        leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null) },
+                        leadingIcon = { Icon(AppIcons.VpnKey, contentDescription = null) },
                         trailingIcon = {
-                            val image = if (tokenVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
+                            val image = if (tokenVisible) AppIcons.Visibility else AppIcons.VisibilityOff
                             IconButton(onClick = { tokenVisible = !tokenVisible }) {
                                 Icon(imageVector = image, contentDescription = null)
                             }
@@ -214,7 +215,7 @@ fun GitAuthenticationPanel(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
-                            Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(20.dp))
+                            Icon(AppIcons.Info, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(12.dp))
                             Text(
                                 text = stringResource(R.string.ssh_clone_help),
@@ -234,7 +235,7 @@ fun GitAuthenticationPanel(
                             sshGenerationError = ""
                         },
                         label = { Text(stringResource(R.string.ssh_private_key_label)) },
-                        leadingIcon = Icons.Default.Key,
+                        leadingIcon = AppIcons.Key,
                         enabled = !isBusy,
                         isSecret = true,
                         showDescription = stringResource(R.string.ssh_show_value),
@@ -249,7 +250,7 @@ fun GitAuthenticationPanel(
                         value = sshPassphrase,
                         onValueChange = onSshPassphraseChange,
                         label = { Text(stringResource(R.string.ssh_passphrase_label)) },
-                        leadingIcon = Icons.Default.Password,
+                        leadingIcon = AppIcons.Password,
                         enabled = !isBusy,
                         isSecret = true,
                         showDescription = stringResource(R.string.ssh_show_value),
@@ -270,7 +271,7 @@ fun GitAuthenticationPanel(
                                 sshGenerationError = ""
                             },
                             label = { Text(stringResource(R.string.ssh_public_key_label)) },
-                            leadingIcon = Icons.Default.Key,
+                            leadingIcon = AppIcons.Key,
                             enabled = !isBusy,
                             showDescription = stringResource(R.string.ssh_show_value),
                             hideDescription = stringResource(R.string.ssh_hide_value),
@@ -291,7 +292,7 @@ fun GitAuthenticationPanel(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Icon(
-                                Icons.Default.ContentCopy,
+                                AppIcons.ContentCopy,
                                 contentDescription = stringResource(R.string.repo_settings_ssh_copy_public)
                             )
                         }
@@ -327,7 +328,7 @@ fun GitAuthenticationPanel(
                         modifier = Modifier.fillMaxWidth().height(50.dp),
                         shape = modernShape
                     ) {
-                        Icon(Icons.Default.AutoFixHigh, contentDescription = null)
+                        Icon(AppIcons.AutoFixHigh, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.ssh_generate_key), fontWeight = FontWeight.Bold)
                     }
@@ -340,7 +341,7 @@ fun GitAuthenticationPanel(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF2E7D32), modifier = Modifier.size(20.dp))
+                                Icon(AppIcons.CheckCircle, contentDescription = null, tint = Color(0xFF2E7D32), modifier = Modifier.size(20.dp))
                                 Spacer(Modifier.width(12.dp))
                                 Text(
                                     text = stringResource(R.string.ssh_generated_fmt, generatedAlgorithm),
@@ -360,7 +361,7 @@ fun GitAuthenticationPanel(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Error, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(20.dp))
+                                Icon(AppIcons.Error, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(20.dp))
                                 Spacer(Modifier.width(12.dp))
                                 Text(
                                     text = sshGenerationError,
@@ -382,7 +383,7 @@ fun GitAuthenticationPanel(
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                             border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
                         ) {
-                            Icon(Icons.Default.DeleteOutline, contentDescription = null)
+                            Icon(AppIcons.DeleteOutline, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
                             Text(stringResource(R.string.repo_settings_ssh_clear), fontWeight = FontWeight.Bold)
                         }

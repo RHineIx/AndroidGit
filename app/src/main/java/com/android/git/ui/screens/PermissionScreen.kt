@@ -1,5 +1,6 @@
 package com.android.git.ui.screens
 
+import com.android.git.ui.icons.AppIcons
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,7 +37,7 @@ fun PermissionScreen(onRequest: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.FolderOpen,
+                    imageVector = AppIcons.FolderOpen,
                     contentDescription = null,
                     modifier = Modifier.size(64.dp),
                     tint = MaterialTheme.colorScheme.primary
@@ -55,7 +56,7 @@ fun PermissionScreen(onRequest: () -> Unit) {
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                
+
                 Surface(
                     color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
                     shape = RoundedCornerShape(8.dp),
@@ -77,7 +78,7 @@ fun PermissionScreen(onRequest: () -> Unit) {
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Icon(Icons.Default.Settings, null)
+                    Icon(AppIcons.Settings, null)
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.perm_btn_grant))
                 }

@@ -1,5 +1,6 @@
 package com.android.git.ui.screens
 
+import com.android.git.ui.icons.AppIcons
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -79,12 +80,12 @@ fun WorkflowsScreen(
                 title = { Text(stringResource(R.string.workflow_title), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(AppIcons.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.loadWorkflowsForCurrentRepository() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh))
+                        Icon(AppIcons.Refresh, contentDescription = stringResource(R.string.action_refresh))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -150,7 +151,7 @@ fun WorkflowsScreen(
                                 enabled = !viewModel.isWorkflowsLoading && workflow.state.equals("active", ignoreCase = true),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
-                                Icon(Icons.Default.Settings, contentDescription = null)
+                                Icon(AppIcons.Settings, contentDescription = null)
                                 Spacer(Modifier.padding(horizontal = 2.dp))
                                 Text(stringResource(R.string.workflow_configure_run))
                             }
@@ -263,7 +264,7 @@ private fun WorkflowRunDialog(
                                         trailingIcon = {
                                             if (ref == branchName) {
                                                 Icon(
-                                                    imageVector = Icons.Default.Check,
+                                                    imageVector = AppIcons.Check,
                                                     contentDescription = null,
                                                     tint = MaterialTheme.colorScheme.primary
                                                 )
@@ -309,7 +310,7 @@ private fun WorkflowRunDialog(
             ) {
                 if (viewModel.isWorkflowRunning) CircularProgressIndicator(modifier = Modifier.height(18.dp), strokeWidth = 2.dp)
                 else {
-                    Icon(Icons.Default.PlayArrow, contentDescription = null)
+                    Icon(AppIcons.PlayArrow, contentDescription = null)
                     Spacer(Modifier.padding(horizontal = 2.dp))
                     Text(stringResource(R.string.workflow_execute))
                 }
@@ -372,9 +373,9 @@ private fun WorkflowInputField(
 @Composable
 private fun WorkflowRunCard(run: GitHubWorkflowRun) {
     val icon = when {
-        run.conclusion.equals("success", ignoreCase = true) -> Icons.Default.CheckCircle
-        run.conclusion.equals("failure", ignoreCase = true) -> Icons.Default.Error
-        else -> Icons.Default.Refresh
+        run.conclusion.equals("success", ignoreCase = true) -> AppIcons.CheckCircle
+        run.conclusion.equals("failure", ignoreCase = true) -> AppIcons.Error
+        else -> AppIcons.Refresh
     }
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),

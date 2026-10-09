@@ -1,5 +1,6 @@
 package com.android.git.ui.screens
 
+import com.android.git.ui.icons.AppIcons
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -142,7 +143,7 @@ fun StashScreen(
                     enabled = !isActionRunning
                 ) { Text(stringResource(R.string.stash_btn_apply)) }
             },
-            icon = { Icon(Icons.Default.Archive, null) }
+            icon = { Icon(AppIcons.Archive, null) }
         )
     }
 
@@ -174,7 +175,7 @@ fun StashScreen(
                     Text(stringResource(R.string.action_cancel))
                 }
             },
-            icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
+            icon = { Icon(AppIcons.Delete, null, tint = MaterialTheme.colorScheme.error) }
         )
     }
 
@@ -184,7 +185,7 @@ fun StashScreen(
                 title = { Text(stringResource(R.string.stash_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(AppIcons.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -192,7 +193,7 @@ fun StashScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { if (!isLoading && !isActionRunning) showCreateDialog = true }) {
-                Icon(Icons.Default.Add, null)
+                Icon(AppIcons.Add, null)
             }
         }
     ) { padding ->
@@ -205,7 +206,7 @@ fun StashScreen(
                         modifier = Modifier.align(Alignment.Center),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(Icons.Default.Archive, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.surfaceVariant)
+                        Icon(AppIcons.Archive, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.surfaceVariant)
                         Spacer(Modifier.height(16.dp))
                         Text(stringResource(R.string.stash_empty), color = MaterialTheme.colorScheme.secondary)
                     }
@@ -273,7 +274,7 @@ fun StashItemView(
         }
 
         IconButton(onClick = onDrop) {
-            Icon(Icons.Default.Delete, stringResource(R.string.action_delete), tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
+            Icon(AppIcons.Delete, stringResource(R.string.action_delete), tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
         }
     }
 }
