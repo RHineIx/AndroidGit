@@ -1,28 +1,40 @@
 package com.android.git.ui.screens
 
+import com.android.git.ui.components.DropdownMenu
+
+import com.android.git.ui.components.CircularProgressIndicator
+
+import com.android.git.ui.components.GitIcons as Icons
+
+import com.android.git.ui.components.OplusScaffold
+import com.android.git.ui.components.OplusSectionTitle
+import com.android.git.ui.components.OplusPreferenceGroup
+import com.android.git.ui.components.OplusPreferenceRow
+import com.android.git.ui.components.OplusPreferenceDivider
+import com.android.git.ui.components.Button
+import com.android.git.ui.components.DropdownMenuItem
+import com.android.git.ui.components.IconButton
+import com.android.git.ui.components.OutlinedTextField
+import com.android.git.ui.components.Switch
+
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import io.github.suqi8.coui.kmp.basic.PreciseClickState
+import io.github.suqi8.coui.kmp.basic.preciseClickAnchor
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -32,9 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.android.git.R
 import com.android.git.data.GitAuthManager
 import com.android.git.data.GitAuthMode
@@ -43,6 +53,13 @@ import com.android.git.data.ThemeMode
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.components.GitAuthenticationPanel
 import com.android.git.ui.viewmodel.MainViewModel
+import io.github.lyxnx.compose.ui.tablericons.TablerIcons
+import io.github.lyxnx.compose.ui.tablericons.outline.BrightnessAuto
+import io.github.lyxnx.compose.ui.tablericons.outline.BrandTelegram
+import io.github.lyxnx.compose.ui.tablericons.outline.Moon
+import io.github.lyxnx.compose.ui.tablericons.outline.Selector
+import io.github.lyxnx.compose.ui.tablericons.outline.Sun
+import io.github.lyxnx.compose.ui.tablericons.outline.Versions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +79,7 @@ fun GeneralSettingsScreen(
 
     var autoOpen by remember { mutableStateOf(prefs.isAutoOpenEnabled()) }
     var themeExpanded by remember { mutableStateOf(false) }
+    val themeAnchor = remember { PreciseClickState() }
 
     var userName by remember { mutableStateOf(prefs.getUserName()) }
     var userEmail by remember { mutableStateOf(prefs.getUserEmail()) }
@@ -88,31 +106,22 @@ fun GeneralSettingsScreen(
         "gemma-3-27b-it"
     )
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.settings_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
-            )
-        }
+    OplusScaffold(
+        title = stringResource(R.string.settings_title),
+        onBack = onBack
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                    .padding(padding)
+                    .padding(horizontal = 12.dp)
+                    .padding(top = 8.dp, bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
 
-                SettingsSection(title = stringResource(R.string.settings_section_app)) {
-
+                SettingsSection(title = stringResource(R.string.settings_section_app), padded = false) {
                     val themeNames = listOf(
                         stringResource(R.string.settings_theme_system),
                         stringResource(R.string.settings_theme_light),
@@ -123,88 +132,70 @@ fun GeneralSettingsScreen(
                         ThemeMode.LIGHT -> themeNames[1]
                         ThemeMode.DARK -> themeNames[2]
                     }
-
+                    val themeIcons = listOf(
+                        TablerIcons.Outline.BrightnessAuto,
+                        TablerIcons.Outline.Sun,
+                        TablerIcons.Outline.Moon
+                    )
                     Box {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { themeExpanded = true }
-                                .padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column {
-                                Text(
-                                    stringResource(R.string.settings_theme_title),
-                                    fontWeight = FontWeight.SemiBold,
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                                Text(
-                                    currentThemeName,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                        OplusPreferenceRow(
+                            title = stringResource(R.string.settings_theme_title),
+                            modifier = Modifier.preciseClickAnchor(themeAnchor),
+                            summary = currentThemeName,
+                            icon = TablerIcons.Outline.BrightnessAuto,
+                            onClick = { themeExpanded = true },
+                            trailing = {
+                                Icon(TablerIcons.Outline.Selector, contentDescription = null,
+                                    modifier = Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-
+                        )
                         DropdownMenu(
                             expanded = themeExpanded,
-                            onDismissRequest = { themeExpanded = false },
-                            shape = RoundedCornerShape(12.dp)
+                            width = 176.dp,
+                            preciseClickState = themeAnchor,
+                            onDismissRequest = { themeExpanded = false }
                         ) {
                             ThemeMode.entries.forEachIndexed { index, mode ->
+                                val selected = viewModel.themeMode == mode
                                 DropdownMenuItem(
-                                    text = { Text(themeNames[index]) },
+                                    showDivider = index > 0,
+                                    text = {
+                                        Text(themeNames[index], color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            if (selected) Icons.Default.Check else themeIcons[index],
+                                            contentDescription = null,
+                                            tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    },
                                     onClick = {
                                         viewModel.updateThemeMode(mode)
                                         themeExpanded = false
-                                    },
-                                    trailingIcon = {
-                                        if (viewModel.themeMode == mode) {
-                                            Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                        }
                                     }
                                 )
                             }
                         }
                     }
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 16.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                stringResource(R.string.settings_auto_open),
-                                fontWeight = FontWeight.SemiBold,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                            Text(
-                                stringResource(R.string.settings_auto_open_desc),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                    OplusPreferenceDivider()
+                    OplusPreferenceRow(
+                        title = stringResource(R.string.settings_auto_open),
+                        summary = stringResource(R.string.settings_auto_open_desc),
+                        icon = Icons.Default.FolderOpen,
+                        onClick = {
+                            autoOpen = !autoOpen
+                            prefs.setAutoOpenEnabled(autoOpen)
+                        },
+                        trailing = {
+                            Switch(
+                                checked = autoOpen,
+                                onCheckedChange = {
+                                    autoOpen = it
+                                    prefs.setAutoOpenEnabled(it)
+                                }
                             )
                         }
-                        Switch(
-                            checked = autoOpen,
-                            onCheckedChange = {
-                                autoOpen = it
-                                prefs.setAutoOpenEnabled(it)
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = MaterialTheme.colorScheme.background,
-                                checkedTrackColor = MaterialTheme.colorScheme.primary
-                            )
-                        )
-                    }
+                    )
                 }
 
                 GlobalAuthenticationSection(
@@ -230,85 +221,90 @@ fun GeneralSettingsScreen(
                     onAuthSavedChange = { authSaved = it }
                 )
 
-                SettingsSection(title = stringResource(R.string.settings_ai_section)) {
-                    OutlinedTextField(
-                        value = geminiApiKey,
-                        onValueChange = { geminiApiKey = it },
-                        label = { Text(stringResource(R.string.settings_gemini_api_key)) },
-                        leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null) },
-                        trailingIcon = {
-                            val image = if (apiKeyVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
-                            val description = stringResource(if (apiKeyVisible) R.string.settings_hide_api_key else R.string.settings_show_api_key)
-                            IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
-                                Icon(imageVector = image, contentDescription = description)
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        singleLine = true
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    ExposedDropdownMenuBox(expanded = aiModelExpanded, onExpandedChange = { aiModelExpanded = it }) {
+                SettingsSection(title = stringResource(R.string.settings_ai_section), padded = false) {
+                    Column(Modifier.padding(16.dp)) {
                         OutlinedTextField(
-                            value = geminiModel,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text(stringResource(R.string.settings_ai_model)) },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = aiModelExpanded) },
-                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp)
+                            value = geminiApiKey,
+                            onValueChange = { geminiApiKey = it },
+                            label = { Text(stringResource(R.string.settings_gemini_api_key)) },
+                            leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null, modifier = Modifier.size(22.dp)) },
+                            trailingIcon = {
+                                val image = if (apiKeyVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
+                                val description = stringResource(if (apiKeyVisible) R.string.settings_hide_api_key else R.string.settings_show_api_key)
+                                IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
+                                    Icon(imageVector = image, contentDescription = description)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            singleLine = true
                         )
-                        ExposedDropdownMenu(expanded = aiModelExpanded, onDismissRequest = { aiModelExpanded = false }, modifier = Modifier.fillMaxWidth(0.85f)) {
+
+                    }
+                    OplusPreferenceDivider()
+                    Box {
+                        OplusPreferenceRow(
+                            title = stringResource(R.string.settings_ai_model),
+                            summary = geminiModel,
+                            icon = Icons.Default.AutoAwesome,
+                            onClick = { aiModelExpanded = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            trailing = {
+                                Icon(TablerIcons.Outline.Selector, contentDescription = null,
+                                    modifier = Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        )
+                        DropdownMenu(expanded = aiModelExpanded, onDismissRequest = { aiModelExpanded = false }, width = 272.dp) {
                             aiModels.forEach { model ->
+                                val selected = geminiModel == model
                                 DropdownMenuItem(
-                                    text = { Text(model) },
+                                    text = { Text(model, color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface) },
                                     onClick = { geminiModel = model; aiModelExpanded = false },
-                                    trailingIcon = { if (geminiModel == model) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                                    leadingIcon = {
+                                        if (selected) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                        else Spacer(Modifier.size(22.dp))
+                                    }
                                 )
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-                    OutlinedTextField(
-                        value = geminiPrompt,
-                        onValueChange = { geminiPrompt = it },
-                        label = { Text(stringResource(R.string.settings_custom_prompt)) },
-                        placeholder = { Text(stringResource(R.string.settings_custom_prompt_hint)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        minLines = 3,
-                        maxLines = 6
-                    )
+                    OplusPreferenceDivider()
+                    Column(Modifier.padding(16.dp)) {
+                        OutlinedTextField(
+                            value = geminiPrompt,
+                            onValueChange = { geminiPrompt = it },
+                            label = { Text(stringResource(R.string.settings_custom_prompt)) },
+                            placeholder = { Text(stringResource(R.string.settings_custom_prompt_hint)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            minLines = 3,
+                            maxLines = 6
+                        )
 
-                    Spacer(modifier = Modifier.height(20.dp))
-                    Button(
-                        onClick = { focusManager.clearFocus(); viewModel.verifyGeminiSettings(geminiApiKey, geminiModel, geminiPrompt) },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        enabled = !isLoading
-                    ) {
-                        if (isLoading) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(stringResource(R.string.settings_verifying))
-                        } else {
-                            Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(stringResource(R.string.settings_verify_save), fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Button(
+                            onClick = { focusManager.clearFocus(); viewModel.verifyGeminiSettings(geminiApiKey, geminiModel, geminiPrompt) },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            enabled = !isLoading
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.settings_verifying))
+                            } else {
+                                Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.settings_verify_save), fontWeight = FontWeight.Medium)
+                            }
                         }
                     }
                 }
 
-                DeveloperSection(context)
-
-                AppVersionFooter(
-                    context = context,
-                    onCheckUpdate = onCheckUpdate
-                )
+                DeveloperSection(context = context, onCheckUpdate = onCheckUpdate)
 
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -347,77 +343,88 @@ private fun GlobalAuthenticationSection(
     authSaved: Boolean,
     onAuthSavedChange: (Boolean) -> Unit
 ) {
-    SettingsSection(title = stringResource(R.string.settings_auth_section)) {
-        OutlinedTextField(
-            value = userName,
-            onValueChange = onUserNameChange,
-            label = { Text(stringResource(R.string.settings_auth_user_name)) },
-            leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            singleLine = true,
-            enabled = !authSaving
-        )
-        Spacer(Modifier.height(12.dp))
-        OutlinedTextField(
-            value = userEmail,
-            onValueChange = onUserEmailChange,
-            label = { Text(stringResource(R.string.settings_auth_user_email)) },
-            leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            enabled = !authSaving
-        )
-        Spacer(Modifier.height(12.dp))
-        Text(stringResource(R.string.settings_auth_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(12.dp))
-
-        GitAuthenticationPanel(
-            authManager = authManager,
-            userEmail = userEmail,
-            authMode = authMode,
-            onAuthModeChange = { onAuthModeChange(it); onAuthSavedChange(false) },
-            token = token,
-            onTokenChange = { onTokenChange(it); onAuthSavedChange(false) },
-            sshPrivateKey = sshPrivateKey,
-            onSshPrivateKeyChange = { onSshPrivateKeyChange(it); onAuthSavedChange(false) },
-            sshPublicKey = sshPublicKey,
-            onSshPublicKeyChange = { onSshPublicKeyChange(it); onAuthSavedChange(false) },
-            sshPassphrase = sshPassphrase,
-            onSshPassphraseChange = { onSshPassphraseChange(it); onAuthSavedChange(false) },
-            isBusy = authSaving,
-            onClearSshData = {
-                prefs.clearSshKey()
-                onAuthSavedChange(false)
-            }
-        )
-
-        Spacer(Modifier.height(16.dp))
-        Button(
-            onClick = {
-                onAuthSavingChange(true)
-                prefs.setUserName(userName)
-                prefs.setUserEmail(userEmail)
-                prefs.setAuthMode(authMode)
-                if (authMode == GitAuthMode.HTTPS) prefs.saveToken(token)
-                else prefs.saveSshKey(sshPrivateKey, sshPublicKey, sshPassphrase)
-                onAuthSavingChange(false)
-                onAuthSavedChange(true)
-            },
-            modifier = Modifier.fillMaxWidth().height(50.dp),
-            enabled = !authSaving && (authMode == GitAuthMode.HTTPS || sshPrivateKey.isNotBlank()),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            if (authSaving) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-            else {
-                Icon(Icons.Default.Save, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.action_save), fontWeight = FontWeight.Bold)
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OplusSectionTitle(title = stringResource(R.string.settings_auth_section))
+        OplusPreferenceGroup {
+            Column(Modifier.padding(16.dp)) {
+                OutlinedTextField(
+                    value = userName,
+                    onValueChange = onUserNameChange,
+                    label = { Text(stringResource(R.string.settings_auth_user_name)) },
+                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(22.dp)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true,
+                    enabled = !authSaving
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = userEmail,
+                    onValueChange = onUserEmailChange,
+                    label = { Text(stringResource(R.string.settings_auth_user_email)) },
+                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(22.dp)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    enabled = !authSaving
+                )
             }
         }
-        if (authSaved) Text(stringResource(R.string.settings_auth_saved), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
+        Text(
+            stringResource(R.string.settings_auth_help),
+            modifier = Modifier.padding(horizontal = 20.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        OplusPreferenceGroup {
+            Column(Modifier.padding(16.dp)) {
+                GitAuthenticationPanel(
+                    authManager = authManager,
+                    userEmail = userEmail,
+                    authMode = authMode,
+                    onAuthModeChange = { onAuthModeChange(it); onAuthSavedChange(false) },
+                    token = token,
+                    onTokenChange = { onTokenChange(it); onAuthSavedChange(false) },
+                    sshPrivateKey = sshPrivateKey,
+                    onSshPrivateKeyChange = { onSshPrivateKeyChange(it); onAuthSavedChange(false) },
+                    sshPublicKey = sshPublicKey,
+                    onSshPublicKeyChange = { onSshPublicKeyChange(it); onAuthSavedChange(false) },
+                    sshPassphrase = sshPassphrase,
+                    onSshPassphraseChange = { onSshPassphraseChange(it); onAuthSavedChange(false) },
+                    isBusy = authSaving,
+                    onClearSshData = {
+                        prefs.clearSshKey()
+                        onAuthSavedChange(false)
+                    }
+                )
+
+                Spacer(Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        onAuthSavingChange(true)
+                        prefs.setUserName(userName)
+                        prefs.setUserEmail(userEmail)
+                        prefs.setAuthMode(authMode)
+                        if (authMode == GitAuthMode.HTTPS) prefs.saveToken(token)
+                        else prefs.saveSshKey(sshPrivateKey, sshPublicKey, sshPassphrase)
+                        onAuthSavingChange(false)
+                        onAuthSavedChange(true)
+                    },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+                    enabled = !authSaving && (authMode == GitAuthMode.HTTPS || sshPrivateKey.isNotBlank()),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    if (authSaving) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                    else {
+                        Icon(Icons.Default.Save, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.action_save), fontWeight = FontWeight.Medium)
+                    }
+                }
+                if (authSaved) Text(stringResource(R.string.settings_auth_saved), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
+            }
+        }
     }
 }
 
@@ -446,132 +453,50 @@ fun AppVersionFooter(
         packageInfo?.versionCode ?: 0
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 16.dp, bottom = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Surface(
-            onClick = onCheckUpdate,
-            shape = RoundedCornerShape(12.dp),
-            color = Color.Transparent,
-            modifier = Modifier.padding(4.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = stringResource(R.string.settings_version_fmt, versionName, versionCode),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    text = stringResource(R.string.settings_check_updates_hint),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontSize = 10.sp,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                )
-            }
-        }
-    }
+    OplusPreferenceRow(
+        title = stringResource(R.string.settings_version_fmt, versionName, versionCode),
+        summary = stringResource(R.string.settings_check_updates_hint),
+        icon = TablerIcons.Outline.Versions,
+        onClick = onCheckUpdate
+    )
 }
 
 @Composable
-fun DeveloperSection(context: Context) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-    ) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+fun DeveloperSection(context: Context, onCheckUpdate: () -> Unit) {
+    SettingsSection(title = stringResource(R.string.settings_developer_by), padded = false) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                text = stringResource(R.string.settings_developer_by),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.secondary
+            Image(
+                painter = painterResource(id = R.drawable.me),
+                contentDescription = stringResource(R.string.settings_developer_image_desc),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.size(32.dp).clip(RoundedCornerShape(8.dp))
             )
-
-            Spacer(Modifier.height(12.dp))
-
-            Surface(
-                modifier = Modifier.size(80.dp),
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.me),
-                    contentDescription = stringResource(R.string.settings_developer_image_desc),
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            Text(
-                text = "RHineix",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Text(
-                text = "@RHineix",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Spacer(Modifier.height(24.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                SocialButton(
-                    iconRes = R.drawable.ic_github,
-                    label = stringResource(R.string.settings_social_github),
-                    onClick = { openUrl(context, "https://github.com/RHineix") }
-                )
-
-                Spacer(Modifier.width(16.dp))
-
-                SocialButton(
-                    iconRes = R.drawable.ic_telegram,
-                    label = stringResource(R.string.settings_social_telegram),
-                    onClick = { openUrl(context, "https://t.me/RHineix") }
-                )
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("RHineix", style = MaterialTheme.typography.titleMedium)
+                Text("@RHineix", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-    }
-}
-
-@Composable
-fun SocialButton(iconRes: Int, label: String, onClick: () -> Unit) {
-    FilledTonalButton(
-        onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-        colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
-    ) {
-        Icon(
-            painter = painterResource(id = iconRes),
-            contentDescription = label,
-            modifier = Modifier.size(22.dp),
-            tint = MaterialTheme.colorScheme.onSurface
+        OplusPreferenceDivider()
+        OplusPreferenceRow(
+            title = stringResource(R.string.settings_social_github),
+            icon = Icons.Default.Source,
+            onClick = { openUrl(context, "https://github.com/RHineix") }
         )
-        Spacer(Modifier.width(10.dp))
-        Text(label, fontWeight = FontWeight.Medium)
+        OplusPreferenceDivider()
+        OplusPreferenceRow(
+            title = stringResource(R.string.settings_social_telegram),
+            icon = TablerIcons.Outline.BrandTelegram,
+            onClick = { openUrl(context, "https://t.me/RHineix") }
+        )
+        OplusPreferenceDivider()
+        AppVersionFooter(context = context, onCheckUpdate = onCheckUpdate)
     }
 }
+
 
 fun openUrl(context: Context, url: String) {
     try {
@@ -582,21 +507,16 @@ fun openUrl(context: Context, url: String) {
 }
 
 @Composable
-fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
+fun SettingsSection(
+    title: String,
+    padded: Boolean = true,
+    content: @Composable ColumnScope.() -> Unit
+) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 4.dp, bottom = 12.dp)
-        )
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) { content() }
+        OplusSectionTitle(title = title)
+        OplusPreferenceGroup {
+            if (padded) Column(Modifier.padding(16.dp), content = content)
+            else content()
         }
     }
 }

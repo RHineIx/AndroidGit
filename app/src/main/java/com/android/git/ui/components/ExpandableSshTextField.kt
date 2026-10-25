@@ -1,12 +1,10 @@
 package com.android.git.ui.components
 
+import com.android.git.ui.components.GitIcons as Icons
+
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,7 +33,7 @@ fun ExpandableSshTextField(
     isSecret: Boolean = false,
     isError: Boolean = false,
     supportingText: (@Composable (() -> Unit))? = null,
-    shape: Shape = RoundedCornerShape(16.dp),
+    shape: Shape = RoundedCornerShape(12.dp),
     maxExpandedLines: Int = 8,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default
 ) {
@@ -50,7 +48,7 @@ fun ExpandableSshTextField(
         leadingIcon = { Icon(leadingIcon, contentDescription = null) },
         trailingIcon = {
             if (isSecret) {
-                androidx.compose.material3.IconButton(onClick = { visible = !visible }, enabled = enabled) {
+                IconButton(onClick = { visible = !visible }, enabled = enabled) {
                     Icon(
                         imageVector = if (visible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                         contentDescription = if (visible) hideDescription else showDescription
