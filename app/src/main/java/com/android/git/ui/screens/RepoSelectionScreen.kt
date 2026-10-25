@@ -84,7 +84,6 @@ fun RepoSelectionScreen(
     }
 
     OplusScaffold(
-        collapsible = false,
         title = stringResource(R.string.selection_title),
         actions = {
             IconButton(onClick = onGeneralSettingsClick) {

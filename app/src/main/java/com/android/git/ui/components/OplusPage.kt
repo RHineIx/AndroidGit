@@ -91,7 +91,7 @@ fun OplusScaffold(
                     subtitle = subtitle,
                     hideSubtitleOnCollapse = false,
                     scrollBehavior = scrollBehavior,
-                    color = surface.copy(alpha = surface.alpha * if (supportsBlur) 0.67f else 1f),
+                    color = surface.copy(alpha = surface.alpha * if (supportsBlur) 0.96f else 1f),
                     modifier = Modifier.clipToBounds().then(
                         if (supportsBlur) Modifier.hazeBlur(input = HazeInput.Sources(hazeState), style = blurStyle) else Modifier
                     ),

@@ -107,7 +107,6 @@ fun GeneralSettingsScreen(
     )
 
     OplusScaffold(
-        collapsible = false,
         title = stringResource(R.string.settings_title),
         onBack = onBack
     ) { padding ->

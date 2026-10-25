@@ -79,6 +79,7 @@ import io.github.suqi8.coui.kmp.basic.ProgressIndicatorDefaults as CouiProgressD
 import io.github.suqi8.coui.kmp.basic.RadioButton as CouiRadioButton
 import io.github.suqi8.coui.kmp.basic.Switch as CouiSwitch
 import io.github.suqi8.coui.kmp.basic.TextField as CouiTextField
+import io.github.suqi8.coui.kmp.basic.TextFieldDefaults as CouiTextFieldDefaults
 import io.github.suqi8.coui.kmp.basic.TextFieldMode
 import io.github.suqi8.coui.kmp.basic.PreciseClickState
 import io.github.suqi8.coui.kmp.theme.COUITheme
@@ -87,6 +88,7 @@ import io.github.suqi8.coui.kmp.window.WindowDialog
 import io.github.suqi8.coui.kmp.window.WindowListPopup
 
 private val LocalDialogAction = staticCompositionLocalOf { false }
+private const val OverlaySurfaceOpacity = 0.94f
 
 /**
  * Native COUI controls with the argument names used by the existing Git screens.
@@ -356,6 +358,13 @@ fun OutlinedTextField(
                 onValueChange = onValueChange,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 backgroundMode = TextFieldMode.Rectangle,
+                colors = CouiTextFieldDefaults.textFieldColors(
+                    borderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) {
+                        Color.White.copy(alpha = 0.38f)
+                    } else Color.Black.copy(alpha = 0.32f),
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
                 enabled = enabled,
                 readOnly = readOnly,
                 isError = isError,
@@ -455,7 +464,7 @@ fun AlertDialog(
     containerColor: Color = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) Color(0xFF3D3D3D) else Color.White,
     iconContentColor: Color = MaterialTheme.colorScheme.primary,
     titleContentColor: Color = MaterialTheme.colorScheme.onSurface,
-    textContentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    textContentColor: Color = MaterialTheme.colorScheme.onSurface,
     tonalElevation: Dp = 0.dp,
     properties: DialogProperties = DialogProperties(),
 ) {
@@ -496,56 +505,62 @@ fun AlertDialog(
             if (frosted) Modifier.clip(RoundedCornerShape(19.dp))
                 .hazeBlur(HazeInput.Sources(hazeState), style = blurStyle) else Modifier,
         ),
-        backgroundColor = if (frosted) containerColor.copy(alpha = 0.6f) else containerColor,
+        backgroundColor = if (frosted) containerColor.copy(alpha = OverlaySurfaceOpacity) else containerColor,
         onDismissRequest = onDismissRequest,
     ) {
-        Column(Modifier.fillMaxWidth().heightIn(max = maxDialogHeight).padding(top = 24.dp)) {
-            Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
-                if (icon != null) {
-                    CompositionLocalProvider(LocalContentColor provides iconContentColor) {
-                        Box(Modifier.align(Alignment.CenterHorizontally).padding(bottom = 12.dp)) { icon() }
-                    }
-                }
-                if (title != null) {
-                    CompositionLocalProvider(LocalContentColor provides titleContentColor) {
-                        ProvideTextStyle(MaterialTheme.typography.titleLarge.copy(textAlign = TextAlign.Center)) {
-                            Box(
-                                Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 16.dp),
-                                contentAlignment = Alignment.Center,
-                            ) { title() }
+        MaterialTheme(
+            colorScheme = MaterialTheme.colorScheme.copy(
+                onSurfaceVariant = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f)
+            )
+        ) {
+            Column(Modifier.fillMaxWidth().heightIn(max = maxDialogHeight).padding(top = 24.dp)) {
+                Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+                    if (icon != null) {
+                        CompositionLocalProvider(LocalContentColor provides iconContentColor) {
+                            Box(Modifier.align(Alignment.CenterHorizontally).padding(bottom = 12.dp)) { icon() }
                         }
                     }
-                }
-                if (text != null) {
-                    CompositionLocalProvider(LocalContentColor provides textContentColor) {
-                        ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
-                            Box(Modifier.padding(horizontal = 24.dp)) { text() }
-                        }
-                    }
-                }
-            }
-            CompositionLocalProvider(LocalDialogAction provides true) {
-                BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 16.dp)) {
-                    if (neutralButton != null || largeText || maxWidth < 320.dp) {
-                        Column(Modifier.fillMaxWidth()) {
-                            confirmButton()
-                            neutralButton?.invoke()
-                            dismissButton?.invoke()
-                        }
-                    } else {
-                        Row(
-                            Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            if (dismissButton != null) {
-                                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { dismissButton() }
+                    if (title != null) {
+                        CompositionLocalProvider(LocalContentColor provides titleContentColor) {
+                            ProvideTextStyle(MaterialTheme.typography.titleLarge.copy(textAlign = TextAlign.Center)) {
                                 Box(
-                                    Modifier.padding(top = 17.dp, bottom = 21.dp)
-                                        .fillMaxHeight().width(1.dp)
-                                        .background(MaterialTheme.colorScheme.outlineVariant),
-                                )
+                                    Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 16.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) { title() }
                             }
-                            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { confirmButton() }
+                        }
+                    }
+                    if (text != null) {
+                        CompositionLocalProvider(LocalContentColor provides textContentColor) {
+                            ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
+                                Box(Modifier.padding(horizontal = 24.dp)) { text() }
+                            }
+                        }
+                    }
+                }
+                CompositionLocalProvider(LocalDialogAction provides true) {
+                    BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 16.dp)) {
+                        if (neutralButton != null || largeText || maxWidth < 320.dp) {
+                            Column(Modifier.fillMaxWidth()) {
+                                confirmButton()
+                                neutralButton?.invoke()
+                                dismissButton?.invoke()
+                            }
+                        } else {
+                            Row(
+                                Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                if (dismissButton != null) {
+                                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { dismissButton() }
+                                    Box(
+                                        Modifier.padding(top = 17.dp, bottom = 21.dp)
+                                            .fillMaxHeight().width(1.dp)
+                                            .background(MaterialTheme.colorScheme.outlineVariant),
+                                    )
+                                }
+                                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { confirmButton() }
+                            }
                         }
                     }
                 }
@@ -579,17 +594,19 @@ fun DropdownMenu(
     val panelHeight = minOf(maxHeight, (windowSize.height - 48.dp).coerceAtLeast(1.dp))
     WindowListPopup(
         show = expanded,
-        popupModifier = Modifier.width(panelWidth).then(modifier),
+        // The library applies popupModifier to its full-window outside-tap
+        // detector. Constrain only the panel below, so the detector stays full size.
+        popupModifier = Modifier,
         minWidth = minOf(168.dp, panelWidth),
         maxHeight = panelHeight,
         preciseClickState = preciseClickState,
         onDismissRequest = onDismissRequest,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().heightIn(max = panelHeight).clip(shape).then(
+            modifier = Modifier.width(panelWidth).then(modifier).heightIn(max = panelHeight).clip(shape).then(
                 if (frosted) Modifier
                     .hazeBlur(HazeInput.Sources(hazeState), style = blurStyle)
-                    .background(popupSurface.copy(alpha = 0.72f))
+                    .background(popupSurface.copy(alpha = OverlaySurfaceOpacity))
                 else Modifier.background(containerColor),
             ).verticalScroll(rememberScrollState()),
             content = content,
@@ -673,10 +690,14 @@ fun CircularProgressIndicator(
     strokeWidth: Dp = 2.dp,
     trackColor: Color = Color.Transparent,
 ) {
-    // Native COUI uses a fixed ring diameter. Feed the measured square back into
-    // the component so compact button spinners scale with Modifier.size/height.
-    BoxWithConstraints(modifier.defaultMinSize(minWidth = 26.dp, minHeight = 26.dp)) {
+    // Available space is not an indicator size: a sheet may offer hundreds of
+    // dp. Keep the default compact while honoring smaller button constraints.
+    BoxWithConstraints(
+        modifier.defaultMinSize(minWidth = 26.dp, minHeight = 26.dp),
+        contentAlignment = Alignment.Center
+    ) {
         val diameter = minOf(
+            26.dp,
             if (constraints.hasBoundedWidth) maxWidth else 26.dp,
             if (constraints.hasBoundedHeight) maxHeight else 26.dp,
         )

@@ -100,7 +100,6 @@ fun DashboardScreen(
     }
 
     OplusScaffold(
-        collapsible = false,
         title = repoFile.name,
         onBack = { showExitDialog = true },
         actions = {
