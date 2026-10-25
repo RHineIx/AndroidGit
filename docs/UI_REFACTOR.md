@@ -1,101 +1,59 @@
-# تحليل واجهة OPlusKey ونقل تصميمها إلى AndroidGit
+# AndroidGit UI implementation
 
-المرجع: [lo0kie/OPlusKey-lsposed](https://github.com/lo0kie/OPlusKey-lsposed/tree/52fcc9d474065bdf2086304ceb559205804a318b)، الالتزام `52fcc9d474065bdf2086304ceb559205804a318b`.
-قاعدة AndroidGit: `adf7fd7323cec82fa2eb93654bbc0a9a9bbaec3c`.
+AndroidGit uses COUI, Haze, and Tabler Icons to provide a consistent ColorOS 16 interface across its Git tools and settings.
 
-## بنية المشروع المرجعي
+## UI libraries
 
-المشروع وحدة LSPosed ذات قسمين: `core` للنماذج والإعدادات وتنفيذ الأوامر، و`app` للربط بالنظام والواجهة. `EntryActivity` بوابة شفافة تفتح إعدادات الجهاز؛ الواجهة الفعلية Compose تُعرض داخل صفحة إعدادات ColorOS. لم تُنقل آليات الحقن أو وظائف مفاتيح الجهاز إلى AndroidGit.
-
-تتوزع الواجهات على الصفحة الرئيسية، ربط المفاتيح، الأوامر المحفوظة، الشروط والفروع، اختيار التطبيقات والأنشطة، الإعدادات العامة، حول التطبيق، التبرعات، وقوائم/تحرير مجموعات المفاتيح. تشترك جميعها في إطار الصفحة والألوان والقوائم والحوارات؛ تختلف محتوياتها وأشرطة الإجراءات فقط.
-
-المواضع الأساسية في المرجع:
-
-- `app/build.gradle.kts` و`settings.gradle.kts`: المكتبات والمستودع المحلي للمكتبة المعدلة.
-- `ui/model/PageColors.kt` و`PageMetrics.kt`: الألوان، الشفافية والمقاسات.
-- `ui/PageHeaderWidget.kt` و`ui/screen/PageTopBar.kt`: العنوان الكبير والطي والشرائط الثابتة.
-- `ui/CardRow.kt` و`ui/TileWidgets.kt`: صفوف التفضيلات وبطاقات الشبكة.
-- `ui/Frosted.kt` و`ui/MenuPopup.kt` و`ui/ConfirmDialog.kt`: الضبابية والقوائم والحوارات.
-- `ui/screen/PageContent.kt` وملفات التنقل: مكدس الصفحات والانتقالات.
-
-## المكتبات
-
-| المكتبة | نسخة المرجع | الاستخدام في AndroidGit |
+| Library | Version | Purpose |
 | --- | --- | --- |
-| COUI UI | `1.1.0-subtitle11`، تعديل محلي لـ`1.1.0` | النسخة العامة `1.1.0`: الثيم والعنوان والبطاقات والأزرار والحقول والاختيارات والحوارات والقوائم والأوراق |
-| COUI Preference | `1.1.0` | أُعيد ترتيب محتوى Git في مجموعات وصفوف تناسبه؛ لم تُضف المكتبة غير اللازمة |
-| COUI Nav | `1.1.0` | استمر Navigation Compose للحفاظ على المسارات والحالة؛ انتقل إلى إزاحة ربع العرض للصفحة المغطاة وزمن350ms واتجاه RTL |
-| Haze + Haze Blur | `2.0.1` | ضبابية العنوان والحوارات والألواح على Android12 فأحدث |
-| Tabler Icons | `3.49.0` | أيقونات Outline بدلاً من Material Filled عبر `GitIcons` |
-| Compose / Lifecycle | Compose ومكتبات AndroidX | استمرت بنية Compose وViewModel الموجودة |
-| libxposed API | `102.0.0` | خاصة بوظيفة المرجع وليست لازمة لعميل Git |
-| kotlinx serialization JSON | `1.11.0` | خاصة ببيانات المرجع وليست لازمة لهذا النقل |
+| COUI UI | `1.1.0` | Themes, headers, cards, preference rows, buttons, fields, dialogs, menus, and bottom sheets |
+| Haze and Haze Blur | `2.0.1` | Frosted surfaces on Android 12 and later, with solid backgrounds on older versions |
+| Tabler Icons | `3.49.0` | Outline icons shared through `GitIcons` |
 
-المرجع يستخدم AGP9.1.0 وKotlin2.4.10 وJava21 وcompileSdk37 وtargetSdk35 وminSdk33. AndroidGit يحتفظ بإعدادات البناء الأصلية، minSdk26 وtargetSdk37، مع التحقق الفعلي من توافق التبعيات الجديدة. JGit وSSH والتشفير وGemini وإدارة الاعتماد تبقى وظائف المشروع الأصلية.
+Jetpack Compose, AndroidX Navigation, and the existing ViewModel architecture continue to support the screens and their behavior.
 
-## مواصفات التصميم
+## Shared components
 
-| العنصر | فاتح | داكن |
+- `ui/theme` configures COUI themes and matching Material colors for specialized Git controls.
+- `OplusPage.kt` provides the page layout, collapsing header, and shared blur source.
+- `OplusPreference.kt` provides grouped cards, preference rows, and dividers.
+- `OplusWidgets.kt` adapts the screen components to COUI controls while preserving callbacks and validation.
+- `GitIcons.kt` maps icon names to Tabler outline icons.
+
+These components cover repository selection, cloning, the dashboard, changes, branches, history, stashes, conflicts, the gitignore editor, GitHub Actions, and settings. Git operations, authentication, SSH, Gemini, and confirmation flows retain their existing behavior.
+
+## Appearance
+
+| Element | Light | Dark |
 | --- | --- | --- |
-| خلفية الصفحة | `#F0F1F2` | `#000000` |
-| البطاقة | `#FFFFFF` | `#1AFFFFFF` فوق الأسود، أي تقريباً`#1A1A1A` |
-| اللون الأساسي | `#0066FF` | `#247CFF` |
-| الخط الأساسي | `#E6000000` | `#E6FFFFFF` |
-| الوصف الثانوي | `#66000000` | `#66FFFFFF` |
-| الفاصل | `#1F000000` | `#33FFFFFF` |
-| الخطأ | `#DB382C` | `#FF6C61` |
+| Page background | `#F0F1F2` | `#000000` |
+| Card background | `#FFFFFF` | `#1A1A1A` |
+| Accent | `#0066FF` | `#247CFF` |
+| Primary text | `#E6000000` | `#E6FFFFFF` |
+| Secondary text | `#66000000` | `#66FFFFFF` |
+| Error | `#DB382C` | `#FF6C61` |
 
-- بطاقة squircle أصلية من COUI بنصف قطر12dp، مسافة جانبية12dp، فواصل مجموعات8dp، ومسافة سفلية32dp.
-- الصف: ارتفاع أدنى48dp، حشو16dp أفقياً و10dp رأسياً،8dp بين الأيقونة والنص، وأيقونة أمامية22dp وسهم خلفي24dp.
-- عناوين الأقسام12sp Medium، عنوان الصف16sp Medium، الوصف14sp، والفاصل0.33dp.
-- العنوان الكبير32sp Semibold، المصغر18sp Medium. ارتفاعا العنوان107dp و52dp إضافة إلى مساحة شريط الحالة. أهداف أزرار العنوان40dp.
-- الضبابية24dp دون حبيبات. شفافية سطح العنوان0.67، ألواح القوائم0.72، والحوارات0.6. الخلفية الاحتياطية معتمة على Android الأقدم.
-- المصدر يستخدم خط النظام؛ لذلك تتأثر الحروف العربية وشكل الخط بالجهاز والخط المثبت وحجم الخط.
-- التلوين في AndroidGit ثابت للفاتح/الداكن/النظام؛ أُلغي تلوين خلفية الجهاز الديناميكي الذي كان يغيّر النتيجة بين الأجهزة.
-- ألوان حالات Git والخطأ والنجاح بقيت ذات دلالة، مع درجات مناسبة للوضع الداكن.
+The app supports light, dark, and system themes with fixed accent colors. Typography uses the system font, including semibold expanded titles and medium collapsed titles.
 
-## تطبيق التصميم
+Shared layout and interaction details:
 
-`ui/theme` يوفر COUITheme وألوان Material الموافقة للمحتوى المتخصص. `OplusPage.kt` يوفر إطار الصفحة والطي والعنوان الضبابي. `OplusWidgets.kt` يربط توقيعات عناصر المشروع الحالية بعناصر COUI الأصلية، حتى تبقى الاستدعاءات والتحقق والتأكيدات كما هي. `GitIcons.kt` يوحد عائلة الأيقونات.
+- Cards use a 12dp corner radius, with 12dp page margins and thin inset dividers.
+- Preference rows use 22dp leading icons and an 8dp gap before the text.
+- Headers collapse while scrolling and use a 96% opaque surface to keep content legible.
+- Frosted dialogs and menus use 24dp blur and 94% opaque surfaces. Dialogs use stronger field outlines and clearer secondary text.
+- Dropdown panels have bounded dimensions, while their outside-tap area covers the full window. Theme and Gemini menus dismiss when tapping outside.
+- Indeterminate loading indicators are capped at 26dp and shrink to fit smaller controls.
+- Editable field text explicitly uses the current surface text color, including inside workflow dialogs.
+- Commit details use full-width rows to accommodate long hashes and dates.
 
-شمل التعديل كل الشاشات الأربع عشرة: الإذن، اختيار المستودع، الاستنساخ، لوحة المستودع، التغييرات والالتزام، الفروع، السجل، stash، قائمة التعارضات وحل الملف، محرر gitignore، GitHub Actions، إعدادات المستودع والإعدادات العامة. وشمل عناصر HTTPS/SSH وتوليد المفاتيح واختيار مستودعات GitHub وإشعارات التحديث والحالة.
+## Build and review
 
-تظل مسارات التنقل وعقود ViewModel وطبقات `data` و`model` كما هي. تظل تأكيدات force push والحذف وdiscard وreset/revert وstash وحذف مفاتيح SSH وشروط التعطيل والإلغاء موجودة.
-
-## حدود المطابقة
-
-هذه إعادة تطبيق لنظام التصميم على وظائف Git المختلفة، وليست شهادة مطابقة بكسلية100%. أصبحت صور OPlusKey وAndroidGit المقدمة من المستخدم مرجعاً بصرياً للمقاسات والتخطيط. يعمل المرجع داخل إعدادات ROM، ويتضمن تعديلات خاصة على COUI؛ يستخدم هذا الفرع COUI العامة دون نسخ تلك التعديلات. موضع العنوان الفرعي وبعض تفاصيل المكدس والقوائم يمكن أن تختلف. كذلك يحتفظ AndroidGit بعناصر المحتوى المتخصصة وتكاملات Navigation Compose، ولا يضيف صفحات مفاتيح الجهاز أو لوحات ألوان المرجع الاختيارية.
-
-ترخيص المرجع GPL-3.0؛ لم تُنسخ شفرته الخاصة أو تعديلاته الثنائية. استُخدمت APIs العامة لـCOUI (Apache-2.0) والمكتبات المعلنة وقيم التصميم المرصودة. لا يتغير ترخيص AndroidGit تلقائياً بهذا التعديل.
-
-## التحقق
-
-أوامر التحقق المعتادة من جذر المشروع:
+Use a full JDK and Android SDK 37:
 
 ```sh
-./gradlew :app:assembleDebug :app:lintDebug
+./gradlew :app:assembleRelease :app:lintRelease
 ```
 
-يتطلب البناء JDK كاملاً وAndroid SDK37. يُراجع على جهاز/محاكي: الفاتح والداكن، التمرير وطي العنوان، الحقول ولوحة المفاتيح، الأزرار المعطلة، الحوارات، أحجام الخط الكبيرة، واتجاه RTL. لا تُدرج الأسرار أو مفاتيح التوقيع أو ملفات SDK المحلية في المستودع. نتائج التنفيذ الفعلية تُسجل في طلب السحب.
+Release builds use code and resource shrinking. Signing and publishing are configured through the manually triggered GitHub Actions workflow; local signing credentials and SDK paths are kept outside version control.
 
-## إصلاحات مقارنة الصور
-
-أظهرت المقارنة أن الأسود ودرجة البطاقات والأزرق كانت متوافقة بالفعل، وأن الفروق المتبقية تتركز في التخطيط والخطوط:
-
-- استُبدلت الصفوف اليدوية في الاختيار والمستودع والإعدادات بـ`BasicComponent` الأصلية: أيقونة22dp، فجوة8dp، عنوان16sp Medium ووصف14sp. تُستخدم بطاقات12dp وفواصل0.33dp بهامش16dp من الطرفين.
-- أُزيل قص24dp من بطاقة المشروع الأخير، ووُحدت مجموعات الإعدادات والروابط والإصدار بدلاً من الأزرار الاجتماعية الكبيرة.
-- يحدد العنوان وجه خط النظام بوزن600 عند التوسّع و500 عند الطي، مع بقاء وصف العنوان بوزنه العادي، وتصحيح موضع زر الرجوع والإجراءات.
-- يُحد عرض القائمة المنبثقة وارتفاعها حسب النافذة؛ قائمة الثيم176dp، والقوائم العامة192dp، ومحددات القيم الطويلة272dp. ترتبط قائمة الثيم بنقطة الضغط وتعرض الاختيار بعلامة أمامية ونص أزرق.
-- أُصلح حشو فتحات حقول COUI: فتحة أمامية48dp تحتوي أيقونة22dp، وحشو منفصل للإجراء الخلفي. يبدأ النص والتلميح من الموضع نفسه.
-- تُحل ألوان النصوص المدخلة صراحة من `onSurface`، لأن نوافذ COUI لا تورث تلقائياً لون محتوى Material. يمنع ذلك ظهور نص أسود داخل حقول نافذة Workflow الداكنة.
-- تُعرض بيانات الالتزام في صفوف كاملة العرض، مع رأس الورقة الأصلي، لتجنب التفاف Hash والتاريخ داخل عمودين ضيقين. تظل تأكيدات revert وreset وشروط تعطيل التنفيذ محفوظة.
-
-نتائج البناء والفحص الحالية مسجلة في طلب السحب. فحص استدعاءات ViewModel ومديري Git والتفضيلات لم يجد إزالة وظائف أصلية. صور المستخدم تُستخدم للمقارنة الخاصة ولا تُضاف إلى المستودع، لاحتوائها على معلومات حساب وإعدادات شخصية.
-
-نجح بناء APK المحدّث وفحص Lint دون أخطاء (108 تحذيرات غير مانعة). تتولى مراجعة الشكل والتجربة النهائية على جهاز المستخدم وفق طلبه؛ لا تُدّعى مطابقة بكسلية مؤكدة من محاكاة مختلفة.
-
-## تحسينات الوضوح والتفاعل
-
-مؤشر التحميل غير المحدد له سقف26dp، ويصغر داخل أزرار ذات قيود أصغر؛ لا يُشتق قطره من المساحة الكاملة المتاحة في الورقة. تتيح جميع الصفحات طي العنوان عند التمرير، مع سطح علوي بعتامة96% يمنع تداخل نصوص المحتوى مع العنوان.
-
-تستخدم ألواح الحوارات والقوائم عتامة94% فوق الضبابية، ونصوصاً ثانوية أوضح داخل الحوارات وحدوداً أقوى للحقول. يظل ملتقط الضغط خارج القائمة بحجم النافذة الكاملة، بينما يطبق قيد العرض على محتوى الصندوق وحده؛ بذلك تُغلق قوائم الثيم وGemini وبقية القوائم عند الضغط خارجها دون توسيع الصندوق.
+The UI changes passed Release compilation and lint with no errors and 108 warnings. Final visual review is performed on the project owner's device. Private screenshots and account details are not included in the repository.

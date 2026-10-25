@@ -79,7 +79,7 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
 
-    // ColorOS 16 components, typography and palette shared with OPlusKey.
+    // ColorOS 16 interface powered by COUI, Haze, and Tabler Icons.
     implementation("io.github.suqi8.coui.kmp:coui-ui-android:1.1.0")
     implementation("dev.chrisbanes.haze:haze:2.0.1")
     implementation("dev.chrisbanes.haze:haze-blur:2.0.1")

@@ -1,13 +1,25 @@
 # AndroidGit
 
-Android Git client built with Kotlin and Jetpack Compose, with a ColorOS16 interface using COUI, Haze and Tabler icons.
+A native Android Git client built with Kotlin and Jetpack Compose, featuring a ColorOS 16 interface powered by **COUI**, **Haze**, and **Tabler Icons**.
 
-The UI follows [OPlusKey-lsposed](https://github.com/lo0kie/OPlusKey-lsposed) while retaining AndroidGit's repository, branch, commit, SSH and GitHub Actions features. The [UI analysis and implementation notes](docs/UI_REFACTOR.md) document the reference versions, colors, geometry and remaining differences.
+Manage repositories, branches, commits, SSH authentication, and GitHub Actions from a consistent mobile interface.
 
-Build a debug APK using a full JDK and Android SDK37:
+## Interface
+
+- **COUI** provides components, themes, cards, and controls.
+- **Haze** adds frosted headers, dialogs, and menus.
+- **Tabler Icons** provides a consistent set of outline icons.
+
+The interface supports light, dark, and system themes, with collapsing headers, compact loading indicators, and dropdown menus that dismiss when tapping outside.
+
+See the [UI implementation notes](docs/UI_REFACTOR.md) for library versions and design details.
+
+## Build
+
+Build a Release APK using a full JDK and Android SDK 37:
 
 ```sh
-./gradlew :app:assembleDebug :app:lintDebug
+./gradlew :app:assembleRelease :app:lintRelease
 ```
 
-Release signing and publishing remain in the existing manually invoked GitHub Actions workflow.
+Release signing and publishing are handled by the manually triggered GitHub Actions workflow.
