@@ -1,6 +1,7 @@
 package com.android.git.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,36 +12,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -55,7 +36,20 @@ import androidx.compose.ui.unit.dp
 import com.android.git.R
 import com.android.git.model.GitHubWorkflowInput
 import com.android.git.model.GitHubWorkflowRun
+import com.android.git.ui.components.AlertDialog
 import com.android.git.ui.components.AppSnackbar
+import com.android.git.ui.components.Button
+import com.android.git.ui.components.CircularProgressIndicator
+import com.android.git.ui.components.DropdownMenuItem
+import com.android.git.ui.components.ElevatedCard
+import com.android.git.ui.components.GitIcons as Icons
+import com.android.git.ui.components.IconButton
+import com.android.git.ui.components.LinearProgressIndicator
+import com.android.git.ui.components.OplusScaffold
+import com.android.git.ui.components.OplusSectionTitle
+import com.android.git.ui.components.OutlinedTextField
+import com.android.git.ui.components.Switch
+import com.android.git.ui.components.TextButton
 import com.android.git.ui.viewmodel.MainViewModel
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -73,37 +67,32 @@ fun WorkflowsScreen(
         viewModel.loadWorkflowsForCurrentRepository()
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.workflow_title), fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { viewModel.loadWorkflowsForCurrentRepository() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
-            )
-        }
+    OplusScaffold(
+        title = stringResource(R.string.workflow_title),
+        onBack = onBack,
+        actions = {
+            IconButton(onClick = { viewModel.loadWorkflowsForCurrentRepository() }) {
+                Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh))
+            }
+        },
+
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            if (viewModel.isWorkflowsLoading) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        Box(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                    start = 12.dp, end = 12.dp,
+                    top = padding.calculateTopPadding() + 8.dp,
+                    bottom = padding.calculateBottomPadding() + 32.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 item {
                     viewModel.githubWorkflowRepository?.let { repository ->
                         Text(
                             text = "${repository.owner}/${repository.repository}",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
@@ -130,7 +119,7 @@ fun WorkflowsScreen(
                 items(viewModel.githubWorkflows, key = { it.id }) { workflow ->
                     ElevatedCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
                     ) {
                         Row(
@@ -138,32 +127,31 @@ fun WorkflowsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(workflow.name, fontWeight = FontWeight.Bold)
+                                Text(workflow.name, fontWeight = FontWeight.Medium)
                                 Text(workflow.path, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(workflow.state, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                             }
-                            Button(
+                            IconButton(
                                 onClick = {
                                     viewModel.prepareWorkflowRun(workflow)
                                     showRunDialog = true
                                 },
-                                enabled = !viewModel.isWorkflowsLoading && workflow.state.equals("active", ignoreCase = true),
-                                shape = RoundedCornerShape(12.dp)
+                                enabled = !viewModel.isWorkflowsLoading && workflow.state.equals("active", ignoreCase = true)
                             ) {
-                                Icon(Icons.Default.Settings, contentDescription = null)
-                                Spacer(Modifier.padding(horizontal = 2.dp))
-                                Text(stringResource(R.string.workflow_configure_run))
+                                Icon(
+                                    Icons.Default.Settings,
+                                    contentDescription = stringResource(R.string.workflow_configure_run),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
                             }
                         }
                     }
                 }
 
                 item {
-                    Text(
-                        text = stringResource(R.string.workflow_runs),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 12.dp)
+                    OplusSectionTitle(
+                        title = stringResource(R.string.workflow_runs),
+                        modifier = Modifier.padding(top = 8.dp)
                     )
                 }
                 if (viewModel.githubWorkflowRuns.isEmpty()) {
@@ -175,11 +163,18 @@ fun WorkflowsScreen(
                 }
                 item { Spacer(Modifier.height(40.dp)) }
             }
-            AppSnackbar(
-                message = viewModel.statusMessage,
-                type = viewModel.statusType,
-                onDismiss = { viewModel.clearStatus() }
-            )
+            if (viewModel.isWorkflowsLoading) {
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth().padding(top = padding.calculateTopPadding())
+                )
+            }
+            Box(Modifier.align(Alignment.BottomCenter).padding(bottom = padding.calculateBottomPadding() + 8.dp)) {
+                AppSnackbar(
+                    message = viewModel.statusMessage,
+                    type = viewModel.statusType,
+                    onDismiss = { viewModel.clearStatus() }
+                )
+            }
         }
     }
 
@@ -225,7 +220,7 @@ private fun WorkflowRunDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.workflow_run_dialog_title, workflow.name)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (viewModel.isWorkflowInputLoading) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp).height(20.dp))
@@ -376,13 +371,18 @@ private fun WorkflowRunCard(run: GitHubWorkflowRun) {
         run.conclusion.equals("failure", ignoreCase = true) -> Icons.Default.Error
         else -> Icons.Default.Refresh
     }
+    val statusColor = when {
+        run.conclusion.equals("failure", ignoreCase = true) -> MaterialTheme.colorScheme.error
+        run.conclusion.equals("success", ignoreCase = true) -> getStatusColor(com.android.git.model.ChangeType.ADDED)
+        else -> MaterialTheme.colorScheme.primary
+    }
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
     ) {
-        Row(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null, tint = statusColor)
             Spacer(Modifier.padding(horizontal = 6.dp))
             Column(Modifier.weight(1f)) {
                 Text("${run.name} #${run.runNumber}", fontWeight = FontWeight.SemiBold)
@@ -399,7 +399,6 @@ private fun WorkflowRunCard(run: GitHubWorkflowRun) {
                 }
             }
         }
-        HorizontalDivider()
     }
 }
 

@@ -1,12 +1,15 @@
 package com.android.git.navigation
 
-import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -25,6 +28,7 @@ fun AppNavGraph(
     startDestination: String = Screen.Selection.route
 ) {
     val manager = viewModel.gitManager
+    val slideDirection = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1 else 1
 
     // State-driven routing: Navigate automatically based on repository state
     LaunchedEffect(viewModel.currentRepoFile) {
@@ -51,27 +55,27 @@ fun AppNavGraph(
         navController = navController,
         startDestination = startDestination,
         enterTransition = {
-            slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                animationSpec = tween(300)
+            slideInHorizontally(
+                initialOffsetX = { it * slideDirection },
+                animationSpec = tween(350)
             )
         },
         exitTransition = {
-            slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                animationSpec = tween(300)
+            slideOutHorizontally(
+                targetOffsetX = { -it * slideDirection / 4 },
+                animationSpec = tween(350)
             )
         },
         popEnterTransition = {
-            slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                animationSpec = tween(300)
+            slideInHorizontally(
+                initialOffsetX = { -it * slideDirection / 4 },
+                animationSpec = tween(350)
             )
         },
         popExitTransition = {
-            slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                animationSpec = tween(300)
+            slideOutHorizontally(
+                targetOffsetX = { it * slideDirection },
+                animationSpec = tween(350)
             )
         }
     ) {

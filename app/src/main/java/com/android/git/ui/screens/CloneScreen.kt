@@ -1,5 +1,7 @@
 package com.android.git.ui.screens
 
+import com.android.git.ui.components.GitIcons as Icons
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -23,9 +25,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -43,6 +42,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.git.R
+import com.android.git.ui.components.LinearProgressIndicator
+import com.android.git.ui.components.CircularProgressIndicator
+import com.android.git.ui.components.Button
+import com.android.git.ui.components.ElevatedCard
+import com.android.git.ui.components.IconButton
+import com.android.git.ui.components.OutlinedButton
+import com.android.git.ui.components.Switch
+import com.android.git.ui.components.TextField
+import com.android.git.ui.components.OplusScaffold
+import com.android.git.ui.components.OplusSectionTitle
 import com.android.git.data.GitAuthConfig
 import com.android.git.data.GitAuthManager
 import com.android.git.data.GitAuthMode
@@ -115,7 +124,7 @@ fun CloneScreen(
     val cloneTaskName = viewModel.cloneTaskName
     val cloneTaskDetails = viewModel.cloneTaskDetails
 
-    val textFieldShape = RoundedCornerShape(16.dp)
+    val textFieldShape = RoundedCornerShape(12.dp)
     val textFieldColors = TextFieldDefaults.colors(
         focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -162,51 +171,31 @@ fun CloneScreen(
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.clone_title), fontWeight = FontWeight.SemiBold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack, enabled = !isLoading) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back)
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
-                )
-            )
-        }
+    OplusScaffold(
+        title = stringResource(R.string.clone_title),
+        onBack = onBack,
+        backEnabled = !isLoading
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(padding)
-                .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState()),
+                .padding(horizontal = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
+            OplusSectionTitle(stringResource(R.string.repo_settings_section_remote), Modifier.fillMaxWidth())
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.elevatedCardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                 ),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-
-                    Text(
-                        text = stringResource(R.string.repo_settings_section_remote),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
+                Column(modifier = Modifier.padding(16.dp)) {
 
                     TextField(
                         value = repoUrl,
@@ -337,15 +326,12 @@ fun CloneScreen(
                         maxLines = 2
                     )
 
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                }
+            }
 
-                    Text(
-                        text = stringResource(R.string.repo_settings_section_auth),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
-
+            OplusSectionTitle(stringResource(R.string.repo_settings_section_auth), Modifier.fillMaxWidth())
+            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     GitAuthenticationPanel(
                         authManager = authManager,
                         userEmail = prefsManager.getUserEmail(),
@@ -391,18 +377,17 @@ fun CloneScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Switch(
-                                    checked = saveToken,
-                                    onCheckedChange = { isChecked ->
-                                        saveToken = isChecked
-                                    },
-                                    enabled = !isLoading
-                                )
-                                Spacer(Modifier.width(12.dp))
                                 Text(
                                     text = stringResource(R.string.clone_remember_token),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Switch(
+                                    checked = saveToken,
+                                    onCheckedChange = { saveToken = it },
+                                    enabled = !isLoading
                                 )
                             }
                         }
@@ -410,7 +395,7 @@ fun CloneScreen(
                 }
             }
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(16.dp))
 
             Button(
                 onClick = {
@@ -445,8 +430,8 @@ fun CloneScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp),
+                    .height(48.dp),
+                shape = RoundedCornerShape(12.dp),
                 enabled = !isLoading && parsedRemoteUrl != null &&
                         (authMode == GitAuthMode.HTTPS || sshPrivateKey.isNotBlank())
             ) {
@@ -476,20 +461,20 @@ fun CloneScreen(
                 val containerColor = when {
                     isLoading -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
                     statusType == SnackbarType.ERROR -> MaterialTheme.colorScheme.errorContainer
-                    statusType == SnackbarType.SUCCESS -> Color(0xFFE8F5E9)
+                    statusType == SnackbarType.SUCCESS -> MaterialTheme.colorScheme.primaryContainer
                     else -> MaterialTheme.colorScheme.surfaceVariant
                 }
 
                 val contentColor = when {
                     isLoading -> MaterialTheme.colorScheme.onSecondaryContainer
                     statusType == SnackbarType.ERROR -> MaterialTheme.colorScheme.onErrorContainer
-                    statusType == SnackbarType.SUCCESS -> Color(0xFF2E7D32)
+                    statusType == SnackbarType.SUCCESS -> MaterialTheme.colorScheme.primary
                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                 }
 
                 Surface(
                     color = containerColor,
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
@@ -536,9 +521,9 @@ fun CloneScreen(
                                     modifier = Modifier.padding(top = 8.dp).align(Alignment.Start)
                                 )
                             }
-                            
+
                             Spacer(Modifier.height(16.dp))
-                            
+
                             OutlinedButton(
                                 onClick = { viewModel.cancelClone() },
                                 modifier = Modifier.fillMaxWidth().height(48.dp),
@@ -577,7 +562,7 @@ fun CloneScreen(
                 }
             }
 
-            Spacer(Modifier.height(40.dp))
+            Spacer(Modifier.height(32.dp))
         }
     }
 }

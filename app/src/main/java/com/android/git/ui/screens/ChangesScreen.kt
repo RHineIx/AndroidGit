@@ -8,116 +8,39 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.android.git.R
 import com.android.git.model.ChangeType
 import com.android.git.model.GitFile
+import com.android.git.ui.components.AlertDialog
 import com.android.git.ui.components.AppSnackbar
+import com.android.git.ui.components.Button
+import com.android.git.ui.components.Checkbox
+import com.android.git.ui.components.CircularProgressIndicator
+import com.android.git.ui.components.DropdownMenu
+import com.android.git.ui.components.DropdownMenuItem
+import com.android.git.ui.components.ElevatedCard
+import com.android.git.ui.components.GitIcons as Icons
+import com.android.git.ui.components.IconButton
+import com.android.git.ui.components.OplusScaffold
+import com.android.git.ui.components.OutlinedTextField
+import com.android.git.ui.components.TextButton
 import com.android.git.ui.viewmodel.MainViewModel
-
-/**
- * Pure Kotlin vector representation of Phosphor selection-inverse bold icon.
- * Avoids external library dependencies and XML drawables while ensuring exact visual fidelity.
- */
-private val SelectionInverseIcon: ImageVector by lazy(LazyThreadSafetyMode.NONE) {
-    ImageVector.Builder(
-        name = "SelectionInverse",
-        defaultWidth = 24.dp,
-        defaultHeight = 24.dp,
-        viewportWidth = 256f,
-        viewportHeight = 256f
-    ).apply {
-        // Top-left corner dash
-        path(fill = SolidColor(Color(0xFF000000))) {
-            moveTo(84f, 28f)
-            lineTo(48f, 28f)
-            arcTo(20f, 20f, 0f, false, false, 28f, 48f)
-            lineTo(28f, 84f)
-            arcTo(12f, 12f, 0f, false, false, 52f, 84f)
-            lineTo(52f, 52f)
-            lineTo(84f, 52f)
-            arcTo(12f, 12f, 0f, false, false, 84f, 28f)
-            close()
-        }
-        // Top-center dash
-        path(fill = SolidColor(Color(0xFF000000))) {
-            moveTo(116f, 28f)
-            lineTo(140f, 28f)
-            arcTo(12f, 12f, 0f, false, true, 140f, 52f)
-            lineTo(116f, 52f)
-            arcTo(12f, 12f, 0f, false, true, 116f, 28f)
-            close()
-        }
-        // Left-center dash
-        path(fill = SolidColor(Color(0xFF000000))) {
-            moveTo(52f, 116f)
-            lineTo(52f, 140f)
-            arcTo(12f, 12f, 0f, false, true, 28f, 140f)
-            lineTo(28f, 116f)
-            arcTo(12f, 12f, 0f, false, true, 52f, 116f)
-            close()
-        }
-        // Top-right corner dash
-        path(fill = SolidColor(Color(0xFF000000))) {
-            moveTo(172f, 28f)
-            lineTo(208f, 28f)
-            arcTo(20f, 20f, 0f, false, true, 228f, 48f)
-            lineTo(228f, 84f)
-            arcTo(12f, 12f, 0f, false, true, 204f, 84f)
-            lineTo(204f, 52f)
-            lineTo(172f, 52f)
-            arcTo(12f, 12f, 0f, false, true, 172f, 28f)
-            close()
-        }
-        // Bottom-left corner dash
-        path(fill = SolidColor(Color(0xFF000000))) {
-            moveTo(28f, 172f)
-            lineTo(28f, 208f)
-            arcTo(20f, 20f, 0f, false, false, 48f, 228f)
-            lineTo(84f, 228f)
-            arcTo(12f, 12f, 0f, false, false, 84f, 204f)
-            lineTo(52f, 204f)
-            lineTo(52f, 172f)
-            arcTo(12f, 12f, 0f, false, false, 28f, 172f)
-            close()
-        }
-        // Bottom-right inverted solid quadrant
-        path(fill = SolidColor(Color(0xFF000000))) {
-            moveTo(128f, 112f)
-            lineTo(212f, 112f)
-            arcTo(16f, 16f, 0f, false, true, 228f, 128f)
-            lineTo(228f, 208f)
-            arcTo(20f, 20f, 0f, false, true, 208f, 228f)
-            lineTo(128f, 228f)
-            arcTo(16f, 16f, 0f, false, true, 112f, 212f)
-            lineTo(112f, 128f)
-            arcTo(16f, 16f, 0f, false, true, 128f, 112f)
-            close()
-        }
-    }.build()
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -128,7 +51,7 @@ fun ChangesScreen(
     val files = viewModel.changedFiles
     val isLoading = viewModel.isLoading
     val statusMessage = viewModel.statusMessage
-    val statusType = viewModel.statusType 
+    val statusType = viewModel.statusType
     val isAIGenerating = viewModel.isAIGenerating
 
     var selectedFiles by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -139,10 +62,10 @@ fun ChangesScreen(
     var showExtensionDialog by remember { mutableStateOf(false) }
 
     var isMessageExpanded by remember { mutableStateOf(false) }
-    
+
     var fileToDiscard by remember { mutableStateOf<GitFile?>(null) }
 
-    val commonShape = RoundedCornerShape(16.dp)
+    val commonShape = RoundedCornerShape(12.dp)
 
     BackHandler(enabled = isLoading || isMessageExpanded || isAIGenerating || fileToDiscard != null) {
         when {
@@ -226,73 +149,61 @@ fun ChangesScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = {
-                        Column {
-                            Text(stringResource(R.string.changes_title), fontWeight = FontWeight.Bold)
-                            Text(
-                                text = stringResource(R.string.changes_selected_count, selectedFiles.size, files.size),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onBack, enabled = !isLoading && !isAIGenerating) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
-                        }
-                    },
-                    actions = {
-                        Box {
-                            IconButton(onClick = { showFilterMenu = true }) {
-                                Icon(Icons.Default.FilterList, contentDescription = null)
-                            }
-                            DropdownMenu(
-                                expanded = showFilterMenu,
-                                onDismissRequest = { showFilterMenu = false },
-                                shape = commonShape
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.changes_filter_select_all)) },
-                                    leadingIcon = { Icon(Icons.Default.SelectAll, contentDescription = null) },
-                                    onClick = { selectedFiles = files.map { it.path }.toSet(); showFilterMenu = false }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.changes_filter_deselect_all)) },
-                                    leadingIcon = { Icon(Icons.Default.Deselect, contentDescription = null) },
-                                    onClick = { selectedFiles = emptySet(); showFilterMenu = false }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.changes_filter_invert)) },
-                                    leadingIcon = { Icon(SelectionInverseIcon, contentDescription = null) },
-                                    onClick = { selectedFiles = files.map { it.path }.toSet() - selectedFiles; showFilterMenu = false }
-                                )
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.changes_filter_extension)) },
-                                    leadingIcon = { Icon(Icons.Default.FilterAlt, contentDescription = null) },
-                                    onClick = { showFilterMenu = false; showExtensionDialog = true }
-                                )
-                            }
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
-                )
+        OplusScaffold(
+            title = stringResource(R.string.changes_title),
+            onBack = onBack,
+            subtitle = stringResource(R.string.changes_selected_count, selectedFiles.size, files.size),
+            backEnabled = !isLoading && !isAIGenerating,
+            actions = {
+                Box {
+                    IconButton(onClick = { showFilterMenu = true }) {
+                        Icon(Icons.Default.FilterList, contentDescription = null)
+                    }
+                    DropdownMenu(
+                        expanded = showFilterMenu,
+                        onDismissRequest = { showFilterMenu = false },
+                        shape = commonShape
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.changes_filter_select_all)) },
+                            leadingIcon = { Icon(Icons.Default.SelectAll, contentDescription = null) },
+                            onClick = { selectedFiles = files.map { it.path }.toSet(); showFilterMenu = false }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.changes_filter_deselect_all)) },
+                            leadingIcon = { Icon(Icons.Default.Deselect, contentDescription = null) },
+                            onClick = { selectedFiles = emptySet(); showFilterMenu = false }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.changes_filter_invert)) },
+                            leadingIcon = { Icon(Icons.Default.SelectAll, contentDescription = null) },
+                            onClick = { selectedFiles = files.map { it.path }.toSet() - selectedFiles; showFilterMenu = false }
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.changes_filter_extension)) },
+                            leadingIcon = { Icon(Icons.Default.FilterAlt, contentDescription = null) },
+                            onClick = { showFilterMenu = false; showExtensionDialog = true }
+                        )
+                    }
+                }
             },
+
             bottomBar = {
                 Surface(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerLow,
-                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                    shadowElevation = 8.dp
+                    shape = RoundedCornerShape(12.dp),
+                    shadowElevation = 0.dp
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .imePadding()
-                            .padding(horizontal = 20.dp, vertical = 16.dp)
+                            .padding(horizontal = 16.dp, vertical = 10.dp)
                             .animateContentSize()
                     ) {
                         Row(
@@ -307,7 +218,7 @@ fun ChangesScreen(
                             ) {
                                 Checkbox(
                                     checked = isAmend,
-                                    onCheckedChange = { isAmend = it }, 
+                                    onCheckedChange = { isAmend = it },
                                     enabled = !isLoading && !isAIGenerating
                                 )
                             }
@@ -331,21 +242,21 @@ fun ChangesScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     if (isAIGenerating) {
                                         CircularProgressIndicator(
-                                            modifier = Modifier.size(20.dp).padding(end = 4.dp), 
+                                            modifier = Modifier.size(20.dp).padding(end = 4.dp),
                                             strokeWidth = 2.dp,
                                             color = MaterialTheme.colorScheme.primary
                                         )
                                     } else {
                                         IconButton(
-                                            onClick = { 
-                                                viewModel.generateAICommitMessage(selectedFiles) { message -> 
-                                                    commitMessage = message 
+                                            onClick = {
+                                                viewModel.generateAICommitMessage(selectedFiles) { message ->
+                                                    commitMessage = message
                                                 }
                                             },
                                             enabled = selectedFiles.isNotEmpty()
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Default.AutoAwesome, 
+                                                imageVector = Icons.Default.AutoAwesome,
                                                 contentDescription = stringResource(R.string.changes_ai_generate),
                                                 tint = if (selectedFiles.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                                             )
@@ -375,7 +286,7 @@ fun ChangesScreen(
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(56.dp),
+                                .height(44.dp),
                             shape = commonShape,
                             enabled = (selectedFiles.isNotEmpty() || isAmend) && commitMessage.isNotBlank() && !isLoading && !isAIGenerating
                         ) {
@@ -408,10 +319,12 @@ fun ChangesScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(padding)
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(vertical = 12.dp)
+                        .padding(horizontal = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(
+                        top = padding.calculateTopPadding() + 8.dp,
+                        bottom = padding.calculateBottomPadding() + 32.dp
+                    )
                 ) {
                     items(files, key = { it.path }) { file ->
                         val isSelected = selectedFiles.contains(file.path)
@@ -441,8 +354,8 @@ fun ChangesScreen(
                             Icon(
                                 imageVector = Icons.Default.CheckCircleOutline,
                                 contentDescription = null,
-                                modifier = Modifier.size(64.dp),
-                                tint = MaterialTheme.colorScheme.surfaceVariant
+                                modifier = Modifier.size(32.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(stringResource(R.string.changes_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -458,68 +371,47 @@ fun ChangesScreen(
             exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
             modifier = Modifier.fillMaxSize()
         ) {
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = MaterialTheme.colorScheme.background
-            ) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    TopAppBar(
-                        title = {
-                            Text(
-                                text = if(isAmend) stringResource(R.string.changes_amend_msg_label) else stringResource(R.string.changes_commit_msg_label),
-                                fontWeight = FontWeight.Bold
-                            )
-                        },
-                        navigationIcon = {
-                            IconButton(onClick = { isMessageExpanded = false }) {
-                                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.action_close))
-                            }
-                        },
-                        actions = {
-                            if (isAIGenerating) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp).padding(end = 16.dp), 
-                                    strokeWidth = 2.dp,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            } else {
-                                IconButton(
-                                    onClick = { 
-                                        viewModel.generateAICommitMessage(selectedFiles) { message -> 
-                                            commitMessage = message 
-                                        }
-                                    },
-                                    enabled = selectedFiles.isNotEmpty()
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.AutoAwesome, 
-                                        contentDescription = stringResource(R.string.changes_ai_generate),
-                                        tint = if (selectedFiles.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                                    )
-                                }
-                            }
-                            TextButton(onClick = { isMessageExpanded = false }) {
-                                Text(stringResource(R.string.action_save), fontWeight = FontWeight.Bold)
-                            }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
-                    )
-
-                    TextField(
-                        value = commitMessage,
-                        onValueChange = { commitMessage = it },
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        placeholder = { Text(stringResource(R.string.changes_commit_msg_label)) },
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent
+            OplusScaffold(
+                title = if (isAmend) stringResource(R.string.changes_amend_msg_label) else stringResource(R.string.changes_commit_msg_label),
+                onBack = { isMessageExpanded = false },
+                actions = {
+                    if (isAIGenerating) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp).padding(end = 16.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
                         )
-                    )
-                }
+                    } else {
+                        IconButton(
+                            onClick = {
+                                viewModel.generateAICommitMessage(selectedFiles) { message ->
+                                    commitMessage = message
+                                }
+                            },
+                            enabled = selectedFiles.isNotEmpty()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = stringResource(R.string.changes_ai_generate),
+                                tint = if (selectedFiles.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            )
+                        }
+                    }
+                    TextButton(onClick = { isMessageExpanded = false }) {
+                        Text(stringResource(R.string.action_save), fontWeight = FontWeight.Bold)
+                    }
+                },
+            ) { editorPadding ->
+                OutlinedTextField(
+                    value = commitMessage,
+                    onValueChange = { commitMessage = it },
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(editorPadding)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    placeholder = { Text(stringResource(R.string.changes_commit_msg_label)) },
+                    singleLine = false,
+                )
             }
         }
 
@@ -551,17 +443,17 @@ fun FileChangeItem(
 
     Box {
         ElevatedCard(
-            elevation = CardDefaults.elevatedCardElevation(defaultElevation = if (isSelected) 2.dp else 0.dp),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp),
             colors = CardDefaults.elevatedCardColors(
                 containerColor = if (isSelected)
-                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                    MaterialTheme.colorScheme.surfaceContainerLow
                 else
                     MaterialTheme.colorScheme.surfaceContainerLow
             ),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(12.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(12.dp))
                 .combinedClickable(
                     onClick = onToggle,
                     onLongClick = { showMenu = true }
@@ -583,7 +475,7 @@ fun FileChangeItem(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 StatusIcon(file.type)
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = file.path,
@@ -647,25 +539,27 @@ fun StatusIcon(type: ChangeType) {
     val color = getStatusColor(type)
 
     Surface(
-        color = color.copy(alpha = 0.15f),
+        color = Color.Transparent,
         shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.size(36.dp)
+        modifier = Modifier.size(22.dp)
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = color,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(22.dp)
             )
         }
     }
 }
 
+@Composable
 fun getStatusColor(type: ChangeType): Color {
+    val dark = com.android.git.ui.theme.LocalAndroidGitDarkTheme.current
     return when (type) {
-        ChangeType.ADDED, ChangeType.UNTRACKED -> Color(0xFF238636)
-        ChangeType.MODIFIED -> Color(0xFFE3B341)
-        ChangeType.DELETED, ChangeType.MISSING -> Color(0xFFDA3633)
+        ChangeType.ADDED, ChangeType.UNTRACKED -> if (dark) Color(0xFF5FD085) else Color(0xFF16803C)
+        ChangeType.MODIFIED -> if (dark) Color(0xFFFFCD6B) else Color(0xFF9F6400)
+        ChangeType.DELETED, ChangeType.MISSING -> if (dark) Color(0xFFFF7777) else Color(0xFFC92D2D)
     }
 }

@@ -79,9 +79,13 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
 
-    implementation(libs.androidx.navigation.compose)
-    implementation(libs.androidx.material.icons.extended)
+    // ColorOS 16 components, typography and palette shared with OPlusKey.
+    implementation("io.github.suqi8.coui.kmp:coui-ui-android:1.1.0")
+    implementation("dev.chrisbanes.haze:haze:2.0.1")
+    implementation("dev.chrisbanes.haze:haze-blur:2.0.1")
+    implementation("io.github.lyxnx.compose.ui:tabler-icons-android:3.49.0")
 
+    implementation(libs.androidx.navigation.compose)
     // JGit & Required Crypto Dependencies for modern SSH support
     implementation(libs.jgit)
     implementation(libs.jgit.ssh)

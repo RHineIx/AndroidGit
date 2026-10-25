@@ -1,14 +1,11 @@
 package com.android.git.ui.screens
 
+import com.android.git.ui.components.GitIcons as Icons
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Archive
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,6 +16,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.git.R
+import com.android.git.ui.components.CircularProgressIndicator
+import io.github.suqi8.coui.kmp.basic.FloatingActionButton
+import com.android.git.ui.components.AlertDialog
+import com.android.git.ui.components.Button
+import com.android.git.ui.components.Card
+import com.android.git.ui.components.IconButton
+import com.android.git.ui.components.OutlinedButton
+import com.android.git.ui.components.OutlinedTextField
+import com.android.git.ui.components.TextButton
+import com.android.git.ui.components.OplusScaffold
 import com.android.git.data.GitManager
 import com.android.git.model.StashItem
 import com.android.git.ui.components.AppSnackbar
@@ -178,25 +185,16 @@ fun StashScreen(
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.stash_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
-            )
-        },
+    OplusScaffold(
+        title = stringResource(R.string.stash_title),
+        onBack = onBack,
         floatingActionButton = {
             FloatingActionButton(onClick = { if (!isLoading && !isActionRunning) showCreateDialog = true }) {
-                Icon(Icons.Default.Add, null)
+                Icon(Icons.Default.Add, stringResource(R.string.stash_dialog_create_title), tint = MaterialTheme.colorScheme.onPrimary)
             }
         }
     ) { padding ->
-        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize()) {
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else {
@@ -205,25 +203,30 @@ fun StashScreen(
                         modifier = Modifier.align(Alignment.Center),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(Icons.Default.Archive, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.surfaceVariant)
+                        Icon(Icons.Default.Archive, null, modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.surfaceVariant)
                         Spacer(Modifier.height(16.dp))
                         Text(stringResource(R.string.stash_empty), color = MaterialTheme.colorScheme.secondary)
                     }
                 } else {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = padding.calculateTopPadding() + 8.dp, bottom = padding.calculateBottomPadding() + 96.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         items(stashes) { stash ->
-                            StashItemView(
-                                stash = stash,
-                                onClick = {
-                                    selectedStash = stash
-                                    showActionDialog = true
-                                },
-                                onDrop = {
-                                    selectedStash = stash
-                                    showDropDialog = true
-                                }
-                            )
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                StashItemView(
+                                    stash = stash,
+                                    onClick = {
+                                        selectedStash = stash
+                                        showActionDialog = true
+                                    },
+                                    onDrop = {
+                                        selectedStash = stash
+                                        showDropDialog = true
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -258,10 +261,12 @@ fun StashItemView(
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        Icon(Icons.Default.Archive, contentDescription = null, modifier = Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = stash.message.ifEmpty { "${stringResource(R.string.stash_wip_prefix)} ${stash.hash}" },
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
                 fontSize = 16.sp
             )
             Text(

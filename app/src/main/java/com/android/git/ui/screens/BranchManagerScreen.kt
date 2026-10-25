@@ -1,5 +1,7 @@
 package com.android.git.ui.screens
 
+import com.android.git.ui.components.GitIcons as Icons
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,44 +18,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.CallMerge
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Computer
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SyncAlt
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -71,6 +42,19 @@ import androidx.compose.foundation.clickable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.git.R
+import com.android.git.ui.components.CircularProgressIndicator
+import com.android.git.ui.components.DropdownMenu
+import io.github.suqi8.coui.kmp.basic.FloatingActionButton
+import io.github.suqi8.coui.kmp.basic.TabRowWithContour
+import com.android.git.ui.components.AlertDialog
+import com.android.git.ui.components.Button
+import com.android.git.ui.components.Card
+import com.android.git.ui.components.DropdownMenuItem
+import com.android.git.ui.components.ElevatedCard
+import com.android.git.ui.components.IconButton
+import com.android.git.ui.components.OutlinedTextField
+import com.android.git.ui.components.TextButton
+import com.android.git.ui.components.OplusScaffold
 import com.android.git.model.BranchModel
 import com.android.git.model.BranchType
 import com.android.git.model.DashboardState
@@ -153,45 +137,35 @@ fun BranchManagerScreen(
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.branch_title), fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack, enabled = !isLoading) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = { viewModel.fetchAll() },
-                        enabled = !isLoading
-                    ) {
-                        Icon(Icons.Default.CloudDownload, contentDescription = stringResource(R.string.branch_fetch))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
-            )
+    OplusScaffold(
+        title = stringResource(R.string.branch_title),
+        onBack = onBack,
+        backEnabled = !isLoading,
+        actions = {
+            IconButton(onClick = { viewModel.fetchAll() }, enabled = !isLoading) {
+                Icon(Icons.Default.CloudDownload, contentDescription = stringResource(R.string.branch_fetch))
+            }
         },
         floatingActionButton = {
-            androidx.compose.material3.ExtendedFloatingActionButton(
+            FloatingActionButton(
                 onClick = { if (!isLoading) showCreateDialog = true },
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text(stringResource(R.string.branch_create_action)) },
-                expanded = !isLoading,
                 containerColor = MaterialTheme.colorScheme.primary
-            )
+            ) {
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.branch_create_action), tint = MaterialTheme.colorScheme.onPrimary)
+            }
         }
     ) { padding ->
-        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                BranchHeader(
-                    currentBranch = currentBranch,
-                    localCount = localCount,
-                    remoteCount = remoteCount,
-                    isLoading = isLoading
-                )
+        Box(modifier = Modifier.fillMaxSize()) {
                 BranchListContent(
+                    padding = padding,
+                    header = {
+                        BranchHeader(
+                            currentBranch = currentBranch,
+                            localCount = localCount,
+                            remoteCount = remoteCount,
+                            isLoading = isLoading
+                        )
+                    },
                     branches = branches,
                     searchQuery = searchQuery,
                     selectedTab = selectedTab,
@@ -211,7 +185,6 @@ fun BranchManagerScreen(
                         }
                     }
                 )
-            }
 
             Box(modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)) {
                 AppSnackbar(message = statusMessage, type = statusType, onDismiss = { viewModel.clearStatus() })
@@ -227,38 +200,31 @@ private fun BranchHeader(
     remoteCount: Int,
     isLoading: Boolean
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Text(
-            text = if (currentBranch.isNullOrBlank()) {
-                stringResource(R.string.branch_no_current)
-            } else {
-                stringResource(R.string.branch_current_fmt, currentBranch)
-            },
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(
-                selected = true,
-                onClick = {},
-                enabled = false,
-                label = { Text(stringResource(R.string.branch_local_count, localCount)) },
-                leadingIcon = { Icon(Icons.Default.Computer, contentDescription = null, modifier = Modifier.size(16.dp)) }
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = if (currentBranch.isNullOrBlank()) {
+                    stringResource(R.string.branch_no_current)
+                } else {
+                    stringResource(R.string.branch_current_fmt, currentBranch)
+                },
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-            FilterChip(
-                selected = false,
-                onClick = {},
-                enabled = false,
-                label = { Text(stringResource(R.string.branch_remote_count, remoteCount)) },
-                leadingIcon = { Icon(Icons.Default.Cloud, contentDescription = null, modifier = Modifier.size(16.dp)) }
-            )
-            if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Default.Computer, contentDescription = null, modifier = Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.branch_local_count, localCount), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.width(8.dp))
+                Icon(Icons.Default.Cloud, contentDescription = null, modifier = Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.branch_remote_count, remoteCount), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            }
         }
     }
 }
@@ -347,16 +313,16 @@ private fun BranchConfirmationDialog(
                 else ButtonDefaults.buttonColors()
             ) { Text(confirmText) }
         },
+        neutralButton = if (isDelete) {
+            {
+                TextButton(onClick = onForceDelete, enabled = !isBusy) {
+                    Text(stringResource(R.string.branch_force_delete), color = MaterialTheme.colorScheme.error)
+                }
+            }
+        } else null,
         dismissButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (isDelete) {
-                    TextButton(onClick = onForceDelete, enabled = !isBusy) {
-                        Text(stringResource(R.string.branch_force_delete), color = MaterialTheme.colorScheme.error)
-                    }
-                }
-                TextButton(onClick = onDismiss, enabled = !isBusy) {
-                    Text(stringResource(R.string.action_cancel))
-                }
+            TextButton(onClick = onDismiss, enabled = !isBusy) {
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )
@@ -408,9 +374,10 @@ private fun InputBranchDialog(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BranchListContent(
+    padding: PaddingValues,
+    header: @Composable () -> Unit,
     branches: List<BranchModel>,
     searchQuery: String,
     selectedTab: Int,
@@ -419,81 +386,78 @@ private fun BranchListContent(
     onTabChange: (Int) -> Unit,
     onAction: (BranchAction, BranchModel) -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = onSearchChange,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            placeholder = { Text(stringResource(R.string.branch_search_hint)) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-            trailingIcon = {
-                if (searchQuery.isNotEmpty()) {
-                    IconButton(onClick = { onSearchChange("") }) {
-                        Text("×", style = MaterialTheme.typography.titleLarge)
-                    }
-                }
-            },
-            shape = RoundedCornerShape(12.dp),
-            singleLine = true,
-            enabled = !isLoading
+    val targetType = if (selectedTab == 0) BranchType.LOCAL else BranchType.REMOTE
+    val normalizedQuery = searchQuery.trim()
+    val filteredBranches = branches.filter { branch ->
+        branch.type == targetType && (
+            normalizedQuery.isBlank() ||
+                branch.name.contains(normalizedQuery, ignoreCase = true) ||
+                branch.fullPath.contains(normalizedQuery, ignoreCase = true) ||
+                branch.remoteName.orEmpty().contains(normalizedQuery, ignoreCase = true)
         )
-
-        PrimaryTabRow(selectedTabIndex = selectedTab) {
-            Tab(
-                selected = selectedTab == 0,
-                onClick = { onTabChange(0) },
-                text = { Text(stringResource(R.string.branch_tab_local)) },
-                icon = { Icon(Icons.Default.Computer, contentDescription = null) }
-            )
-            Tab(
-                selected = selectedTab == 1,
-                onClick = { onTabChange(1) },
-                text = { Text(stringResource(R.string.branch_tab_remote)) },
-                icon = { Icon(Icons.Default.Cloud, contentDescription = null) }
-            )
-        }
-
-        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            if (isLoading && branches.isEmpty()) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else {
-                val targetType = if (selectedTab == 0) BranchType.LOCAL else BranchType.REMOTE
-                val normalizedQuery = searchQuery.trim()
-                val filteredBranches = branches.filter { branch ->
-                    branch.type == targetType && (
-                            normalizedQuery.isBlank() ||
-                                    branch.name.contains(normalizedQuery, ignoreCase = true) ||
-                                    branch.fullPath.contains(normalizedQuery, ignoreCase = true) ||
-                                    branch.remoteName.orEmpty().contains(normalizedQuery, ignoreCase = true)
-                            )
-                }
-
-                if (filteredBranches.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = if (normalizedQuery.isBlank()) {
-                                stringResource(R.string.branch_empty_tab)
-                            } else {
-                                stringResource(R.string.branch_empty_search)
-                            },
-                            color = MaterialTheme.colorScheme.secondary
-                        )
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(vertical = 12.dp)
-                    ) {
-                        items(filteredBranches, key = { it.fullPath }) { branch ->
-                            BranchItemRich(
-                                branch = branch,
-                                enabled = !isLoading,
-                                onAction = { action -> onAction(action, branch) }
-                            )
+    }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(
+            start = 12.dp,
+            end = 12.dp,
+            top = padding.calculateTopPadding() + 8.dp,
+            bottom = padding.calculateBottomPadding() + 96.dp
+        )
+    ) {
+        item(key = "branch-summary") { header() }
+        item(key = "branch-search") {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchChange,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text(stringResource(R.string.branch_search_hint)) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { onSearchChange("") }) {
+                            Text("×", style = MaterialTheme.typography.titleLarge)
                         }
                     }
+                },
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true,
+                enabled = !isLoading
+            )
+        }
+        item(key = "branch-tabs") {
+            TabRowWithContour(
+                tabs = listOf(stringResource(R.string.branch_tab_local), stringResource(R.string.branch_tab_remote)),
+                selectedTabIndex = selectedTab,
+                onTabSelected = onTabChange,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        when {
+            isLoading && branches.isEmpty() -> item(key = "branch-loading") {
+                Box(modifier = Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
+            }
+            filteredBranches.isEmpty() -> item(key = "branch-empty") {
+                Box(modifier = Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = if (normalizedQuery.isBlank()) {
+                            stringResource(R.string.branch_empty_tab)
+                        } else {
+                            stringResource(R.string.branch_empty_search)
+                        },
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            else -> items(filteredBranches, key = { it.fullPath }) { branch ->
+                BranchItemRich(
+                    branch = branch,
+                    enabled = !isLoading,
+                    onAction = { action -> onAction(action, branch) }
+                )
             }
         }
     }
@@ -516,8 +480,8 @@ fun BranchItemRich(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             contentColor = MaterialTheme.colorScheme.onSurface
         ),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(16.dp)
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(12.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
@@ -526,15 +490,16 @@ fun BranchItemRich(
             Icon(
                 imageVector = if (isRemote) Icons.Default.Cloud else Icons.Default.Computer,
                 contentDescription = if (isRemote) stringResource(R.string.branch_remote) else stringResource(R.string.branch_local),
+                modifier = Modifier.size(22.dp),
                 tint = if (branch.isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
             )
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(8.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = branch.name,
-                    fontWeight = if (branch.isCurrent) FontWeight.Bold else FontWeight.Normal,
+                    fontWeight = if (branch.isCurrent) FontWeight.Medium else FontWeight.Normal,
                     color = if (branch.isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                     fontSize = 16.sp,
                     maxLines = 1,
@@ -630,7 +595,7 @@ private fun BranchActionMenu(
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {

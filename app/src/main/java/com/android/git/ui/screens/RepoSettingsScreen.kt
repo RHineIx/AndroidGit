@@ -1,20 +1,25 @@
 package com.android.git.ui.screens
 
+import com.android.git.ui.components.CircularProgressIndicator
+
+import com.android.git.ui.components.GitIcons as Icons
+
+import com.android.git.ui.components.OplusScaffold
+import com.android.git.ui.components.OplusSectionTitle
+import com.android.git.ui.components.Button
+import com.android.git.ui.components.ElevatedCard
+import com.android.git.ui.components.OutlinedTextField
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.android.git.R
@@ -47,45 +52,31 @@ fun RepoSettingsScreen(
     var sshPassphrase by remember { mutableStateOf(prefs.getSshPassphrase()) }
     var isSaving by remember { mutableStateOf(false) }
 
-    val cardShape = RoundedCornerShape(16.dp)
+    val cardShape = RoundedCornerShape(24.dp)
     val textFieldShape = RoundedCornerShape(16.dp)
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.repo_settings_title), fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
-            )
-        }
+    OplusScaffold(
+        title = stringResource(R.string.repo_settings_title),
+        onBack = onBack
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 12.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = stringResource(R.string.repo_settings_section_auth),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 12.dp, start = 4.dp)
-            )
+            OplusSectionTitle(title = stringResource(R.string.repo_settings_section_auth))
 
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = cardShape,
                 colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     OutlinedTextField(
                         value = userName,
                         onValueChange = { userName = it },
@@ -142,7 +133,7 @@ fun RepoSettingsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Button(
                 onClick = {

@@ -1,29 +1,34 @@
 package com.android.git.ui.screens
 
+import com.android.git.ui.components.LinearProgressIndicator
+
+import com.android.git.ui.components.CircularProgressIndicator
+
+import com.android.git.ui.components.GitIcons as Icons
+
+import com.android.git.ui.components.OplusScaffold
+import com.android.git.ui.components.OplusSectionTitle
+import com.android.git.ui.components.AlertDialog
+import com.android.git.ui.components.Button
+import com.android.git.ui.components.Card
+import com.android.git.ui.components.IconButton
+import com.android.git.ui.components.Switch
+import com.android.git.ui.components.TextButton
+
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.CallSplit
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.android.git.R
 import com.android.git.data.GitManager
 import com.android.git.model.DashboardState
@@ -56,8 +61,6 @@ fun DashboardScreen(
     val isLoading = viewModel.isLoading
     val statusMessage = viewModel.statusMessage
     val statusType = viewModel.statusType
-
-    val cardShape = RoundedCornerShape(16.dp)
 
     BackHandler(enabled = true) { showExitDialog = true }
 
@@ -97,87 +100,53 @@ fun DashboardScreen(
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = repoFile.name,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = repoFile.absolutePath,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onRefresh, enabled = !isLoading) {
-                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh))
-                    }
-                    IconButton(onClick = onSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
-            )
+    OplusScaffold(
+        collapsible = false,
+        title = repoFile.name,
+        onBack = { showExitDialog = true },
+        actions = {
+            IconButton(onClick = onRefresh, enabled = !isLoading) {
+                Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh))
+            }
+            IconButton(onClick = onSettings) {
+                Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
+            }
         }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp)
-                    .verticalScroll(rememberScrollState())
+                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp).padding(top = 8.dp, bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (isLoading) {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
-                } else {
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-
+                Text(
+                    text = repoFile.absolutePath,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                if (isLoading) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 when (dashboardState) {
                     is DashboardState.Loading -> Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                     is DashboardState.NotInitialized -> {
-                        ElevatedCard(
-                            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = cardShape
-                        ) {
-                            Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(stringResource(R.string.dashboard_not_repo), style = MaterialTheme.typography.titleMedium)
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(16.dp)) {
+                                Text(stringResource(R.string.dashboard_not_repo), style = MaterialTheme.typography.bodyLarge)
                                 Spacer(Modifier.height(16.dp))
-                                Button(onClick = { viewModel.initRepo() }, shape = cardShape) {
+                                Button(onClick = { viewModel.initRepo() }, modifier = Modifier.fillMaxWidth()) {
                                     Text(stringResource(R.string.dashboard_init_git))
                                 }
                             }
                         }
                     }
                     is DashboardState.Success -> {
-                        Text(
-                            text = stringResource(R.string.dashboard_quick_actions),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(bottom = 12.dp, top = 8.dp)
-                        )
-
-                        ElevatedCard(
-                            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = cardShape,
-                            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
-                        ) {
+                        OplusSectionTitle(title = stringResource(R.string.dashboard_quick_actions))
+                        Card(modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(16.dp)) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                     Button(
                                         onClick = { viewModel.pullChanges() },
-                                        modifier = Modifier.weight(1f).height(50.dp),
-                                        enabled = !isLoading,
-                                        shape = cardShape
+                                        modifier = Modifier.weight(1f).height(48.dp),
+                                        enabled = !isLoading
                                     ) {
                                         Icon(Icons.Default.CloudDownload, contentDescription = null, Modifier.size(20.dp))
                                         Spacer(Modifier.width(8.dp))
@@ -185,10 +154,9 @@ fun DashboardScreen(
                                     }
                                     Button(
                                         onClick = { if (isForcePushChecked) showForcePushDialog = true else viewModel.pushChanges(force = false) },
-                                        modifier = Modifier.weight(1f).height(50.dp),
+                                        modifier = Modifier.weight(1f).height(48.dp),
                                         colors = ButtonDefaults.buttonColors(containerColor = if (isForcePushChecked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary),
-                                        enabled = !isLoading,
-                                        shape = cardShape
+                                        enabled = !isLoading
                                     ) {
                                         Icon(Icons.Default.CloudUpload, contentDescription = null, Modifier.size(20.dp))
                                         Spacer(Modifier.width(8.dp))
@@ -199,163 +167,69 @@ fun DashboardScreen(
                                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Checkbox(
-                                        checked = isForcePushChecked,
-                                        onCheckedChange = { isForcePushChecked = it },
-                                        modifier = Modifier.scale(0.9f)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(stringResource(R.string.dashboard_allow_force), style = MaterialTheme.typography.bodyMedium)
+                                    Text(stringResource(R.string.dashboard_allow_force), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                                    Spacer(Modifier.width(12.dp))
+                                    Switch(checked = isForcePushChecked, onCheckedChange = { isForcePushChecked = it }, enabled = !isLoading)
                                 }
                             }
                         }
-
-                        Text(
-                            text = stringResource(R.string.dashboard_repository_status),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(bottom = 12.dp, top = 24.dp)
-                        )
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            ElevatedCard(
-                                modifier = Modifier.weight(1f).clickable { onManageBranches() },
-                                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                                shape = cardShape,
-                                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
-                            ) {
-                                Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                                    Icon(Icons.AutoMirrored.Filled.CallSplit, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
-                                    Spacer(Modifier.height(8.dp))
-                                    Text(stringResource(R.string.dashboard_card_branch), style = MaterialTheme.typography.labelMedium)
-                                    Text(dashboardState.branch, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                                }
-                            }
-                            
-                            ElevatedCard(
-                                modifier = Modifier.weight(1f).clickable { onViewChanges() },
-                                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
-                                shape = cardShape,
-                                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
-                            ) {
-                                Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                                    Icon(Icons.Default.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
-                                    Spacer(Modifier.height(8.dp))
-                                    Text(stringResource(R.string.dashboard_card_changes), style = MaterialTheme.typography.labelMedium)
-                                    Text("${dashboardState.changes} ${stringResource(R.string.dashboard_card_changes_suffix)}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                                }
+                        OplusSectionTitle(title = stringResource(R.string.dashboard_repository_status))
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column {
+                                DashboardPreferenceRow(
+                                    title = stringResource(R.string.dashboard_card_branch),
+                                    summary = dashboardState.branch,
+                                    icon = Icons.AutoMirrored.Filled.CallSplit,
+                                    onClick = onManageBranches
+                                )
+                                DashboardRowDivider()
+                                DashboardPreferenceRow(
+                                    title = stringResource(R.string.dashboard_card_changes),
+                                    summary = "${dashboardState.changes} ${stringResource(R.string.dashboard_card_changes_suffix)}",
+                                    icon = Icons.Default.Refresh,
+                                    onClick = onViewChanges
+                                )
+                                DashboardRowDivider()
+                                DashboardPreferenceRow(
+                                    title = stringResource(R.string.dashboard_card_history),
+                                    summary = stringResource(R.string.dashboard_card_view_commits),
+                                    icon = Icons.Default.History,
+                                    onClick = onViewLog
+                                )
                             }
                         }
-
-                        Spacer(Modifier.height(12.dp))
-
-                        ElevatedCard(
-                            modifier = Modifier.fillMaxWidth().clickable { onViewLog() },
-                            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                            shape = cardShape,
-                            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
-                        ) {
-                            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.History, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
-                                Spacer(Modifier.width(16.dp))
-                                Column {
-                                    Text(stringResource(R.string.dashboard_card_history), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                                    Text(stringResource(R.string.dashboard_card_view_commits), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                                }
-                            }
-                        }
-
                         if (dashboardState.unpushedCount > 0) {
-                            Spacer(Modifier.height(12.dp))
-                            ElevatedCard(
-                                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = cardShape,
-                                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
-                            ) {
+                            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
                                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.Upload, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
                                     Spacer(Modifier.width(16.dp))
-                                    Text(stringResource(R.string.dashboard_unpushed_commits, dashboardState.unpushedCount), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                                    Text(stringResource(R.string.dashboard_unpushed_commits, dashboardState.unpushedCount), color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodyMedium)
                                 }
                             }
                         }
-
-                        Text(
-                            text = stringResource(R.string.dashboard_tools_title),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(bottom = 12.dp, top = 24.dp)
-                        )
-
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            DashboardToolCard(
-                                title = stringResource(R.string.dashboard_tool_stash),
-                                icon = Icons.Default.Archive,
-                                modifier = Modifier.weight(1f),
-                                enabled = !isLoading,
-                                onClick = onOpenStash
-                            )
-                            DashboardToolCard(
-                                title = stringResource(R.string.dashboard_tool_merge),
-                                icon = Icons.Default.Warning,
-                                modifier = Modifier.weight(1f),
-                                enabled = !isLoading,
-                                onClick = onMergeConflicts
-                            )
+                        OplusSectionTitle(title = stringResource(R.string.dashboard_tools_title))
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column {
+                                DashboardPreferenceRow(title = stringResource(R.string.dashboard_tool_stash), icon = Icons.Default.Archive, enabled = !isLoading, onClick = onOpenStash)
+                                DashboardRowDivider()
+                                DashboardPreferenceRow(title = stringResource(R.string.dashboard_tool_merge), icon = Icons.Default.Warning, enabled = !isLoading, onClick = onMergeConflicts)
+                                DashboardRowDivider()
+                                DashboardPreferenceRow(title = stringResource(R.string.dashboard_tool_gitignore), icon = Icons.Default.Code, enabled = !isLoading, onClick = onIgnoreEditor)
+                                DashboardRowDivider()
+                                DashboardPreferenceRow(title = stringResource(R.string.dashboard_tool_fetch), icon = Icons.Default.Sync, enabled = !isLoading, onClick = { viewModel.fetchAll() })
+                                DashboardRowDivider()
+                                DashboardPreferenceRow(title = stringResource(R.string.dashboard_tool_workflows), icon = Icons.Default.PlayCircle, enabled = !isLoading, onClick = onOpenWorkflows)
+                            }
                         }
-
-                        Spacer(Modifier.height(12.dp))
-
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            DashboardToolCard(
-                                title = stringResource(R.string.dashboard_tool_gitignore),
-                                icon = Icons.Default.Code,
-                                modifier = Modifier.weight(1f),
-                                enabled = !isLoading,
-                                onClick = onIgnoreEditor
-                            )
-                            DashboardToolCard(
-                                title = stringResource(R.string.dashboard_tool_fetch),
-                                icon = Icons.Default.Sync,
-                                modifier = Modifier.weight(1f),
-                                enabled = !isLoading,
-                                onClick = { viewModel.fetchAll() }
-                            )
-                        }
-
-                        Spacer(Modifier.height(12.dp))
-
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            DashboardToolCard(
-                                title = stringResource(R.string.dashboard_tool_workflows),
-                                icon = Icons.Default.PlayCircle,
-                                modifier = Modifier.weight(1f),
-                                enabled = !isLoading,
-                                onClick = onOpenWorkflows
-                            )
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
-
-                        Spacer(Modifier.height(32.dp))
                     }
                     is DashboardState.Error -> {
-                        ElevatedCard(
-                            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = cardShape
-                        ) {
-                            Text(
-                                text = dashboardState.message,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.padding(16.dp)
-                            )
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer), modifier = Modifier.fillMaxWidth()) {
+                            Text(text = dashboardState.message, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.padding(16.dp))
                         }
                     }
                 }
             }
-
-            Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp, start = 16.dp, end = 16.dp)) {
+            Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp, start = 12.dp, end = 12.dp)) {
                 AppSnackbar(statusMessage, statusType) { viewModel.clearStatus() }
             }
         }
@@ -363,36 +237,31 @@ fun DashboardScreen(
 }
 
 @Composable
-fun DashboardToolCard(
+private fun DashboardRowDivider() {
+    HorizontalDivider(modifier = Modifier.padding(start = 56.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+}
+
+@Composable
+private fun DashboardPreferenceRow(
     title: String,
     icon: ImageVector,
-    modifier: Modifier = Modifier,
+    summary: String? = null,
     enabled: Boolean = true,
     onClick: () -> Unit
 ) {
-    ElevatedCard(
-        modifier = modifier
-            .height(90.dp)
-            .alpha(if (enabled) 1f else 0.55f)
-            .clickable(enabled = enabled, role = Role.Button) { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+    Row(
+        modifier = Modifier.fillMaxWidth().alpha(if (enabled) 1f else 0.5f).clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center
-            )
+        Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurface)
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+            if (!summary.isNullOrEmpty()) {
+                Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
+            }
         }
+        Spacer(Modifier.width(12.dp))
+        Icon(Icons.Default.ChevronRight, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

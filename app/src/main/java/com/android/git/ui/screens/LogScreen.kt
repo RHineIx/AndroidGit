@@ -14,10 +14,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -36,20 +33,30 @@ import androidx.compose.ui.unit.sp
 import com.android.git.R
 import com.android.git.data.GitManager
 import com.android.git.model.CommitItem
+import com.android.git.ui.components.AlertDialog
 import com.android.git.ui.components.AppSnackbar
+import com.android.git.ui.components.Button
+import com.android.git.ui.components.Checkbox
+import com.android.git.ui.components.CircularProgressIndicator
+import com.android.git.ui.components.ElevatedCard
+import com.android.git.ui.components.GitIcons as Icons
+import com.android.git.ui.components.IconButton
+import com.android.git.ui.components.ModalBottomSheet
+import com.android.git.ui.components.OplusScaffold
+import com.android.git.ui.components.OutlinedButton
 import com.android.git.ui.components.SnackbarType
+import com.android.git.ui.components.TextButton
 import com.android.git.ui.viewmodel.MainViewModel
 import com.android.git.utils.isGitFailureMessage
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.concurrent.TimeUnit
-import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -103,38 +110,26 @@ fun LogScreen(
         statusType = SnackbarType.SUCCESS
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(stringResource(R.string.log_title), fontWeight = FontWeight.Bold)
-                        Text(stringResource(R.string.log_subtitle, commits.size), style = MaterialTheme.typography.labelMedium)
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
-                    }
-                },
-                actions = {
-                    if (isLogLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp).padding(end = 16.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    } else {
-                        IconButton(onClick = { viewModel.loadLogs(reset = true) }) {
-                            Icon(Icons.Default.Refresh, stringResource(R.string.action_refresh))
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
-            )
+    OplusScaffold(
+        title = stringResource(R.string.log_title),
+        onBack = onBack,
+        subtitle = stringResource(R.string.log_subtitle, commits.size),
+        actions = {
+            if (isLogLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp).padding(end = 16.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            } else {
+                IconButton(onClick = { viewModel.loadLogs(reset = true) }) {
+                    Icon(Icons.Default.Refresh, stringResource(R.string.action_refresh))
+                }
+            }
         },
+
         content = { padding ->
-            Box(modifier = Modifier.padding(padding).fillMaxSize()) {
+            Box(modifier = Modifier.fillMaxSize()) {
                 if (commits.isEmpty() && !isLogLoading) {
                     if (logErrorMessage.isNotEmpty()) {
                         LogErrorState(
@@ -149,7 +144,10 @@ fun LogScreen(
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(vertical = 16.dp)
+                        contentPadding = PaddingValues(
+                            top = padding.calculateTopPadding() + 8.dp,
+                            bottom = padding.calculateBottomPadding() + 32.dp
+                        )
                     ) {
                         itemsIndexed(commits) { index, commit ->
                             val isLast = index == commits.lastIndex
@@ -192,7 +190,8 @@ fun LogScreen(
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
             sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
         ) {
             CommitDetailsSheet(
                 commit = selectedCommit!!,
@@ -216,13 +215,14 @@ fun TimelineCommitItem(
     onClick: () -> Unit
 ) {
     val authorColor = remember(commit.author) { generateColorFromString(commit.author) }
-    val cardShape = RoundedCornerShape(16.dp)
+    val cardShape = RoundedCornerShape(12.dp)
+    val timelineBackground = MaterialTheme.colorScheme.background
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.Top
     ) {
         Column(
@@ -241,7 +241,7 @@ fun TimelineCommitItem(
                     radius = size.minDimension / 2
                 )
                 drawCircle(
-                    color = Color.White,
+                    color = timelineBackground,
                     radius = size.minDimension / 2,
                     style = Stroke(width = 2f)
                 )
@@ -261,12 +261,12 @@ fun TimelineCommitItem(
         ElevatedCard(
             modifier = Modifier
                 .weight(1f)
-                .padding(bottom = 16.dp)
+                .padding(bottom = 8.dp)
                 .clip(cardShape)
                 .clickable(onClick = onClick),
             shape = cardShape,
             colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -288,7 +288,7 @@ fun TimelineCommitItem(
                     Text(
                         text = commit.author,
                         style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(Modifier.weight(1f))
@@ -349,7 +349,8 @@ fun CommitDetailsSheet(
     onCopy: (String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    val fullDateFormat = SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss", Locale.getDefault())
+    val locale = LocalConfiguration.current.locales[0]
+    val fullDateFormat = remember(locale) { SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss", locale) }
 
     var showRevertDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
@@ -464,7 +465,7 @@ fun CommitDetailsSheet(
                 stringResource(R.string.log_details_title),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Medium
             )
             Spacer(Modifier.weight(1f))
             IconButton(onClick = { onCopy(commit.hash) }) {
@@ -485,9 +486,9 @@ fun CommitDetailsSheet(
 
         ElevatedCard(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(Modifier.fillMaxWidth()) {
@@ -574,7 +575,7 @@ fun LogErrorState(
 ) {
     ElevatedCard(
         modifier = modifier.padding(24.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
     ) {
         Column(
@@ -610,8 +611,8 @@ fun EmptyStateView(modifier: Modifier = Modifier) {
         Icon(
             imageVector = Icons.Default.History,
             contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.surfaceVariant
+            modifier = Modifier.size(32.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(16.dp))
         Text(
@@ -624,6 +625,8 @@ fun EmptyStateView(modifier: Modifier = Modifier) {
 
 @Composable
 fun getRelativeTime(date: Date): String {
+    val locale = LocalConfiguration.current.locales[0]
+    val shortDateFormat = remember(locale) { SimpleDateFormat("dd MMM", locale) }
     val now = Date().time
     val diff = now - date.time
 
@@ -632,7 +635,7 @@ fun getRelativeTime(date: Date): String {
         diff < TimeUnit.HOURS.toMillis(1) -> stringResource(R.string.log_time_minutes, TimeUnit.MILLISECONDS.toMinutes(diff).toInt())
         diff < TimeUnit.DAYS.toMillis(1) -> stringResource(R.string.log_time_hours, TimeUnit.MILLISECONDS.toHours(diff).toInt())
         diff < TimeUnit.DAYS.toMillis(7) -> stringResource(R.string.log_time_days, TimeUnit.MILLISECONDS.toDays(diff).toInt())
-        else -> SimpleDateFormat("dd MMM", Locale.getDefault()).format(date)
+        else -> shortDateFormat.format(date)
     }
 }
 

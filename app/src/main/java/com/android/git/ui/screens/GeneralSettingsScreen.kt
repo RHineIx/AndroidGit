@@ -1,22 +1,33 @@
 package com.android.git.ui.screens
 
+import com.android.git.ui.components.DropdownMenu
+
+import com.android.git.ui.components.CircularProgressIndicator
+
+import com.android.git.ui.components.GitIcons as Icons
+
+import com.android.git.ui.components.OplusScaffold
+import com.android.git.ui.components.OplusSectionTitle
+import com.android.git.ui.components.Button
+import com.android.git.ui.components.Card
+import com.android.git.ui.components.DropdownMenuItem
+import com.android.git.ui.components.FilledTonalButton
+import com.android.git.ui.components.IconButton
+import com.android.git.ui.components.OutlinedTextField
+import com.android.git.ui.components.Switch
+
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -88,27 +99,19 @@ fun GeneralSettingsScreen(
         "gemma-3-27b-it"
     )
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.settings_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
-            )
-        }
+    OplusScaffold(
+        collapsible = false,
+        title = stringResource(R.string.settings_title),
+        onBack = onBack
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                    .padding(horizontal = 12.dp)
+                    .padding(top = 8.dp, bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
 
                 SettingsSection(title = stringResource(R.string.settings_section_app)) {
@@ -134,10 +137,10 @@ fun GeneralSettingsScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Column {
+                            Column(Modifier.weight(1f)) {
                                 Text(
                                     stringResource(R.string.settings_theme_title),
-                                    fontWeight = FontWeight.SemiBold,
+                                    fontWeight = FontWeight.Normal,
                                     style = MaterialTheme.typography.bodyLarge
                                 )
                                 Text(
@@ -146,7 +149,7 @@ fun GeneralSettingsScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                         }
 
                         DropdownMenu(
@@ -173,7 +176,7 @@ fun GeneralSettingsScreen(
 
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 16.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
                     )
 
                     Row(
@@ -184,7 +187,7 @@ fun GeneralSettingsScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 stringResource(R.string.settings_auto_open),
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Normal,
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Text(
@@ -471,7 +474,7 @@ fun AppVersionFooter(
                 Text(
                     text = stringResource(R.string.settings_check_updates_hint),
                     style = MaterialTheme.typography.labelSmall,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
                 )
             }
@@ -481,31 +484,9 @@ fun AppVersionFooter(
 
 @Composable
 fun DeveloperSection(context: Context) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-    ) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = stringResource(R.string.settings_developer_by),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.secondary
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            Surface(
-                modifier = Modifier.size(80.dp),
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-            ) {
+    SettingsSection(title = stringResource(R.string.settings_developer_by)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Surface(modifier = Modifier.size(48.dp), shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface) {
                 Image(
                     painter = painterResource(id = R.drawable.me),
                     contentDescription = stringResource(R.string.settings_developer_image_desc),
@@ -513,43 +494,16 @@ fun DeveloperSection(context: Context) {
                     modifier = Modifier.fillMaxSize()
                 )
             }
-
-            Spacer(Modifier.height(16.dp))
-
-            Text(
-                text = "RHineix",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Text(
-                text = "@RHineix",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Spacer(Modifier.height(24.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                SocialButton(
-                    iconRes = R.drawable.ic_github,
-                    label = stringResource(R.string.settings_social_github),
-                    onClick = { openUrl(context, "https://github.com/RHineix") }
-                )
-
-                Spacer(Modifier.width(16.dp))
-
-                SocialButton(
-                    iconRes = R.drawable.ic_telegram,
-                    label = stringResource(R.string.settings_social_telegram),
-                    onClick = { openUrl(context, "https://t.me/RHineix") }
-                )
+            Spacer(Modifier.width(16.dp))
+            Column {
+                Text("RHineix", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                Text("@RHineix", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+        }
+        Spacer(Modifier.height(16.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            SocialButton(iconRes = R.drawable.ic_github, label = stringResource(R.string.settings_social_github), onClick = { openUrl(context, "https://github.com/RHineix") })
+            SocialButton(iconRes = R.drawable.ic_telegram, label = stringResource(R.string.settings_social_telegram), onClick = { openUrl(context, "https://t.me/RHineix") })
         }
     }
 }
@@ -584,19 +538,13 @@ fun openUrl(context: Context, url: String) {
 @Composable
 fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 4.dp, bottom = 12.dp)
-        )
+        OplusSectionTitle(title = title)
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(24.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(20.dp)) { content() }
+            Column(modifier = Modifier.padding(16.dp)) { content() }
         }
     }
 }
