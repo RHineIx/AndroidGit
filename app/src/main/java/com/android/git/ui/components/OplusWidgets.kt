@@ -433,7 +433,7 @@ fun AlertDialog(
     title: (@Composable () -> Unit)? = null,
     text: (@Composable () -> Unit)? = null,
     shape: Shape = MaterialTheme.shapes.extraLarge,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    containerColor: Color = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) Color(0xFF3D3D3D) else Color.White,
     iconContentColor: Color = MaterialTheme.colorScheme.primary,
     titleContentColor: Color = MaterialTheme.colorScheme.onSurface,
     textContentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
