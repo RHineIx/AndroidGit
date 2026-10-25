@@ -8,7 +8,7 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.sp
 
 private fun oplusText(size: Float, height: Float, weight: FontWeight = FontWeight.Normal) = TextStyle(
-    fontFamily = FontFamily.Default,
+    fontFamily = FontFamily.SansSerif,
     fontWeight = weight,
     fontSize = size.sp,
     lineHeight = height.sp,

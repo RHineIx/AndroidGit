@@ -8,18 +8,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,6 +36,8 @@ import com.android.git.ui.components.AlertDialog
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.components.Button
 import com.android.git.ui.components.CircularProgressIndicator
+import com.android.git.ui.components.DropdownMenu
+import com.android.git.ui.components.OplusPreferenceRow
 import com.android.git.ui.components.DropdownMenuItem
 import com.android.git.ui.components.ElevatedCard
 import com.android.git.ui.components.GitIcons as Icons
@@ -228,23 +226,22 @@ private fun WorkflowRunDialog(
                     }
                 } else {
                     // Ref Selection with Editable Dropdown
-                    ExposedDropdownMenuBox(
-                        expanded = refExpanded,
-                        onExpandedChange = { refExpanded = it }
-                    ) {
+                    Box {
                         OutlinedTextField(
                             value = ref,
                             onValueChange = { ref = it },
                             label = { Text(stringResource(R.string.workflow_ref)) },
-                            modifier = Modifier
-                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
-                                .fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = refExpanded) },
-                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                            trailingIcon = {
+                                IconButton(onClick = { refExpanded = !refExpanded }) {
+                                    Icon(Icons.Default.ArrowDropDown, stringResource(R.string.workflow_ref), Modifier.size(22.dp))
+                                }
+                            }
                         )
                         if (availableBranches.isNotEmpty()) {
-                            ExposedDropdownMenu(
+                            DropdownMenu(
+                                width = 272.dp,
                                 expanded = refExpanded,
                                 onDismissRequest = { refExpanded = false }
                             ) {
@@ -334,21 +331,26 @@ private fun WorkflowInputField(
         }
         input.type.equals("choice", ignoreCase = true) && input.options.isNotEmpty() -> {
             var expanded by remember(input.name) { mutableStateOf(false) }
-            ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
-                OutlinedTextField(
-                    value = value,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text(label) },
-                    supportingText = { if (input.description.isNotBlank()) Text(input.description) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+            Box {
+                OplusPreferenceRow(
+                    title = label,
+                    summary = value,
+                    onClick = { expanded = true },
+                    trailing = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(22.dp)) }
                 )
-                ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    input.options.forEach { option ->
-                        DropdownMenuItem(text = { Text(option) }, onClick = { onValueChange(option); expanded = false })
+                DropdownMenu(expanded = expanded, width = 272.dp, onDismissRequest = { expanded = false }) {
+                    input.options.forEachIndexed { index, option ->
+                        DropdownMenuItem(
+                            text = { Text(option, color = if (value == option) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface) },
+                            showDivider = index > 0,
+                            leadingIcon = if (value == option) { { Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) } } else null,
+                            onClick = { onValueChange(option); expanded = false }
+                        )
                     }
                 }
+            }
+            if (input.description.isNotBlank()) {
+                Text(input.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         else -> {

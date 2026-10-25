@@ -179,7 +179,7 @@ fun ChangesScreen(
                             leadingIcon = { Icon(Icons.Default.SelectAll, contentDescription = null) },
                             onClick = { selectedFiles = files.map { it.path }.toSet() - selectedFiles; showFilterMenu = false }
                         )
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp), thickness = 0.33.dp, color = MaterialTheme.colorScheme.outlineVariant)
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.changes_filter_extension)) },
                             leadingIcon = { Icon(Icons.Default.FilterAlt, contentDescription = null) },

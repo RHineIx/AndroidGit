@@ -42,6 +42,10 @@ import com.android.git.ui.components.ElevatedCard
 import com.android.git.ui.components.GitIcons as Icons
 import com.android.git.ui.components.IconButton
 import com.android.git.ui.components.ModalBottomSheet
+import com.android.git.ui.components.OplusPreferenceGroup
+import com.android.git.ui.components.OplusPreferenceRow
+import com.android.git.ui.components.OplusPreferenceDivider
+import com.android.git.ui.components.OplusSectionTitle
 import com.android.git.ui.components.OplusScaffold
 import com.android.git.ui.components.OutlinedButton
 import com.android.git.ui.components.SnackbarType
@@ -190,7 +194,13 @@ fun LogScreen(
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
             sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            containerColor = MaterialTheme.colorScheme.background,
+            title = stringResource(R.string.log_details_title),
+            endAction = {
+                IconButton(onClick = { copyToClipboard(selectedCommit!!.hash) }) {
+                    Icon(Icons.Default.ContentCopy, stringResource(R.string.action_copy), Modifier.size(22.dp))
+                }
+            },
             shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
         ) {
             CommitDetailsSheet(
@@ -455,95 +465,56 @@ fun CommitDetailsSheet(
 
     Column(
         modifier = Modifier
-            .padding(24.dp)
             .verticalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp)
+            .navigationBarsPadding()
+            .padding(bottom = 24.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Commit, null, tint = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.width(8.dp))
-            Text(
-                stringResource(R.string.log_details_title),
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Medium
-            )
-            Spacer(Modifier.weight(1f))
-            IconButton(onClick = { onCopy(commit.hash) }) {
-                Icon(Icons.Default.ContentCopy, stringResource(R.string.action_copy))
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-
         Text(
             text = commit.message,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
             style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface
         )
-
-        Spacer(Modifier.height(24.dp))
-
-        ElevatedCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(Modifier.fillMaxWidth()) {
-                    Column(Modifier.weight(1f)) {
-                        LabelValueItem(stringResource(R.string.log_label_author), commit.author, Icons.Default.Person)
-                        Spacer(Modifier.height(16.dp))
-                        LabelValueItem(stringResource(R.string.log_label_hash), commit.hash, Icons.Default.Tag)
-                    }
-                    Column(Modifier.weight(1f)) {
-                        LabelValueItem(stringResource(R.string.log_label_date), fullDateFormat.format(commit.date), Icons.Default.CalendarToday)
-                        Spacer(Modifier.height(16.dp))
-                        LabelValueItem(
-                            stringResource(R.string.log_label_status),
-                            if (commit.isPushed) stringResource(R.string.log_status_pushed) else stringResource(R.string.log_status_local),
-                            if (commit.isPushed) Icons.Default.CloudDone else Icons.Default.CloudOff
-                        )
-                    }
-                }
-            }
+        OplusPreferenceGroup {
+            OplusPreferenceRow(stringResource(R.string.log_label_author), commit.author, Icons.Default.Person)
+            OplusPreferenceDivider()
+            OplusPreferenceRow(stringResource(R.string.log_label_date), fullDateFormat.format(commit.date), Icons.Default.CalendarToday)
+            OplusPreferenceDivider()
+            OplusPreferenceRow(
+                title = stringResource(R.string.log_label_hash),
+                summary = commit.hash,
+                icon = Icons.Default.Tag,
+                onClick = { onCopy(commit.hash) },
+                trailing = { Icon(Icons.Default.ContentCopy, stringResource(R.string.action_copy), Modifier.size(22.dp)) }
+            )
+            OplusPreferenceDivider()
+            OplusPreferenceRow(
+                stringResource(R.string.log_label_status),
+                if (commit.isPushed) stringResource(R.string.log_status_pushed) else stringResource(R.string.log_status_local),
+                if (commit.isPushed) Icons.Default.CloudDone else Icons.Default.CloudOff
+            )
         }
-
-        HorizontalDivider(Modifier.padding(vertical = 24.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-
-        Text(
-            text = stringResource(R.string.log_danger_zone),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
-
-        OutlinedButton(
-            onClick = { showRevertDialog = true },
-            modifier = Modifier.fillMaxWidth().height(50.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
-        ) {
-            Icon(Icons.AutoMirrored.Filled.Undo, null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.log_btn_revert))
+        Spacer(Modifier.height(8.dp))
+        OplusSectionTitle(stringResource(R.string.log_danger_zone))
+        OplusPreferenceGroup {
+            OplusPreferenceRow(
+                title = stringResource(R.string.log_btn_revert),
+                icon = Icons.AutoMirrored.Filled.Undo,
+                enabled = !isActionRunning,
+                danger = true,
+                onClick = { showRevertDialog = true }
+            )
+            OplusPreferenceDivider()
+            OplusPreferenceRow(
+                title = stringResource(R.string.log_btn_reset),
+                icon = Icons.Default.Restore,
+                enabled = !isActionRunning,
+                danger = true,
+                onClick = { hardResetConfirmed = false; showResetDialog = true }
+            )
         }
-
-        Spacer(Modifier.height(12.dp))
-
-        Button(
-            onClick = { hardResetConfirmed = false; showResetDialog = true },
-            modifier = Modifier.fillMaxWidth().height(50.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer)
-        ) {
-            Icon(Icons.Default.Restore, null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.log_btn_reset))
-        }
-
-        Spacer(Modifier.height(32.dp))
     }
 }
 

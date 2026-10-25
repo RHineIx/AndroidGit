@@ -188,7 +188,8 @@ fun UpdateBottomSheet(
 
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 12.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        thickness = 0.33.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
                     )
 
                     Column(

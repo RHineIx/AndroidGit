@@ -8,6 +8,9 @@ import com.android.git.ui.components.GitIcons as Icons
 
 import com.android.git.ui.components.OplusScaffold
 import com.android.git.ui.components.OplusSectionTitle
+import com.android.git.ui.components.OplusPreferenceGroup
+import com.android.git.ui.components.OplusPreferenceRow
+import com.android.git.ui.components.OplusPreferenceDivider
 import com.android.git.ui.components.AlertDialog
 import com.android.git.ui.components.Button
 import com.android.git.ui.components.Card
@@ -16,7 +19,6 @@ import com.android.git.ui.components.Switch
 import com.android.git.ui.components.TextButton
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -24,9 +26,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.android.git.R
@@ -113,9 +112,9 @@ fun DashboardScreen(
             }
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+        Box(modifier = Modifier.fillMaxSize()) {
             Column(
-                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp).padding(top = 8.dp, bottom = 32.dp),
+                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(paddingValues).padding(horizontal = 12.dp).padding(top = 8.dp, bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
@@ -140,86 +139,83 @@ fun DashboardScreen(
                     }
                     is DashboardState.Success -> {
                         OplusSectionTitle(title = stringResource(R.string.dashboard_quick_actions))
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(16.dp)) {
-                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Button(
-                                        onClick = { viewModel.pullChanges() },
-                                        modifier = Modifier.weight(1f).height(48.dp),
-                                        enabled = !isLoading
-                                    ) {
-                                        Icon(Icons.Default.CloudDownload, contentDescription = null, Modifier.size(20.dp))
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(stringResource(R.string.dashboard_action_pull))
-                                    }
-                                    Button(
-                                        onClick = { if (isForcePushChecked) showForcePushDialog = true else viewModel.pushChanges(force = false) },
-                                        modifier = Modifier.weight(1f).height(48.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = if (isForcePushChecked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary),
-                                        enabled = !isLoading
-                                    ) {
-                                        Icon(Icons.Default.CloudUpload, contentDescription = null, Modifier.size(20.dp))
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(if (isForcePushChecked) stringResource(R.string.dashboard_action_force) else stringResource(R.string.dashboard_action_push))
-                                    }
+                        OplusPreferenceGroup {
+                            OplusPreferenceRow(
+                                title = stringResource(R.string.dashboard_action_pull),
+                                icon = Icons.Default.CloudDownload,
+                                enabled = !isLoading,
+                                onClick = { viewModel.pullChanges() },
+                                trailing = {}
+                            )
+                            OplusPreferenceDivider()
+                            OplusPreferenceRow(
+                                title = if (isForcePushChecked) stringResource(R.string.dashboard_btn_force_push) else stringResource(R.string.dashboard_action_push),
+                                icon = Icons.Default.CloudUpload,
+                                enabled = !isLoading,
+                                onClick = { if (isForcePushChecked) showForcePushDialog = true else viewModel.pushChanges(force = false) },
+                                trailing = {
+                                    if (isForcePushChecked) Icon(
+                                        Icons.Default.Warning,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(22.dp),
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
                                 }
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(stringResource(R.string.dashboard_allow_force), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                                    Spacer(Modifier.width(12.dp))
+                            )
+                            OplusPreferenceDivider()
+                            OplusPreferenceRow(
+                                title = stringResource(R.string.dashboard_allow_force),
+                                icon = Icons.Default.Warning,
+                                enabled = !isLoading,
+                                onClick = { isForcePushChecked = !isForcePushChecked },
+                                trailing = {
                                     Switch(checked = isForcePushChecked, onCheckedChange = { isForcePushChecked = it }, enabled = !isLoading)
                                 }
-                            }
+                            )
                         }
                         OplusSectionTitle(title = stringResource(R.string.dashboard_repository_status))
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Column {
-                                DashboardPreferenceRow(
-                                    title = stringResource(R.string.dashboard_card_branch),
-                                    summary = dashboardState.branch,
-                                    icon = Icons.AutoMirrored.Filled.CallSplit,
-                                    onClick = onManageBranches
-                                )
-                                DashboardRowDivider()
-                                DashboardPreferenceRow(
-                                    title = stringResource(R.string.dashboard_card_changes),
-                                    summary = "${dashboardState.changes} ${stringResource(R.string.dashboard_card_changes_suffix)}",
-                                    icon = Icons.Default.Refresh,
-                                    onClick = onViewChanges
-                                )
-                                DashboardRowDivider()
-                                DashboardPreferenceRow(
-                                    title = stringResource(R.string.dashboard_card_history),
-                                    summary = stringResource(R.string.dashboard_card_view_commits),
-                                    icon = Icons.Default.History,
-                                    onClick = onViewLog
-                                )
-                            }
+                        OplusPreferenceGroup {
+                            OplusPreferenceRow(
+                                title = stringResource(R.string.dashboard_card_branch),
+                                summary = dashboardState.branch,
+                                icon = Icons.AutoMirrored.Filled.CallSplit,
+                                onClick = onManageBranches
+                            )
+                            OplusPreferenceDivider()
+                            OplusPreferenceRow(
+                                title = stringResource(R.string.dashboard_card_changes),
+                                summary = "${dashboardState.changes} ${stringResource(R.string.dashboard_card_changes_suffix)}",
+                                icon = Icons.Default.Refresh,
+                                onClick = onViewChanges
+                            )
+                            OplusPreferenceDivider()
+                            OplusPreferenceRow(
+                                title = stringResource(R.string.dashboard_card_history),
+                                summary = stringResource(R.string.dashboard_card_view_commits),
+                                icon = Icons.Default.History,
+                                onClick = onViewLog
+                            )
                         }
                         if (dashboardState.unpushedCount > 0) {
                             Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
-                                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Upload, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
-                                    Spacer(Modifier.width(16.dp))
+                                Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onErrorContainer)
+                                    Spacer(Modifier.width(8.dp))
                                     Text(stringResource(R.string.dashboard_unpushed_commits, dashboardState.unpushedCount), color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodyMedium)
                                 }
                             }
                         }
                         OplusSectionTitle(title = stringResource(R.string.dashboard_tools_title))
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Column {
-                                DashboardPreferenceRow(title = stringResource(R.string.dashboard_tool_stash), icon = Icons.Default.Archive, enabled = !isLoading, onClick = onOpenStash)
-                                DashboardRowDivider()
-                                DashboardPreferenceRow(title = stringResource(R.string.dashboard_tool_merge), icon = Icons.Default.Warning, enabled = !isLoading, onClick = onMergeConflicts)
-                                DashboardRowDivider()
-                                DashboardPreferenceRow(title = stringResource(R.string.dashboard_tool_gitignore), icon = Icons.Default.Code, enabled = !isLoading, onClick = onIgnoreEditor)
-                                DashboardRowDivider()
-                                DashboardPreferenceRow(title = stringResource(R.string.dashboard_tool_fetch), icon = Icons.Default.Sync, enabled = !isLoading, onClick = { viewModel.fetchAll() })
-                                DashboardRowDivider()
-                                DashboardPreferenceRow(title = stringResource(R.string.dashboard_tool_workflows), icon = Icons.Default.PlayCircle, enabled = !isLoading, onClick = onOpenWorkflows)
-                            }
+                        OplusPreferenceGroup {
+                            OplusPreferenceRow(title = stringResource(R.string.dashboard_tool_stash), icon = Icons.Default.Archive, enabled = !isLoading, onClick = onOpenStash)
+                            OplusPreferenceDivider()
+                            OplusPreferenceRow(title = stringResource(R.string.dashboard_tool_merge), icon = Icons.Default.Warning, enabled = !isLoading, onClick = onMergeConflicts)
+                            OplusPreferenceDivider()
+                            OplusPreferenceRow(title = stringResource(R.string.dashboard_tool_gitignore), icon = Icons.Default.Code, enabled = !isLoading, onClick = onIgnoreEditor)
+                            OplusPreferenceDivider()
+                            OplusPreferenceRow(title = stringResource(R.string.dashboard_tool_fetch), icon = Icons.Default.Sync, enabled = !isLoading, onClick = { viewModel.fetchAll() })
+                            OplusPreferenceDivider()
+                            OplusPreferenceRow(title = stringResource(R.string.dashboard_tool_workflows), icon = Icons.Default.PlayCircle, enabled = !isLoading, onClick = onOpenWorkflows)
                         }
                     }
                     is DashboardState.Error -> {
@@ -229,39 +225,9 @@ fun DashboardScreen(
                     }
                 }
             }
-            Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp, start = 12.dp, end = 12.dp)) {
+            Box(Modifier.align(Alignment.BottomCenter).padding(bottom = paddingValues.calculateBottomPadding() + 16.dp, start = 12.dp, end = 12.dp)) {
                 AppSnackbar(statusMessage, statusType) { viewModel.clearStatus() }
             }
         }
-    }
-}
-
-@Composable
-private fun DashboardRowDivider() {
-    HorizontalDivider(modifier = Modifier.padding(start = 56.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
-}
-
-@Composable
-private fun DashboardPreferenceRow(
-    title: String,
-    icon: ImageVector,
-    summary: String? = null,
-    enabled: Boolean = true,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().alpha(if (enabled) 1f else 0.5f).clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 16.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurface)
-        Spacer(Modifier.width(16.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-            if (!summary.isNullOrEmpty()) {
-                Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
-            }
-        }
-        Spacer(Modifier.width(12.dp))
-        Icon(Icons.Default.ChevronRight, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

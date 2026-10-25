@@ -200,7 +200,7 @@ fun GitAuthenticationPanel(
                         value = sshPassphrase,
                         onValueChange = onSshPassphraseChange,
                         label = { Text(stringResource(R.string.ssh_passphrase_label)) },
-                        leadingIcon = Icons.Default.Password,
+                        leadingIcon = Icons.Default.Lock,
                         enabled = !isBusy,
                         isSecret = true,
                         showDescription = stringResource(R.string.ssh_show_value),

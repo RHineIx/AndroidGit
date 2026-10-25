@@ -47,14 +47,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.DpSize
@@ -78,6 +80,7 @@ import io.github.suqi8.coui.kmp.basic.RadioButton as CouiRadioButton
 import io.github.suqi8.coui.kmp.basic.Switch as CouiSwitch
 import io.github.suqi8.coui.kmp.basic.TextField as CouiTextField
 import io.github.suqi8.coui.kmp.basic.TextFieldMode
+import io.github.suqi8.coui.kmp.basic.PreciseClickState
 import io.github.suqi8.coui.kmp.theme.COUITheme
 import io.github.suqi8.coui.kmp.window.WindowBottomSheet
 import io.github.suqi8.coui.kmp.window.WindowDialog
@@ -343,7 +346,7 @@ fun OutlinedTextField(
                 LocalContentColor provides if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
             ) {
                 ProvideTextStyle(MaterialTheme.typography.labelMedium) {
-                    Box(Modifier.padding(start = 2.dp, bottom = 6.dp)) { label() }
+                    Box(Modifier.padding(bottom = 8.dp)) { label() }
                 }
             }
         }
@@ -351,14 +354,26 @@ fun OutlinedTextField(
             CouiTextField(
                 value = value,
                 onValueChange = onValueChange,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 backgroundMode = TextFieldMode.Rectangle,
                 enabled = enabled,
                 readOnly = readOnly,
                 isError = isError,
-                textStyle = textStyle,
-                leadingIcon = leadingIcon,
-                trailingIcon = trailingIcon,
+                // Window-level COUI dialogs do not inherit Material's content local.
+                // Resolve the editor color explicitly, including in dark mode.
+                textStyle = textStyle.copy(color = if (textStyle.color.isSpecified) textStyle.color else MaterialTheme.colorScheme.onSurface),
+                leadingIcon = leadingIcon?.let { slot ->
+                    {
+                        Box(Modifier.width(48.dp).heightIn(min = 48.dp), contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(22.dp), contentAlignment = Alignment.Center) { slot() }
+                        }
+                    }
+                },
+                trailingIcon = trailingIcon?.let { slot ->
+                    {
+                        Box(Modifier.padding(end = 4.dp).widthIn(min = 40.dp).heightIn(min = 48.dp), contentAlignment = Alignment.Center) { slot() }
+                    }
+                },
                 singleLine = singleLine,
                 maxLines = maxLines,
                 minLines = minLines,
@@ -370,7 +385,11 @@ fun OutlinedTextField(
             if (value.isEmpty() && placeholder != null) {
                 CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant) {
                     ProvideTextStyle(textStyle) {
-                        Box(Modifier.padding(start = if (leadingIcon == null) 16.dp else 48.dp, top = 12.dp, end = 16.dp)) {
+                        Box(Modifier.matchParentSize().padding(
+                            start = if (leadingIcon == null) 16.dp else 48.dp,
+                            end = if (trailingIcon == null) 16.dp else 44.dp,
+                            top = if (singleLine) 0.dp else 12.dp
+                        ), contentAlignment = if (singleLine) Alignment.CenterStart else Alignment.TopStart) {
                             placeholder()
                         }
                     }
@@ -469,7 +488,7 @@ fun AlertDialog(
     val hazeState = LocalOplusHazeState.current
     val frosted = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && hazeState != null
     val blurStyle = remember { HazeBlurStyle { blurRadius(24.dp); noiseFactor(0f) } }
-    val maxDialogHeight = LocalConfiguration.current.screenHeightDp.dp * 0.85f
+    val maxDialogHeight = LocalWindowInfo.current.containerDpSize.height * 0.85f
     val largeText = LocalDensity.current.fontScale > 1.25f
     WindowDialog(
         show = true,
@@ -544,26 +563,35 @@ fun DropdownMenu(
     properties: PopupProperties = PopupProperties(focusable = true),
     shape: Shape = MaterialTheme.shapes.medium,
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    width: Dp = 192.dp,
+    maxHeight: Dp = 360.dp,
+    preciseClickState: PreciseClickState? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val hazeState = LocalOplusHazeState.current
     val frosted = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && hazeState != null
     val blurStyle = remember { HazeBlurStyle { blurRadius(24.dp); noiseFactor(0f) } }
     val popupSurface = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) Color(0xFF3D3D3D) else Color.White
+    val windowSize = LocalWindowInfo.current.containerDpSize
+    // Bound before applying caller modifiers: a weighted menu row must never
+    // expand into the full dialog window or cross a narrow screen's edges.
+    val panelWidth = minOf(width, (windowSize.width - 24.dp).coerceAtLeast(1.dp))
+    val panelHeight = minOf(maxHeight, (windowSize.height - 48.dp).coerceAtLeast(1.dp))
     WindowListPopup(
         show = expanded,
-        popupModifier = modifier,
+        popupModifier = Modifier.width(panelWidth).then(modifier),
+        minWidth = minOf(168.dp, panelWidth),
+        maxHeight = panelHeight,
+        preciseClickState = preciseClickState,
         onDismissRequest = onDismissRequest,
     ) {
-        // COUI paints its native opaque surface after popupModifier. Render the
-        // sampled layer inside that surface so its fill cannot cover the blur.
         Column(
-            modifier = Modifier.clip(shape).then(
+            modifier = Modifier.fillMaxWidth().heightIn(max = panelHeight).clip(shape).then(
                 if (frosted) Modifier
                     .hazeBlur(HazeInput.Sources(hazeState), style = blurStyle)
                     .background(popupSurface.copy(alpha = 0.72f))
                 else Modifier.background(containerColor),
-            ),
+            ).verticalScroll(rememberScrollState()),
             content = content,
         )
     }
@@ -580,18 +608,25 @@ fun DropdownMenuItem(
     colors: MenuItemColors = MenuDefaults.itemColors(),
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
     interactionSource: MutableInteractionSource? = null,
+    showDivider: Boolean = false,
 ) {
-    CompositionLocalProvider(
-        LocalContentColor provides if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-    ) {
+    if (showDivider) {
+        io.github.suqi8.coui.kmp.basic.HorizontalDivider(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            thickness = 0.33.dp,
+            color = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) Color.White.copy(alpha = 0.14f) else Color.Black.copy(alpha = 0.10f)
+        )
+    }
+    val textColor = if (enabled) colors.textColor else colors.disabledTextColor
+    CompositionLocalProvider(LocalContentColor provides textColor) {
         Row(
             modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(enabled = enabled, onClick = onClick).padding(contentPadding),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (leadingIcon != null) Box(Modifier.size(22.dp), contentAlignment = Alignment.Center) { leadingIcon() }
             Box(Modifier.weight(1f)) {
-                ProvideTextStyle(MaterialTheme.typography.bodyLarge) { text() }
+                ProvideTextStyle(MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Normal)) { text() }
             }
             trailingIcon?.invoke()
         }
@@ -610,10 +645,16 @@ fun ModalBottomSheet(
     tonalElevation: Dp = 0.dp,
     scrimColor: Color = Color.Black.copy(alpha = 0.4f),
     dragHandle: (@Composable () -> Unit)? = null,
+    title: String? = null,
+    endAction: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     WindowBottomSheet(
         show = true,
+        title = title,
+        endAction = endAction?.let { action ->
+            { CompositionLocalProvider(LocalContentColor provides contentColor) { action() } }
+        },
         modifier = modifier,
         onDismissRequest = onDismissRequest,
         backgroundColor = containerColor,

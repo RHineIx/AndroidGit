@@ -614,7 +614,7 @@ private fun BranchActionMenu(
                 overflow = TextOverflow.Ellipsis
             )
         }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.33.dp, color = MaterialTheme.colorScheme.outlineVariant)
 
         if (!branch.isCurrent) {
             DropdownMenuItem(
@@ -643,7 +643,7 @@ private fun BranchActionMenu(
         }
 
         if (!branch.isCurrent && !isRemote) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.33.dp, color = MaterialTheme.colorScheme.outlineVariant)
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error) },
                 leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },

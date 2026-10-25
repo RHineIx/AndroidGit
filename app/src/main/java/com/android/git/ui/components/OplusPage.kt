@@ -1,15 +1,19 @@
 package com.android.git.ui.components
 
 import android.os.Build
+import android.graphics.Typeface
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -18,6 +22,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.text.font.FontFamily
 import com.android.git.R
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeInput
@@ -60,11 +65,27 @@ fun OplusScaffold(
     val surface = COUITheme.colorScheme.surface
     val supportsBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val collapsed by remember { derivedStateOf { scrollBehavior.state.collapsedFraction >= 0.99f } }
+    // ColorOS may resolve the app and Settings host's default font differently.
+    // Resolve an explicit weighted system face for the title only. Subtitle and
+    // preference fonts continue to use their own regular/medium COUI styles.
+    val titleFamily = remember(collapsed) {
+        FontFamily(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                Typeface.create(Typeface.SANS_SERIF, if (collapsed) 500 else 600, false)
+            } else Typeface.create("sans-serif", if (collapsed) Typeface.NORMAL else Typeface.BOLD)
+        )
+    }
+    val baseTextStyles = COUITheme.textStyles
+    val headerTextStyles = remember(baseTextStyles, titleFamily) {
+        baseTextStyles.copy(main = baseTextStyles.main.copy(fontFamily = titleFamily))
+    }
     CompositionLocalProvider(LocalOplusHazeState provides hazeState) {
         Scaffold(
             modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
             containerColor = surface,
             topBar = {
+                COUITheme(textStyles = headerTextStyles) {
                 TopAppBar(
                     title = title,
                     subtitle = subtitle,
@@ -74,12 +95,13 @@ fun OplusScaffold(
                     modifier = Modifier.clipToBounds().then(
                         if (supportsBlur) Modifier.hazeBlur(input = HazeInput.Sources(hazeState), style = blurStyle) else Modifier
                     ),
-                    navigationIconPadding = 8.dp,
-                    actionIconPadding = 8.dp,
+                    navigationIconPadding = 16.dp,
+                    actionIconPadding = 24.dp,
                     navigationIcon = {
                         if (onBack != null) {
                             IconButton(
                                 onClick = onBack,
+                                modifier = Modifier.padding(start = 8.dp),
                                 enabled = backEnabled,
                                 minWidth = 40.dp,
                                 minHeight = 40.dp,
@@ -95,6 +117,7 @@ fun OplusScaffold(
                     },
                     actions = actions
                 )
+                }
             },
             floatingActionButton = floatingActionButton,
             bottomBar = bottomBar,
