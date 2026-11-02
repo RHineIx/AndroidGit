@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
@@ -112,6 +113,9 @@ fun MainAppContent(
             Surface(
                 modifier = Modifier
                     .fillMaxSize()
+                    // Resize every page above the IME and consume its inset once.
+                    // Scrollable forms and full-screen editors then share the same viewport.
+                    .imePadding()
                     // Clear focus globally when tapping outside of input fields
                     .pointerInput(Unit) {
                         detectTapGestures(onTap = {
