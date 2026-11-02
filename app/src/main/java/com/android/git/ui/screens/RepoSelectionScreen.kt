@@ -4,9 +4,7 @@ import com.android.git.ui.components.GitIcons as Icons
 
 import com.android.git.ui.components.OplusScaffold
 import com.android.git.ui.components.OplusSectionTitle
-import com.android.git.ui.components.OplusPreferenceGroup
-import com.android.git.ui.components.OplusPreferenceRow
-import com.android.git.ui.components.OplusPreferenceDivider
+import com.android.git.ui.components.OplusActionCard
 import com.android.git.ui.components.Card
 import com.android.git.ui.components.ElevatedCard
 import com.android.git.ui.components.IconButton
@@ -102,17 +100,21 @@ fun RepoSelectionScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
-                OplusPreferenceGroup {
-                    OplusPreferenceRow(
-                        title = stringResource(R.string.selection_open_local),
-                        icon = Icons.Default.FolderOpen,
-                        onClick = { launcher.launch(null) }
-                    )
-                    OplusPreferenceDivider()
-                    OplusPreferenceRow(
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OplusActionCard(
                         title = stringResource(R.string.selection_clone_repo),
                         icon = Icons.Default.Download,
-                        onClick = onCloneRequest
+                        onClick = onCloneRequest,
+                        modifier = Modifier.weight(1f).fillMaxHeight()
+                    )
+                    OplusActionCard(
+                        title = stringResource(R.string.selection_open_local),
+                        icon = Icons.Default.FolderOpen,
+                        onClick = { launcher.launch(null) },
+                        modifier = Modifier.weight(1f).fillMaxHeight()
                     )
                 }
             }

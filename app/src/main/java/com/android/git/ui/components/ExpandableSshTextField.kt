@@ -3,13 +3,18 @@ package com.android.git.ui.components
 import com.android.git.ui.components.GitIcons as Icons
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Shape
@@ -19,6 +24,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
+import kotlinx.coroutines.launch
 
 @Composable
 fun ExpandableSshTextField(
@@ -40,6 +46,15 @@ fun ExpandableSshTextField(
     var focused by remember { mutableStateOf(false) }
     var visible by remember { mutableStateOf(false) }
     val expanded = focused
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(focused) {
+        if (focused) {
+            withFrameNanos { }
+            bringIntoViewRequester.bringIntoView()
+        }
+    }
 
     OutlinedTextField(
         value = value,
@@ -59,7 +74,11 @@ fun ExpandableSshTextField(
         shape = shape,
         modifier = modifier
             .fillMaxWidth()
-            .animateContentSize()
+            .bringIntoViewRequester(bringIntoViewRequester)
+            .animateContentSize(finishedListener = { _, _ ->
+                // Expanding a key can move its last lines below the current viewport.
+                if (focused) scope.launch { bringIntoViewRequester.bringIntoView() }
+            })
             .onFocusChanged { focused = it.isFocused },
         singleLine = !expanded,
         minLines = if (expanded) 3 else 1,

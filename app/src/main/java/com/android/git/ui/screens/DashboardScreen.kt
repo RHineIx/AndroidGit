@@ -8,6 +8,7 @@ import com.android.git.ui.components.GitIcons as Icons
 
 import com.android.git.ui.components.OplusScaffold
 import com.android.git.ui.components.OplusSectionTitle
+import com.android.git.ui.components.OplusActionCard
 import com.android.git.ui.components.OplusPreferenceGroup
 import com.android.git.ui.components.OplusPreferenceRow
 import com.android.git.ui.components.OplusPreferenceDivider
@@ -138,30 +139,27 @@ fun DashboardScreen(
                     }
                     is DashboardState.Success -> {
                         OplusSectionTitle(title = stringResource(R.string.dashboard_quick_actions))
-                        OplusPreferenceGroup {
-                            OplusPreferenceRow(
+                        Row(
+                            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OplusActionCard(
                                 title = stringResource(R.string.dashboard_action_pull),
                                 icon = Icons.Default.CloudDownload,
                                 enabled = !isLoading,
                                 onClick = { viewModel.pullChanges() },
-                                trailing = {}
+                                modifier = Modifier.weight(1f).fillMaxHeight()
                             )
-                            OplusPreferenceDivider()
-                            OplusPreferenceRow(
+                            OplusActionCard(
                                 title = if (isForcePushChecked) stringResource(R.string.dashboard_btn_force_push) else stringResource(R.string.dashboard_action_push),
-                                icon = Icons.Default.CloudUpload,
+                                icon = if (isForcePushChecked) Icons.Default.Warning else Icons.Default.CloudUpload,
                                 enabled = !isLoading,
                                 onClick = { if (isForcePushChecked) showForcePushDialog = true else viewModel.pushChanges(force = false) },
-                                trailing = {
-                                    if (isForcePushChecked) Icon(
-                                        Icons.Default.Warning,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(22.dp),
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
-                                }
+                                danger = isForcePushChecked,
+                                modifier = Modifier.weight(1f).fillMaxHeight()
                             )
-                            OplusPreferenceDivider()
+                        }
+                        OplusPreferenceGroup {
                             OplusPreferenceRow(
                                 title = stringResource(R.string.dashboard_allow_force),
                                 icon = Icons.Default.Warning,

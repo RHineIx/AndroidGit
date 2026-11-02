@@ -6,13 +6,14 @@ plugins {
 android {
     namespace = "com.android.git"
     compileSdk = 37
+    compileSdkMinor = 0
 
     defaultConfig {
         applicationId = "com.android.git"
         minSdk = 26
         targetSdk = 37
-        versionCode = 70000
-        versionName = "7.0.0-stable"
+        versionCode = 70001
+        versionName = "7.0.1-stable"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

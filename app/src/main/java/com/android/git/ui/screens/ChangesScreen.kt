@@ -202,7 +202,6 @@ fun ChangesScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .imePadding()
                             .padding(horizontal = 16.dp, vertical = 10.dp)
                             .animateContentSize()
                     ) {
