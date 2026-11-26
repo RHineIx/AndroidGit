@@ -37,7 +37,7 @@ fun Card(
     border: BorderStroke? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    if (border == null) androidx.compose.material3.Card(modifier, shape, colors, elevation, content)
+    if (border == null) androidx.compose.material3.Card(modifier = modifier, shape = shape, colors = colors, elevation = elevation, content = content)
     else androidx.compose.material3.OutlinedCard(modifier = modifier, shape = shape, colors = colors, elevation = elevation, border = border, content = content)
 }
 
@@ -70,7 +70,7 @@ fun OutlinedCard(
     elevation: CardElevation = CardDefaults.cardElevation(),
     border: BorderStroke? = null,
     content: @Composable ColumnScope.() -> Unit,
-) = androidx.compose.material3.OutlinedCard(modifier = modifier, shape = shape, colors = colors, elevation = elevation, border = border ?: CardDefaults.outlinedCardBorder(), content = content)
+) = androidx.compose.material3.OutlinedCard(modifier = modifier, shape = shape, colors = colors, elevation = elevation, border = border ?: BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), content = content)
 
 @Composable
 fun Button(

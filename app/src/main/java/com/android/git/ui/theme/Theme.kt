@@ -84,7 +84,10 @@ fun AndroidGitTheme(
                 primaryContainer = container, onPrimaryContainer = readableAccent(accent, container),
                 secondary = secondary, onSecondary = bestOnAccent(secondary),
                 secondaryContainer = secondary.copy(alpha = 0.15f).compositeOver(surfaces.surface),
-                onSecondaryContainer = surfaces.onSurface, inversePrimary = accent,
+                onSecondaryContainer = surfaces.onSurface,
+                tertiary = lerp(accent, surfaces.tertiary, 0.55f),
+                onTertiary = bestOnAccent(lerp(accent, surfaces.tertiary, 0.55f)),
+                inversePrimary = accent,
                 surfaceTint = accent
             )
         }

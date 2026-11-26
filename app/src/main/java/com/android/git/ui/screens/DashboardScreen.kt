@@ -7,21 +7,15 @@ import com.android.git.ui.components.CircularProgressIndicator
 import com.android.git.ui.components.GitIcons as Icons
 
 import com.android.git.ui.components.GitScaffold
-import com.android.git.ui.components.SectionTitle
 import com.android.git.ui.components.ActionTile
-import com.android.git.ui.components.PreferenceGroup
-import com.android.git.ui.components.PreferenceRow
-import com.android.git.ui.components.PreferenceDivider
 import com.android.git.ui.components.AlertDialog
 import com.android.git.ui.components.Button
 import com.android.git.ui.components.Card
 import com.android.git.ui.components.IconButton
-import com.android.git.ui.components.Switch
 import com.android.git.ui.components.TextButton
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontWeight
 import com.android.git.ui.components.ElevatedCard
@@ -203,9 +197,10 @@ fun DashboardScreen(
                             modifier = Modifier.padding(bottom = 12.dp, top = 24.dp)
                         )
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             ElevatedCard(
-                                modifier = Modifier.weight(1f).clickable { onManageBranches() },
+                                onClick = onManageBranches,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
                                 colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
                                 shape = cardShape,
                                 elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
@@ -219,7 +214,8 @@ fun DashboardScreen(
                             }
                             
                             ElevatedCard(
-                                modifier = Modifier.weight(1f).clickable { onViewChanges() },
+                                onClick = onViewChanges,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
                                 colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
                                 shape = cardShape,
                                 elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
@@ -236,7 +232,8 @@ fun DashboardScreen(
                         Spacer(Modifier.height(12.dp))
 
                         ElevatedCard(
-                            modifier = Modifier.fillMaxWidth().clickable { onViewLog() },
+                            onClick = onViewLog,
+                            modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                             shape = cardShape,
                             elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
@@ -274,18 +271,18 @@ fun DashboardScreen(
                             modifier = Modifier.padding(bottom = 12.dp, top = 24.dp)
                         )
 
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             ActionTile(
                                 title = stringResource(R.string.dashboard_tool_stash),
                                 icon = Icons.Default.Archive,
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
                                 enabled = !isLoading,
                                 onClick = onOpenStash
                             )
                             ActionTile(
                                 title = stringResource(R.string.dashboard_tool_merge),
                                 icon = Icons.Default.Warning,
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
                                 enabled = !isLoading,
                                 onClick = onMergeConflicts
                             )
@@ -297,14 +294,14 @@ fun DashboardScreen(
                             ActionTile(
                                 title = stringResource(R.string.dashboard_tool_gitignore),
                                 icon = Icons.Default.Code,
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
                                 enabled = !isLoading,
                                 onClick = onIgnoreEditor
                             )
                             ActionTile(
                                 title = stringResource(R.string.dashboard_tool_fetch),
                                 icon = Icons.Default.Sync,
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
                                 enabled = !isLoading,
                                 onClick = { viewModel.fetchAll() }
                             )
@@ -316,7 +313,7 @@ fun DashboardScreen(
                             ActionTile(
                                 title = stringResource(R.string.dashboard_tool_workflows),
                                 icon = Icons.Default.PlayCircle,
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
                                 enabled = !isLoading,
                                 onClick = onOpenWorkflows
                             )
