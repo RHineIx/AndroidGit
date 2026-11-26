@@ -1,26 +1,31 @@
 [versions]
 # Core Build System
-agp = "9.1.0"
-kotlin = "2.3.20"
+agp = "9.5.1"
+kotlin = "2.4.21"
 
 # AndroidX & Compose
-coreKtx = "1.18.0"
-lifecycleRuntimeKtx = "2.10.0"
+coreKtx = "1.19.1"
+lifecycleRuntimeKtx = "2.11.1"
 activityCompose = "1.13.0"
-composeBom = "2026.03.01"
-navigationCompose = "2.9.7"
+composeBom = "2026.11.01"
+navigationCompose = "2.10.2"
+
+# UI
+coui = "2.1.0"
+haze = "2.1.0"
+tablerIcons = "3.50.0"
 
 # Security
-androidxSecurity = "1.1.0-alpha06"
+androidxSecurity = "1.1.0"
 
 # Git Engine & Crypto Dependencies
-jgit = "7.6.0.202603022253-r"
-jgitSsh = "7.6.0.202603022253-r"
+jgit = "7.8.1.202611041320-r"
+jgitSsh = "7.8.1.202611041320-r"
 sshd = "2.17.1"
-bouncycastle = "1.83"
+bouncycastle = "1.87"
 
 # Logging
-slf4j-simple = "2.0.17"
+slf4j-simple = "2.0.20"
 
 # Google Generative AI (Gemini)
 generativeai = "0.9.0"
@@ -47,6 +52,12 @@ androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
+
+# UI libraries
+coui-ui = { module = "io.github.suqi8.coui.kmp:coui-ui-android", version.ref = "coui" }
+haze-core = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
+haze-blur = { module = "dev.chrisbanes.haze:haze-blur", version.ref = "haze" }
+tabler-icons = { module = "io.github.lyxnx.compose.ui:tabler-icons-android", version.ref = "tablerIcons" }
 
 # Navigation
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
