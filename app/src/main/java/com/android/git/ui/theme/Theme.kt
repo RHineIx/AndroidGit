@@ -29,12 +29,49 @@ import androidx.core.view.WindowCompat
 
 val LocalAndroidGitDarkTheme = staticCompositionLocalOf { false }
 
-// Original AndroidGit Material 3 palette, without custom surface overrides.
+// GitHub Primer Tritanopia-inspired palettes. Map neutral/blue/red tokens to
+// Material roles explicitly, so no default purple or green surfaces leak into the UI.
 private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFFD0BCFF), secondary = Color(0xFFCCC2DC), tertiary = Color(0xFFEFB8C8)
+    primary = Color(0xFF58A6FF), onPrimary = Color(0xFF0D1117),
+    primaryContainer = Color(0xFF18385C), onPrimaryContainer = Color(0xFFCAEAFF),
+    secondary = Color(0xFFB1BAC4), onSecondary = Color(0xFF0D1117),
+    secondaryContainer = Color(0xFF212830), onSecondaryContainer = Color(0xFFF0F6FC),
+    tertiary = Color(0xFFFFA198), onTertiary = Color(0xFF401216),
+    tertiaryContainer = Color(0xFF512126), onTertiaryContainer = Color(0xFFFFDAD6),
+    background = Color(0xFF0D1117), onBackground = Color(0xFFF0F6FC),
+    surface = Color(0xFF0D1117), onSurface = Color(0xFFF0F6FC),
+    surfaceVariant = Color(0xFF212830), onSurfaceVariant = Color(0xFF9198A1),
+    surfaceDim = Color(0xFF0D1117), surfaceBright = Color(0xFF2F3742),
+    surfaceContainerLowest = Color(0xFF010409), surfaceContainerLow = Color(0xFF151B23),
+    surfaceContainer = Color(0xFF212830), surfaceContainerHigh = Color(0xFF262C36),
+    surfaceContainerHighest = Color(0xFF2F3742),
+    outline = Color(0xFF656C76), outlineVariant = Color(0xFF3D444D),
+    error = Color(0xFFF85149), onError = Color(0xFF0D1117),
+    errorContainer = Color(0xFF512126), onErrorContainer = Color(0xFFFFDAD6),
+    inverseSurface = Color(0xFFF0F6FC), inverseOnSurface = Color(0xFF1F2328),
+    inversePrimary = Color(0xFF0969DA), surfaceTint = Color(0xFF58A6FF),
+    scrim = Color.Black
 )
 private val LightColorScheme = lightColorScheme(
-    primary = Color(0xFF6650A4), secondary = Color(0xFF625B71), tertiary = Color(0xFF7D5260)
+    primary = Color(0xFF0969DA), onPrimary = Color.White,
+    primaryContainer = Color(0xFFDDF4FF), onPrimaryContainer = Color(0xFF054DA8),
+    secondary = Color(0xFF59636E), onSecondary = Color.White,
+    secondaryContainer = Color(0xFFE6EAEF), onSecondaryContainer = Color(0xFF1F2328),
+    tertiary = Color(0xFFCF222E), onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFFFEBE9), onTertiaryContainer = Color(0xFF82071E),
+    background = Color.White, onBackground = Color(0xFF1F2328),
+    surface = Color.White, onSurface = Color(0xFF1F2328),
+    surfaceVariant = Color(0xFFEFF2F5), onSurfaceVariant = Color(0xFF59636E),
+    surfaceDim = Color(0xFFE0E6EB), surfaceBright = Color.White,
+    surfaceContainerLowest = Color.White, surfaceContainerLow = Color(0xFFF6F8FA),
+    surfaceContainer = Color(0xFFEFF2F5), surfaceContainerHigh = Color(0xFFE6EAEF),
+    surfaceContainerHighest = Color(0xFFE0E6EB),
+    outline = Color(0xFF818B98), outlineVariant = Color(0xFFD1D9E0),
+    error = Color(0xFFCF222E), onError = Color.White,
+    errorContainer = Color(0xFFFFEBE9), onErrorContainer = Color(0xFF82071E),
+    inverseSurface = Color(0xFF24292F), inverseOnSurface = Color(0xFFF6F8FA),
+    inversePrimary = Color(0xFF58A6FF), surfaceTint = Color(0xFF0969DA),
+    scrim = Color.Black
 )
 
 private val AndroidGitShapes = Shapes(

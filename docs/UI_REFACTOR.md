@@ -9,7 +9,7 @@ AndroidGit uses native Jetpack Compose Material 3, Haze 2.1.0 and Tabler Icons 3
 - `PreferenceComponents.kt`: grouped cards, 64dp minimum preference rows, consistent spacing and accessible native click handling.
 - `ActionTile.kt`: 84dp minimum quick-action tiles with clear icon and label hierarchy.
 - `GitAuthenticationPanel.kt`: common form state and credential controls for Settings, Repository Settings and Clone.
-- `AppearancePreferences.kt`: System/Light/Dark modes and an independent Android system colors switch (API 31+). Uses the original Material palette when disabled. Selection persists without restarting; obsolete experimental appearance preferences are migrated.
+- `AppearancePreferences.kt`: System/Light/Dark modes and an independent Android system colors switch (API 31+). Uses the GitHub Primer Tritanopia-inspired palette when disabled. Selection persists without restarting; obsolete experimental appearance preferences are migrated.
 
 The app uses the original Material palette, 16dp page margins, 18dp medium corners, 24dp large corners, and accessible typography. Dynamic colors fall back to the default palette on older devices.
 
@@ -30,3 +30,7 @@ The preceding build at cd8f163 passed CI. This UI redesign requires a fresh comp
 ### Compact layout and selection controls
 
 Repository status cards share the primary container color and 8dp spacing. Action tiles use an 84dp minimum height, with a 60dp full-width Workflow action. Theme brightness uses a segmented control and dynamic colors use a switch. Selection menus anchor to the trailing button; page-local Haze sources prevent cross-destination sampling during short fade transitions.
+
+### Visual polish
+
+The default palette maps GitHub Primer Tritanopia neutral, blue and red colors to Material 3 roles. Android dynamic colors remain an independent switch. Filled text fields use the native filled Material component, avoiding the outlined label cutout over a colored container. Segmented controls animate one RTL-aware selection pill. Navigation Compose 2.10 overrides both regular and predictive pop transitions with full-size fade/slide transitions, without scaling destinations or disabling predictive back. Source: https://github.com/primer/primitives/tree/v10.0.0/src/tokens/functional/color.

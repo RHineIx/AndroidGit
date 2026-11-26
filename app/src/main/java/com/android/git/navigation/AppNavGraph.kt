@@ -1,8 +1,13 @@
 package com.android.git.navigation
 
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -26,6 +31,7 @@ fun AppNavGraph(
     startDestination: String = Screen.Selection.route
 ) {
     val manager = viewModel.gitManager
+    val direction = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1 else 1
 
     // State-driven routing: Navigate automatically based on repository state
     LaunchedEffect(viewModel.currentRepoFile) {
@@ -51,10 +57,24 @@ fun AppNavGraph(
     NavHost(
         navController = navController,
         startDestination = startDestination,
-        enterTransition = { fadeIn(tween(160)) },
-        exitTransition = { fadeOut(tween(160)) },
-        popEnterTransition = { fadeIn(tween(160)) },
-        popExitTransition = { fadeOut(tween(160)) }
+        modifier = Modifier.fillMaxSize(),
+        enterTransition = {
+            slideInHorizontally(tween(240, easing = FastOutSlowInEasing)) { it / 5 * direction } + fadeIn(tween(180))
+        },
+        exitTransition = { fadeOut(tween(180)) },
+        popEnterTransition = { fadeIn(tween(180)) },
+        popExitTransition = {
+            slideOutHorizontally(tween(240, easing = FastOutSlowInEasing)) { it / 5 * direction } + fadeOut(tween(180))
+        },
+        // Navigation 2.10 has separate predictive gesture defaults (including scale).
+        // Override them without disabling system predictive back or gesture cancellation.
+        predictivePopEnterTransition = { fadeIn(tween(180)) },
+        predictivePopExitTransition = { edge ->
+            slideOutHorizontally(tween(240, easing = FastOutSlowInEasing)) {
+                it / 5 * (if (edge == 0) 1 else -1)
+            } + fadeOut(tween(180))
+        },
+        sizeTransform = { null }
     ) {
         
         composable(Screen.Selection.route) {

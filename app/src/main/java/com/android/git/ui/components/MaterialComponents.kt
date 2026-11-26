@@ -2,6 +2,10 @@
 
 package com.android.git.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -12,9 +16,12 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.Role
@@ -242,8 +249,8 @@ fun TextField(
     minLines: Int = 1,
     interactionSource: MutableInteractionSource? = null,
     shape: Shape = MaterialTheme.shapes.small,
-    colors: TextFieldColors = OutlinedTextFieldDefaults.colors(),
-) = androidx.compose.material3.OutlinedTextField(
+    colors: TextFieldColors = TextFieldDefaults.colors(),
+) = androidx.compose.material3.TextField(
     value = value, onValueChange = onValueChange, modifier = modifier.heightIn(min = 56.dp),
     enabled = enabled, readOnly = readOnly, textStyle = textStyle, label = label,
     placeholder = placeholder, leadingIcon = leadingIcon, trailingIcon = trailingIcon,
@@ -382,6 +389,7 @@ fun LinearProgressIndicator(
 ) = androidx.compose.material3.LinearProgressIndicator(progress = progress, modifier = modifier, color = color, trackColor = trackColor)
 
 /** Reusable native segmented control for authentication and branch filtering. */
+/** One moving selection indicator; native click/ripple and RTL-aware placement. */
 @Composable
 fun SegmentedTabs(
     tabs: List<String>,
@@ -390,24 +398,46 @@ fun SegmentedTabs(
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
-    Row(
-        modifier.clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .selectableGroup().padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    if (tabs.isEmpty()) return
+    val selectedIndex = selectedTabIndex.coerceIn(tabs.indices)
+    val position by animateFloatAsState(
+        targetValue = selectedIndex.toFloat(),
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
+        label = "Segment indicator"
+    )
+    val shape = androidx.compose.foundation.shape.CircleShape
+    val scheme = MaterialTheme.colorScheme
+    BoxWithConstraints(
+        modifier = modifier.clip(shape).background(scheme.surfaceContainerHigh)
+            .selectableGroup().padding(4.dp)
     ) {
-        tabs.forEachIndexed { index, title ->
-            val selected = selectedTabIndex == index
+        val cellWidth = maxWidth / tabs.size
+        Box(
+            Modifier.matchParentSize()
+        ) {
             Box(
-                Modifier.weight(1f).clip(MaterialTheme.shapes.large)
-                    .background(if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                    .selectable(selected = selected, enabled = enabled, role = Role.Tab, onClick = { onTabSelected(index) })
-                    .heightIn(min = 48.dp).padding(horizontal = 8.dp, vertical = 10.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(title, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center,
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                    color = (if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
-                        .copy(alpha = if (enabled) 1f else 0.38f))
+                Modifier.offset { IntOffset((cellWidth.toPx() * position).roundToInt(), 0) }
+                    .width(cellWidth).fillMaxHeight().clip(shape)
+                    .background(scheme.primaryContainer.copy(alpha = if (enabled) 1f else 0.38f))
+            )
+        }
+        Row(Modifier.fillMaxWidth()) {
+            tabs.forEachIndexed { index, title ->
+                val selected = index == selectedIndex
+                val textColor by animateColorAsState(
+                    targetValue = (if (selected) scheme.onPrimaryContainer else scheme.onSurfaceVariant)
+                        .copy(alpha = if (enabled) 1f else 0.38f),
+                    label = "Segment text"
+                )
+                Box(
+                    Modifier.weight(1f).clip(shape)
+                        .selectable(selected = selected, enabled = enabled, role = Role.Tab, onClick = { onTabSelected(index) })
+                        .heightIn(min = 48.dp).padding(horizontal = 8.dp, vertical = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(title, style = MaterialTheme.typography.labelLarge,
+                        textAlign = TextAlign.Center, fontWeight = FontWeight.Medium, color = textColor)
+                }
             }
         }
     }
