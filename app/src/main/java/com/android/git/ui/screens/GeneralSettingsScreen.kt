@@ -46,12 +46,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.android.git.R
-import com.android.git.data.GitAuthManager
-import com.android.git.data.GitAuthMode
 import com.android.git.data.PreferencesManager
 import com.android.git.data.ThemeMode
 import com.android.git.ui.components.AppSnackbar
-import com.android.git.ui.components.GitAuthenticationPanel
+import com.android.git.ui.components.AuthenticationSettings
+import com.android.git.ui.components.rememberAuthenticationForm
 import com.android.git.ui.viewmodel.MainViewModel
 import io.github.lyxnx.compose.ui.tablericons.TablerIcons
 import io.github.lyxnx.compose.ui.tablericons.outline.BrightnessAuto
@@ -71,7 +70,6 @@ fun GeneralSettingsScreen(
     val context = LocalContext.current
     val prefs = remember { PreferencesManager(context) }
     val focusManager = LocalFocusManager.current
-    val authManager = remember { GitAuthManager(context.filesDir) }
 
     val statusMessage = viewModel.statusMessage
     val statusType = viewModel.statusType
@@ -81,15 +79,7 @@ fun GeneralSettingsScreen(
     var themeExpanded by remember { mutableStateOf(false) }
     val themeAnchor = remember { PreciseClickState() }
 
-    var userName by remember { mutableStateOf(prefs.getUserName()) }
-    var userEmail by remember { mutableStateOf(prefs.getUserEmail()) }
-    var authMode by remember { mutableStateOf(prefs.getAuthMode()) }
-    var token by remember { mutableStateOf(prefs.getToken()) }
-    var sshPrivateKey by remember { mutableStateOf(prefs.getSshPrivateKey()) }
-    var sshPublicKey by remember { mutableStateOf(prefs.getSshPublicKey()) }
-    var sshPassphrase by remember { mutableStateOf(prefs.getSshPassphrase()) }
-    var authSaving by remember { mutableStateOf(false) }
-    var authSaved by remember { mutableStateOf(false) }
+    val authForm = rememberAuthenticationForm(prefs)
 
     var geminiApiKey by remember { mutableStateOf(prefs.getGeminiApiKey()) }
     var geminiModel by remember { mutableStateOf(prefs.getGeminiModel()) }
@@ -198,28 +188,7 @@ fun GeneralSettingsScreen(
                     )
                 }
 
-                GlobalAuthenticationSection(
-                    prefs = prefs,
-                    authManager = authManager,
-                    userName = userName,
-                    onUserNameChange = { userName = it },
-                    userEmail = userEmail,
-                    onUserEmailChange = { userEmail = it },
-                    authMode = authMode,
-                    onAuthModeChange = { authMode = it },
-                    token = token,
-                    onTokenChange = { token = it },
-                    sshPrivateKey = sshPrivateKey,
-                    onSshPrivateKeyChange = { sshPrivateKey = it },
-                    sshPublicKey = sshPublicKey,
-                    onSshPublicKeyChange = { sshPublicKey = it },
-                    sshPassphrase = sshPassphrase,
-                    onSshPassphraseChange = { sshPassphrase = it },
-                    authSaving = authSaving,
-                    onAuthSavingChange = { authSaving = it },
-                    authSaved = authSaved,
-                    onAuthSavedChange = { authSaved = it }
-                )
+                AuthenticationSettings(authForm)
 
                 SettingsSection(title = stringResource(R.string.settings_ai_section), padded = false) {
                     Column(Modifier.padding(16.dp)) {
@@ -315,114 +284,6 @@ fun GeneralSettingsScreen(
                     type = statusType,
                     onDismiss = { viewModel.clearStatus() }
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun GlobalAuthenticationSection(
-    prefs: PreferencesManager,
-    authManager: GitAuthManager,
-    userName: String,
-    onUserNameChange: (String) -> Unit,
-    userEmail: String,
-    onUserEmailChange: (String) -> Unit,
-    authMode: GitAuthMode,
-    onAuthModeChange: (GitAuthMode) -> Unit,
-    token: String,
-    onTokenChange: (String) -> Unit,
-    sshPrivateKey: String,
-    onSshPrivateKeyChange: (String) -> Unit,
-    sshPublicKey: String,
-    onSshPublicKeyChange: (String) -> Unit,
-    sshPassphrase: String,
-    onSshPassphraseChange: (String) -> Unit,
-    authSaving: Boolean,
-    onAuthSavingChange: (Boolean) -> Unit,
-    authSaved: Boolean,
-    onAuthSavedChange: (Boolean) -> Unit
-) {
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OplusSectionTitle(title = stringResource(R.string.settings_auth_section))
-        OplusPreferenceGroup {
-            Column(Modifier.padding(16.dp)) {
-                OutlinedTextField(
-                    value = userName,
-                    onValueChange = onUserNameChange,
-                    label = { Text(stringResource(R.string.settings_auth_user_name)) },
-                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(22.dp)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    singleLine = true,
-                    enabled = !authSaving
-                )
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = userEmail,
-                    onValueChange = onUserEmailChange,
-                    label = { Text(stringResource(R.string.settings_auth_user_email)) },
-                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(22.dp)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    enabled = !authSaving
-                )
-            }
-        }
-        Text(
-            stringResource(R.string.settings_auth_help),
-            modifier = Modifier.padding(horizontal = 20.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        OplusPreferenceGroup {
-            Column(Modifier.padding(16.dp)) {
-                GitAuthenticationPanel(
-                    authManager = authManager,
-                    userEmail = userEmail,
-                    authMode = authMode,
-                    onAuthModeChange = { onAuthModeChange(it); onAuthSavedChange(false) },
-                    token = token,
-                    onTokenChange = { onTokenChange(it); onAuthSavedChange(false) },
-                    sshPrivateKey = sshPrivateKey,
-                    onSshPrivateKeyChange = { onSshPrivateKeyChange(it); onAuthSavedChange(false) },
-                    sshPublicKey = sshPublicKey,
-                    onSshPublicKeyChange = { onSshPublicKeyChange(it); onAuthSavedChange(false) },
-                    sshPassphrase = sshPassphrase,
-                    onSshPassphraseChange = { onSshPassphraseChange(it); onAuthSavedChange(false) },
-                    isBusy = authSaving,
-                    onClearSshData = {
-                        prefs.clearSshKey()
-                        onAuthSavedChange(false)
-                    }
-                )
-
-                Spacer(Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        onAuthSavingChange(true)
-                        prefs.setUserName(userName)
-                        prefs.setUserEmail(userEmail)
-                        prefs.setAuthMode(authMode)
-                        if (authMode == GitAuthMode.HTTPS) prefs.saveToken(token)
-                        else prefs.saveSshKey(sshPrivateKey, sshPublicKey, sshPassphrase)
-                        onAuthSavingChange(false)
-                        onAuthSavedChange(true)
-                    },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
-                    enabled = !authSaving && (authMode == GitAuthMode.HTTPS || sshPrivateKey.isNotBlank()),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    if (authSaving) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                    else {
-                        Icon(Icons.Default.Save, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.action_save), fontWeight = FontWeight.Medium)
-                    }
-                }
-                if (authSaved) Text(stringResource(R.string.settings_auth_saved), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
             }
         }
     }
