@@ -37,7 +37,7 @@ import com.android.git.ui.components.DropdownMenuItem
 import com.android.git.ui.components.ElevatedCard
 import com.android.git.ui.components.GitIcons as Icons
 import com.android.git.ui.components.IconButton
-import com.android.git.ui.components.OplusScaffold
+import com.android.git.ui.components.GitScaffold
 import com.android.git.ui.components.OutlinedTextField
 import com.android.git.ui.components.TextButton
 import com.android.git.ui.viewmodel.MainViewModel
@@ -65,7 +65,7 @@ fun ChangesScreen(
 
     var fileToDiscard by remember { mutableStateOf<GitFile?>(null) }
 
-    val commonShape = RoundedCornerShape(12.dp)
+    val commonShape = RoundedCornerShape(16.dp)
 
     BackHandler(enabled = isLoading || isMessageExpanded || isAIGenerating || fileToDiscard != null) {
         when {
@@ -149,7 +149,7 @@ fun ChangesScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        OplusScaffold(
+        GitScaffold(
             title = stringResource(R.string.changes_title),
             onBack = onBack,
             subtitle = stringResource(R.string.changes_selected_count, selectedFiles.size, files.size),
@@ -196,7 +196,7 @@ fun ChangesScreen(
                         .navigationBarsPadding()
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerLow,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     shadowElevation = 0.dp
                 ) {
                     Column(
@@ -318,7 +318,7 @@ fun ChangesScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 12.dp),
+                        .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(
                         top = padding.calculateTopPadding() + 8.dp,
@@ -370,7 +370,7 @@ fun ChangesScreen(
             exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
             modifier = Modifier.fillMaxSize()
         ) {
-            OplusScaffold(
+            GitScaffold(
                 title = if (isAmend) stringResource(R.string.changes_amend_msg_label) else stringResource(R.string.changes_commit_msg_label),
                 onBack = { isMessageExpanded = false },
                 actions = {
@@ -449,10 +449,10 @@ fun FileChangeItem(
                 else
                     MaterialTheme.colorScheme.surfaceContainerLow
             ),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(16.dp))
                 .combinedClickable(
                     onClick = onToggle,
                     onLongClick = { showMenu = true }
@@ -492,25 +492,27 @@ fun FileChangeItem(
             }
         }
 
-        DropdownMenu(
-            expanded = showMenu,
-            onDismissRequest = { showMenu = false },
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.changes_action_ignore)) },
-                onClick = {
-                    showMenu = false
-                    onIgnore()
-                }
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.changes_action_discard), color = MaterialTheme.colorScheme.error) },
-                onClick = {
-                    showMenu = false
-                    onDiscard()
-                }
-            )
+        Box(Modifier.align(Alignment.CenterEnd)) {
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false },
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.changes_action_ignore)) },
+                    onClick = {
+                        showMenu = false
+                        onIgnore()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.changes_action_discard), color = MaterialTheme.colorScheme.error) },
+                    onClick = {
+                        showMenu = false
+                        onDiscard()
+                    }
+                )
+            }
         }
     }
 }

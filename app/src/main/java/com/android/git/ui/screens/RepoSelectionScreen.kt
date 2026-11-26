@@ -2,9 +2,9 @@ package com.android.git.ui.screens
 
 import com.android.git.ui.components.GitIcons as Icons
 
-import com.android.git.ui.components.OplusScaffold
-import com.android.git.ui.components.OplusSectionTitle
-import com.android.git.ui.components.OplusActionCard
+import com.android.git.ui.components.GitScaffold
+import com.android.git.ui.components.SectionTitle
+import com.android.git.ui.components.ActionTile
 import com.android.git.ui.components.Card
 import com.android.git.ui.components.ElevatedCard
 import com.android.git.ui.components.IconButton
@@ -81,7 +81,7 @@ fun RepoSelectionScreen(
         }
     }
 
-    OplusScaffold(
+    GitScaffold(
         title = stringResource(R.string.selection_title),
         actions = {
             IconButton(onClick = onGeneralSettingsClick) {
@@ -92,8 +92,8 @@ fun RepoSelectionScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                start = 12.dp,
-                end = 12.dp,
+                start = 16.dp,
+                end = 16.dp,
                 top = padding.calculateTopPadding() + 8.dp,
                 bottom = padding.calculateBottomPadding() + 32.dp
             ),
@@ -104,23 +104,23 @@ fun RepoSelectionScreen(
                     modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OplusActionCard(
-                        title = stringResource(R.string.selection_clone_repo),
-                        icon = Icons.Default.Download,
-                        onClick = onCloneRequest,
-                        modifier = Modifier.weight(1f).fillMaxHeight()
-                    )
-                    OplusActionCard(
+                    ActionTile(
                         title = stringResource(R.string.selection_open_local),
                         icon = Icons.Default.FolderOpen,
                         onClick = { launcher.launch(null) },
+                        modifier = Modifier.weight(1f).fillMaxHeight()
+                    )
+                    ActionTile(
+                        title = stringResource(R.string.selection_clone_repo),
+                        icon = Icons.Default.Download,
+                        onClick = onCloneRequest,
                         modifier = Modifier.weight(1f).fillMaxHeight()
                     )
                 }
             }
             item {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    OplusSectionTitle(
+                    SectionTitle(
                         title = stringResource(R.string.selection_recent_projects),
                         modifier = Modifier.weight(1f)
                     )
@@ -175,7 +175,7 @@ fun RecentProjectItem(file: File, isMissing: Boolean = false, onClick: () -> Uni
         modifier = Modifier
             .fillMaxWidth()
             .alpha(if (isMissing) 0.6f else 1f),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
@@ -304,7 +304,7 @@ fun ProjectIcon(projectDir: File, isMissing: Boolean) {
     Box(
         modifier = Modifier
             .size(48.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(if (isMissing) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center
     ) {

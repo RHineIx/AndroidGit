@@ -301,4 +301,10 @@
     <string name="clone_my_repos_empty">No repositories found.</string>
     <string name="repo_settings_err_fetch_repos">Unable to fetch repositories.</string>
 
+    <string name="auth_restore_token">Restore last token</string>
+    <string name="auth_save_failed">Unable to save authentication settings.</string>
+    <string name="appearance_section">Appearance</string>
+    <string name="appearance_system_colors">System colors</string>
+    <string name="appearance_system_colors_hint">Use Android wallpaper colors (Material You).</string>
+    <string name="appearance_dynamic_fallback">Dynamic colors require Android 12 or later. Default colors are used on older devices.</string>
 </resources>

@@ -37,14 +37,14 @@ import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.components.Button
 import com.android.git.ui.components.CircularProgressIndicator
 import com.android.git.ui.components.DropdownMenu
-import com.android.git.ui.components.OplusPreferenceRow
+import com.android.git.ui.components.PreferenceMenu
 import com.android.git.ui.components.DropdownMenuItem
 import com.android.git.ui.components.ElevatedCard
 import com.android.git.ui.components.GitIcons as Icons
 import com.android.git.ui.components.IconButton
 import com.android.git.ui.components.LinearProgressIndicator
-import com.android.git.ui.components.OplusScaffold
-import com.android.git.ui.components.OplusSectionTitle
+import com.android.git.ui.components.GitScaffold
+import com.android.git.ui.components.SectionTitle
 import com.android.git.ui.components.OutlinedTextField
 import com.android.git.ui.components.Switch
 import com.android.git.ui.components.TextButton
@@ -65,7 +65,7 @@ fun WorkflowsScreen(
         viewModel.loadWorkflowsForCurrentRepository()
     }
 
-    OplusScaffold(
+    GitScaffold(
         title = stringResource(R.string.workflow_title),
         onBack = onBack,
         actions = {
@@ -79,7 +79,7 @@ fun WorkflowsScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                    start = 12.dp, end = 12.dp,
+                    start = 16.dp, end = 16.dp,
                     top = padding.calculateTopPadding() + 8.dp,
                     bottom = padding.calculateBottomPadding() + 32.dp
                 ),
@@ -117,7 +117,7 @@ fun WorkflowsScreen(
                 items(viewModel.githubWorkflows, key = { it.id }) { workflow ->
                     ElevatedCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
                     ) {
                         Row(
@@ -147,7 +147,7 @@ fun WorkflowsScreen(
                 }
 
                 item {
-                    OplusSectionTitle(
+                    SectionTitle(
                         title = stringResource(R.string.workflow_runs),
                         modifier = Modifier.padding(top = 8.dp)
                     )
@@ -225,47 +225,35 @@ private fun WorkflowRunDialog(
                         Text(stringResource(R.string.workflow_loading_inputs))
                     }
                 } else {
-                    // Ref Selection with Editable Dropdown
-                    Box {
-                        OutlinedTextField(
-                            value = ref,
-                            onValueChange = { ref = it },
-                            label = { Text(stringResource(R.string.workflow_ref)) },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            trailingIcon = {
-                                IconButton(onClick = { refExpanded = !refExpanded }) {
-                                    Icon(Icons.Default.ArrowDropDown, stringResource(R.string.workflow_ref), Modifier.size(22.dp))
-                                }
-                            }
-                        )
-                        if (availableBranches.isNotEmpty()) {
-                            DropdownMenu(
-                                width = 272.dp,
-                                expanded = refExpanded,
-                                onDismissRequest = { refExpanded = false }
-                            ) {
-                                availableBranches.forEach { branchName ->
-                                    DropdownMenuItem(
-                                        text = { Text(branchName) },
-                                        onClick = {
-                                            ref = branchName
-                                            refExpanded = false
-                                        },
-                                        trailingIcon = {
-                                            if (ref == branchName) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Check,
-                                                    contentDescription = null,
-                                                    tint = MaterialTheme.colorScheme.primary
-                                                )
-                                            }
+                    // Keep editable refs and anchor the branch menu to its trailing button.
+                    OutlinedTextField(
+                        value = ref,
+                        onValueChange = { ref = it },
+                        label = { Text(stringResource(R.string.workflow_ref)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        trailingIcon = {
+                            if (availableBranches.isNotEmpty()) {
+                                Box {
+                                    IconButton(onClick = { refExpanded = !refExpanded }) {
+                                        Icon(Icons.Default.ArrowDropDown, stringResource(R.string.workflow_ref), Modifier.size(22.dp))
+                                    }
+                                    DropdownMenu(expanded = refExpanded, onDismissRequest = { refExpanded = false }, width = 272.dp) {
+                                        availableBranches.forEach { branchName ->
+                                            DropdownMenuItem(
+                                                text = { Text(branchName) },
+                                                leadingIcon = {
+                                                    if (ref == branchName) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary)
+                                                    else Spacer(Modifier.size(24.dp))
+                                                },
+                                                onClick = { ref = branchName; refExpanded = false }
+                                            )
                                         }
-                                    )
+                                    }
                                 }
                             }
                         }
-                    }
+                    )
 
                     viewModel.githubWorkflowInputs.forEach { input ->
                         WorkflowInputField(
@@ -331,24 +319,7 @@ private fun WorkflowInputField(
         }
         input.type.equals("choice", ignoreCase = true) && input.options.isNotEmpty() -> {
             var expanded by remember(input.name) { mutableStateOf(false) }
-            Box {
-                OplusPreferenceRow(
-                    title = label,
-                    summary = value,
-                    onClick = { expanded = true },
-                    trailing = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(22.dp)) }
-                )
-                DropdownMenu(expanded = expanded, width = 272.dp, onDismissRequest = { expanded = false }) {
-                    input.options.forEachIndexed { index, option ->
-                        DropdownMenuItem(
-                            text = { Text(option, color = if (value == option) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface) },
-                            showDivider = index > 0,
-                            leadingIcon = if (value == option) { { Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) } } else null,
-                            onClick = { onValueChange(option); expanded = false }
-                        )
-                    }
-                }
-            }
+            PreferenceMenu(title = label, value = value, options = input.options, onSelect = onValueChange)
             if (input.description.isNotBlank()) {
                 Text(input.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -380,7 +351,7 @@ private fun WorkflowRunCard(run: GitHubWorkflowRun) {
     }
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
     ) {
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {

@@ -1,18 +1,17 @@
 package com.android.git.ui.screens
 
-import com.android.git.ui.components.DropdownMenu
 
 import com.android.git.ui.components.CircularProgressIndicator
 
 import com.android.git.ui.components.GitIcons as Icons
 
-import com.android.git.ui.components.OplusScaffold
-import com.android.git.ui.components.OplusSectionTitle
-import com.android.git.ui.components.OplusPreferenceGroup
-import com.android.git.ui.components.OplusPreferenceRow
-import com.android.git.ui.components.OplusPreferenceDivider
+import com.android.git.ui.components.GitScaffold
+import com.android.git.ui.components.SectionTitle
+import com.android.git.ui.components.PreferenceGroup
+import com.android.git.ui.components.PreferenceRow
+import com.android.git.ui.components.PreferenceMenu
+import com.android.git.ui.components.PreferenceDivider
 import com.android.git.ui.components.Button
-import com.android.git.ui.components.DropdownMenuItem
 import com.android.git.ui.components.IconButton
 import com.android.git.ui.components.OutlinedTextField
 import com.android.git.ui.components.Switch
@@ -30,8 +29,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import io.github.suqi8.coui.kmp.basic.PreciseClickState
-import io.github.suqi8.coui.kmp.basic.preciseClickAnchor
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,19 +43,15 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.android.git.R
-import com.android.git.data.GitAuthManager
-import com.android.git.data.GitAuthMode
 import com.android.git.data.PreferencesManager
-import com.android.git.data.ThemeMode
 import com.android.git.ui.components.AppSnackbar
-import com.android.git.ui.components.GitAuthenticationPanel
+import com.android.git.ui.components.AuthenticationSettings
+import com.android.git.ui.components.AppearancePreferences
+import com.android.git.ui.components.rememberAuthenticationForm
 import com.android.git.ui.viewmodel.MainViewModel
 import io.github.lyxnx.compose.ui.tablericons.TablerIcons
-import io.github.lyxnx.compose.ui.tablericons.outline.BrightnessAuto
 import io.github.lyxnx.compose.ui.tablericons.outline.BrandTelegram
-import io.github.lyxnx.compose.ui.tablericons.outline.Moon
 import io.github.lyxnx.compose.ui.tablericons.outline.Selector
-import io.github.lyxnx.compose.ui.tablericons.outline.Sun
 import io.github.lyxnx.compose.ui.tablericons.outline.Versions
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,30 +64,18 @@ fun GeneralSettingsScreen(
     val context = LocalContext.current
     val prefs = remember { PreferencesManager(context) }
     val focusManager = LocalFocusManager.current
-    val authManager = remember { GitAuthManager(context.filesDir) }
 
     val statusMessage = viewModel.statusMessage
     val statusType = viewModel.statusType
     val isLoading = viewModel.isLoading
 
     var autoOpen by remember { mutableStateOf(prefs.isAutoOpenEnabled()) }
-    var themeExpanded by remember { mutableStateOf(false) }
-    val themeAnchor = remember { PreciseClickState() }
 
-    var userName by remember { mutableStateOf(prefs.getUserName()) }
-    var userEmail by remember { mutableStateOf(prefs.getUserEmail()) }
-    var authMode by remember { mutableStateOf(prefs.getAuthMode()) }
-    var token by remember { mutableStateOf(prefs.getToken()) }
-    var sshPrivateKey by remember { mutableStateOf(prefs.getSshPrivateKey()) }
-    var sshPublicKey by remember { mutableStateOf(prefs.getSshPublicKey()) }
-    var sshPassphrase by remember { mutableStateOf(prefs.getSshPassphrase()) }
-    var authSaving by remember { mutableStateOf(false) }
-    var authSaved by remember { mutableStateOf(false) }
+    val authForm = rememberAuthenticationForm(prefs)
 
     var geminiApiKey by remember { mutableStateOf(prefs.getGeminiApiKey()) }
     var geminiModel by remember { mutableStateOf(prefs.getGeminiModel()) }
     var geminiPrompt by remember { mutableStateOf(prefs.getGeminiPrompt()) }
-    var aiModelExpanded by remember { mutableStateOf(false) }
 
     var apiKeyVisible by remember { mutableStateOf(false) }
 
@@ -106,7 +87,7 @@ fun GeneralSettingsScreen(
         "gemma-3-27b-it"
     )
 
-    OplusScaffold(
+    GitScaffold(
         title = stringResource(R.string.settings_title),
         onBack = onBack
     ) { padding ->
@@ -116,69 +97,20 @@ fun GeneralSettingsScreen(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(padding)
-                    .padding(horizontal = 12.dp)
+                    .padding(horizontal = 16.dp)
                     .padding(top = 8.dp, bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
 
+                AppearancePreferences(
+                    mode = viewModel.themeMode,
+                    appearance = viewModel.appearance,
+                    onModeChange = viewModel::updateThemeMode,
+                    onAppearanceChange = viewModel::updateAppearance
+                )
+
                 SettingsSection(title = stringResource(R.string.settings_section_app), padded = false) {
-                    val themeNames = listOf(
-                        stringResource(R.string.settings_theme_system),
-                        stringResource(R.string.settings_theme_light),
-                        stringResource(R.string.settings_theme_dark)
-                    )
-                    val currentThemeName = when (viewModel.themeMode) {
-                        ThemeMode.SYSTEM -> themeNames[0]
-                        ThemeMode.LIGHT -> themeNames[1]
-                        ThemeMode.DARK -> themeNames[2]
-                    }
-                    val themeIcons = listOf(
-                        TablerIcons.Outline.BrightnessAuto,
-                        TablerIcons.Outline.Sun,
-                        TablerIcons.Outline.Moon
-                    )
-                    Box {
-                        OplusPreferenceRow(
-                            title = stringResource(R.string.settings_theme_title),
-                            modifier = Modifier.preciseClickAnchor(themeAnchor),
-                            summary = currentThemeName,
-                            icon = TablerIcons.Outline.BrightnessAuto,
-                            onClick = { themeExpanded = true },
-                            trailing = {
-                                Icon(TablerIcons.Outline.Selector, contentDescription = null,
-                                    modifier = Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        )
-                        DropdownMenu(
-                            expanded = themeExpanded,
-                            width = 176.dp,
-                            preciseClickState = themeAnchor,
-                            onDismissRequest = { themeExpanded = false }
-                        ) {
-                            ThemeMode.entries.forEachIndexed { index, mode ->
-                                val selected = viewModel.themeMode == mode
-                                DropdownMenuItem(
-                                    showDivider = index > 0,
-                                    text = {
-                                        Text(themeNames[index], color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            if (selected) Icons.Default.Check else themeIcons[index],
-                                            contentDescription = null,
-                                            tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                                        )
-                                    },
-                                    onClick = {
-                                        viewModel.updateThemeMode(mode)
-                                        themeExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                    OplusPreferenceDivider()
-                    OplusPreferenceRow(
+                    PreferenceRow(
                         title = stringResource(R.string.settings_auto_open),
                         summary = stringResource(R.string.settings_auto_open_desc),
                         icon = Icons.Default.FolderOpen,
@@ -198,28 +130,7 @@ fun GeneralSettingsScreen(
                     )
                 }
 
-                GlobalAuthenticationSection(
-                    prefs = prefs,
-                    authManager = authManager,
-                    userName = userName,
-                    onUserNameChange = { userName = it },
-                    userEmail = userEmail,
-                    onUserEmailChange = { userEmail = it },
-                    authMode = authMode,
-                    onAuthModeChange = { authMode = it },
-                    token = token,
-                    onTokenChange = { token = it },
-                    sshPrivateKey = sshPrivateKey,
-                    onSshPrivateKeyChange = { sshPrivateKey = it },
-                    sshPublicKey = sshPublicKey,
-                    onSshPublicKeyChange = { sshPublicKey = it },
-                    sshPassphrase = sshPassphrase,
-                    onSshPassphraseChange = { sshPassphrase = it },
-                    authSaving = authSaving,
-                    onAuthSavingChange = { authSaving = it },
-                    authSaved = authSaved,
-                    onAuthSavedChange = { authSaved = it }
-                )
+                AuthenticationSettings(authForm)
 
                 SettingsSection(title = stringResource(R.string.settings_ai_section), padded = false) {
                     Column(Modifier.padding(16.dp)) {
@@ -236,42 +147,23 @@ fun GeneralSettingsScreen(
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(16.dp),
                             visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                             singleLine = true
                         )
 
                     }
-                    OplusPreferenceDivider()
-                    Box {
-                        OplusPreferenceRow(
-                            title = stringResource(R.string.settings_ai_model),
-                            summary = geminiModel,
-                            icon = Icons.Default.AutoAwesome,
-                            onClick = { aiModelExpanded = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            trailing = {
-                                Icon(TablerIcons.Outline.Selector, contentDescription = null,
-                                    modifier = Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        )
-                        DropdownMenu(expanded = aiModelExpanded, onDismissRequest = { aiModelExpanded = false }, width = 272.dp) {
-                            aiModels.forEach { model ->
-                                val selected = geminiModel == model
-                                DropdownMenuItem(
-                                    text = { Text(model, color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface) },
-                                    onClick = { geminiModel = model; aiModelExpanded = false },
-                                    leadingIcon = {
-                                        if (selected) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                        else Spacer(Modifier.size(22.dp))
-                                    }
-                                )
-                            }
-                        }
-                    }
+                    PreferenceDivider()
+                    PreferenceMenu(
+                        title = stringResource(R.string.settings_ai_model),
+                        value = geminiModel,
+                        options = aiModels,
+                        icon = Icons.Default.AutoAwesome,
+                        onSelect = { geminiModel = it }
+                    )
 
-                    OplusPreferenceDivider()
+                    PreferenceDivider()
                     Column(Modifier.padding(16.dp)) {
                         OutlinedTextField(
                             value = geminiPrompt,
@@ -279,7 +171,7 @@ fun GeneralSettingsScreen(
                             label = { Text(stringResource(R.string.settings_custom_prompt)) },
                             placeholder = { Text(stringResource(R.string.settings_custom_prompt_hint)) },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(16.dp),
                             minLines = 3,
                             maxLines = 6
                         )
@@ -287,8 +179,8 @@ fun GeneralSettingsScreen(
                         Spacer(modifier = Modifier.height(20.dp))
                         Button(
                             onClick = { focusManager.clearFocus(); viewModel.verifyGeminiSettings(geminiApiKey, geminiModel, geminiPrompt) },
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
-                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                            shape = RoundedCornerShape(16.dp),
                             enabled = !isLoading
                         ) {
                             if (isLoading) {
@@ -321,114 +213,6 @@ fun GeneralSettingsScreen(
 }
 
 @Composable
-private fun GlobalAuthenticationSection(
-    prefs: PreferencesManager,
-    authManager: GitAuthManager,
-    userName: String,
-    onUserNameChange: (String) -> Unit,
-    userEmail: String,
-    onUserEmailChange: (String) -> Unit,
-    authMode: GitAuthMode,
-    onAuthModeChange: (GitAuthMode) -> Unit,
-    token: String,
-    onTokenChange: (String) -> Unit,
-    sshPrivateKey: String,
-    onSshPrivateKeyChange: (String) -> Unit,
-    sshPublicKey: String,
-    onSshPublicKeyChange: (String) -> Unit,
-    sshPassphrase: String,
-    onSshPassphraseChange: (String) -> Unit,
-    authSaving: Boolean,
-    onAuthSavingChange: (Boolean) -> Unit,
-    authSaved: Boolean,
-    onAuthSavedChange: (Boolean) -> Unit
-) {
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OplusSectionTitle(title = stringResource(R.string.settings_auth_section))
-        OplusPreferenceGroup {
-            Column(Modifier.padding(16.dp)) {
-                OutlinedTextField(
-                    value = userName,
-                    onValueChange = onUserNameChange,
-                    label = { Text(stringResource(R.string.settings_auth_user_name)) },
-                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(22.dp)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    singleLine = true,
-                    enabled = !authSaving
-                )
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = userEmail,
-                    onValueChange = onUserEmailChange,
-                    label = { Text(stringResource(R.string.settings_auth_user_email)) },
-                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(22.dp)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    enabled = !authSaving
-                )
-            }
-        }
-        Text(
-            stringResource(R.string.settings_auth_help),
-            modifier = Modifier.padding(horizontal = 20.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        OplusPreferenceGroup {
-            Column(Modifier.padding(16.dp)) {
-                GitAuthenticationPanel(
-                    authManager = authManager,
-                    userEmail = userEmail,
-                    authMode = authMode,
-                    onAuthModeChange = { onAuthModeChange(it); onAuthSavedChange(false) },
-                    token = token,
-                    onTokenChange = { onTokenChange(it); onAuthSavedChange(false) },
-                    sshPrivateKey = sshPrivateKey,
-                    onSshPrivateKeyChange = { onSshPrivateKeyChange(it); onAuthSavedChange(false) },
-                    sshPublicKey = sshPublicKey,
-                    onSshPublicKeyChange = { onSshPublicKeyChange(it); onAuthSavedChange(false) },
-                    sshPassphrase = sshPassphrase,
-                    onSshPassphraseChange = { onSshPassphraseChange(it); onAuthSavedChange(false) },
-                    isBusy = authSaving,
-                    onClearSshData = {
-                        prefs.clearSshKey()
-                        onAuthSavedChange(false)
-                    }
-                )
-
-                Spacer(Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        onAuthSavingChange(true)
-                        prefs.setUserName(userName)
-                        prefs.setUserEmail(userEmail)
-                        prefs.setAuthMode(authMode)
-                        if (authMode == GitAuthMode.HTTPS) prefs.saveToken(token)
-                        else prefs.saveSshKey(sshPrivateKey, sshPublicKey, sshPassphrase)
-                        onAuthSavingChange(false)
-                        onAuthSavedChange(true)
-                    },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
-                    enabled = !authSaving && (authMode == GitAuthMode.HTTPS || sshPrivateKey.isNotBlank()),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    if (authSaving) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                    else {
-                        Icon(Icons.Default.Save, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.action_save), fontWeight = FontWeight.Medium)
-                    }
-                }
-                if (authSaved) Text(stringResource(R.string.settings_auth_saved), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
-            }
-        }
-    }
-}
-
-@Composable
 fun AppVersionFooter(
     context: Context,
     onCheckUpdate: () -> Unit
@@ -453,7 +237,7 @@ fun AppVersionFooter(
         packageInfo?.versionCode ?: 0
     }
 
-    OplusPreferenceRow(
+    PreferenceRow(
         title = stringResource(R.string.settings_version_fmt, versionName, versionCode),
         summary = stringResource(R.string.settings_check_updates_hint),
         icon = TablerIcons.Outline.Versions,
@@ -480,19 +264,19 @@ fun DeveloperSection(context: Context, onCheckUpdate: () -> Unit) {
                 Text("@RHineix", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        OplusPreferenceDivider()
-        OplusPreferenceRow(
+        PreferenceDivider()
+        PreferenceRow(
             title = stringResource(R.string.settings_social_github),
             icon = Icons.Default.Source,
             onClick = { openUrl(context, "https://github.com/RHineix") }
         )
-        OplusPreferenceDivider()
-        OplusPreferenceRow(
+        PreferenceDivider()
+        PreferenceRow(
             title = stringResource(R.string.settings_social_telegram),
             icon = TablerIcons.Outline.BrandTelegram,
             onClick = { openUrl(context, "https://t.me/RHineix") }
         )
-        OplusPreferenceDivider()
+        PreferenceDivider()
         AppVersionFooter(context = context, onCheckUpdate = onCheckUpdate)
     }
 }
@@ -513,8 +297,8 @@ fun SettingsSection(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        OplusSectionTitle(title = title)
-        OplusPreferenceGroup {
+        SectionTitle(title = title)
+        PreferenceGroup {
             if (padded) Column(Modifier.padding(16.dp), content = content)
             else content()
         }

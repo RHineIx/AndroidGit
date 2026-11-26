@@ -6,6 +6,11 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
+enum class ThemePalette { DEFAULT, SYSTEM }
+
+data class AppearanceSettings(
+    val palette: ThemePalette = ThemePalette.DEFAULT
+)
 
 class PreferencesManager(context: Context) {
 
@@ -37,12 +42,39 @@ class PreferencesManager(context: Context) {
         private const val KEY_RECENT_PROJECTS = "recent_projects_list"
 
         private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_THEME_PALETTE = "theme_palette"
+        private const val KEY_DARK_SURFACE = "dark_surface"
+        private const val KEY_CUSTOM_ACCENT = "custom_accent"
 
         private const val KEY_GEMINI_API_KEY = "gemini_api_key"
         private const val KEY_GEMINI_MODEL = "gemini_model"
         private const val KEY_GEMINI_PROMPT = "gemini_prompt"
 
         private const val KEY_DEFAULT_CLONE_DIR = "default_clone_dir"
+    }
+
+    /** Persist the shared authentication form in a single preferences transaction. */
+    fun saveAuthentication(
+        name: String, email: String, mode: GitAuthMode, token: String,
+        privateKey: String, publicKey: String, passphrase: String, rememberToken: Boolean
+    ) {
+        val editor = prefs.edit()
+            .putString(KEY_USERNAME, name)
+            .putString(KEY_EMAIL, email)
+            .putString(KEY_AUTH_MODE, mode.name)
+        if (mode == GitAuthMode.HTTPS) {
+            if (rememberToken && token.isNotBlank()) {
+                editor.putString(KEY_TOKEN, token).putString(KEY_LAST_VALID_TOKEN, token)
+            } else {
+                editor.remove(KEY_TOKEN)
+                if (!rememberToken) editor.remove(KEY_LAST_VALID_TOKEN)
+            }
+        } else {
+            editor.putString(KEY_SSH_PRIVATE_KEY, privateKey)
+                .putString(KEY_SSH_PUBLIC_KEY, publicKey)
+                .putString(KEY_SSH_PASSPHRASE, passphrase)
+        }
+        editor.apply()
     }
 
     fun saveToken(token: String) {
@@ -150,6 +182,21 @@ class PreferencesManager(context: Context) {
 
     fun setThemeMode(mode: ThemeMode) {
         prefs.edit().putInt(KEY_THEME_MODE, mode.ordinal).apply()
+    }
+
+    fun getAppearance(): AppearanceSettings {
+        val storedPalette = prefs.getString(KEY_THEME_PALETTE, ThemePalette.DEFAULT.name)
+        val palette = if (storedPalette == ThemePalette.SYSTEM.name) ThemePalette.SYSTEM else ThemePalette.DEFAULT
+        // Migrate settings from experimental builds while retaining system colors and ThemeMode.
+        if (storedPalette == "CUSTOM" || prefs.contains(KEY_DARK_SURFACE) || prefs.contains(KEY_CUSTOM_ACCENT)) {
+            prefs.edit().putString(KEY_THEME_PALETTE, palette.name)
+                .remove(KEY_DARK_SURFACE).remove(KEY_CUSTOM_ACCENT).apply()
+        }
+        return AppearanceSettings(palette)
+    }
+
+    fun setAppearance(appearance: AppearanceSettings) {
+        prefs.edit().putString(KEY_THEME_PALETTE, appearance.palette.name).apply()
     }
 
     fun getGeminiApiKey(): String = prefs.getString(KEY_GEMINI_API_KEY, "") ?: ""

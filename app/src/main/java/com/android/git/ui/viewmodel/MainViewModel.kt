@@ -23,6 +23,7 @@ import com.android.git.data.GitRemoteUrl
 import com.android.git.data.GitManager
 import com.android.git.data.PreferencesManager
 import com.android.git.data.ThemeMode
+import com.android.git.data.AppearanceSettings
 import com.android.git.model.BranchModel
 import com.android.git.model.CommitItem
 import com.android.git.model.DashboardState
@@ -132,6 +133,9 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
     var themeMode: ThemeMode by mutableStateOf(prefs.getThemeMode())
         private set
 
+    var appearance by mutableStateOf(prefs.getAppearance())
+        private set
+
     // [New] State for GitHub Repositories
     var myGitHubRepos: List<GitHubRepoModel> by mutableStateOf(emptyList())
         private set
@@ -162,6 +166,11 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
                 token = prefs.getToken()
             )
         }
+    }
+
+    fun updateAppearance(settings: AppearanceSettings) {
+        prefs.setAppearance(settings)
+        appearance = settings
     }
 
     fun updateThemeMode(mode: ThemeMode) {

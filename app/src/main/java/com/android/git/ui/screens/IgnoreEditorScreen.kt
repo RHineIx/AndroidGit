@@ -19,7 +19,7 @@ import com.android.git.ui.components.CircularProgressIndicator
 import com.android.git.ui.components.DropdownMenu
 import com.android.git.ui.components.DropdownMenuItem
 import com.android.git.ui.components.IconButton
-import com.android.git.ui.components.OplusScaffold
+import com.android.git.ui.components.GitScaffold
 import com.android.git.data.GitManager
 import com.android.git.data.GitTemplates
 import com.android.git.ui.components.AppSnackbar
@@ -53,7 +53,7 @@ fun IgnoreEditorScreen(
         }
     }
 
-    OplusScaffold(
+    GitScaffold(
         title = stringResource(R.string.ignore_title),
         onBack = onBack,
         actions = {
@@ -113,7 +113,7 @@ fun IgnoreEditorScreen(
             ) { CircularProgressIndicator() }
         } else {
             Card(
-                modifier = Modifier.fillMaxSize().padding(padding).padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 32.dp)
+                modifier = Modifier.fillMaxSize().padding(padding).padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp)
             ) {
                 BasicTextField(
                     value = content,
