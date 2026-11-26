@@ -45,6 +45,30 @@ class PreferencesManager(context: Context) {
         private const val KEY_DEFAULT_CLONE_DIR = "default_clone_dir"
     }
 
+    /** Persist the shared authentication form in a single preferences transaction. */
+    fun saveAuthentication(
+        name: String, email: String, mode: GitAuthMode, token: String,
+        privateKey: String, publicKey: String, passphrase: String, rememberToken: Boolean
+    ) {
+        val editor = prefs.edit()
+            .putString(KEY_USERNAME, name)
+            .putString(KEY_EMAIL, email)
+            .putString(KEY_AUTH_MODE, mode.name)
+        if (mode == GitAuthMode.HTTPS) {
+            if (rememberToken && token.isNotBlank()) {
+                editor.putString(KEY_TOKEN, token).putString(KEY_LAST_VALID_TOKEN, token)
+            } else {
+                editor.remove(KEY_TOKEN)
+                if (!rememberToken) editor.remove(KEY_LAST_VALID_TOKEN)
+            }
+        } else {
+            editor.putString(KEY_SSH_PRIVATE_KEY, privateKey)
+                .putString(KEY_SSH_PUBLIC_KEY, publicKey)
+                .putString(KEY_SSH_PASSPHRASE, passphrase)
+        }
+        editor.apply()
+    }
+
     fun saveToken(token: String) {
         val editor = prefs.edit()
         editor.putString(KEY_TOKEN, token)
