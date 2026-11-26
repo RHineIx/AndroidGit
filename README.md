@@ -12,7 +12,7 @@ Manage repositories, branches, commits, SSH authentication, and GitHub Actions f
 
 The interface supports light, dark, and system themes, with centered progressive-blur headers, compact loading indicators, and dropdown menus that dismiss when tapping outside.
 
-See the [UI implementation notes](docs/UI_REFACTOR.md) for library versions and design details.
+Clone supports saved GitHub credentials, anonymous access, and temporary credentials selected by the remote URL. Only Settings and Repository Settings manage permanent credentials. Browse My Repositories uses the saved GitHub API token.
 
 ## Build
 

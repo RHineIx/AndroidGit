@@ -307,4 +307,16 @@
     <string name="appearance_system_colors">System colors</string>
     <string name="appearance_system_colors_hint">Use Android wallpaper colors (Material You).</string>
     <string name="appearance_dynamic_fallback">Dynamic colors require Android 12 or later. Default colors are used on older devices.</string>
+    <string name="clone_auth_saved">Use saved credentials</string>
+    <string name="clone_auth_saved_hint">Use the matching HTTPS token or SSH key from Settings.</string>
+    <string name="clone_auth_none">No authentication</string>
+    <string name="clone_auth_none_hint">Clone a public repository without credentials.</string>
+    <string name="clone_auth_custom">Custom credentials</string>
+    <string name="clone_auth_custom_hint">Use credentials for this clone only. Nothing is saved.</string>
+    <string name="clone_auth_ssh_required">SSH URLs require an SSH key. Use HTTPS for anonymous cloning.</string>
+    <string name="clone_auth_token_required">No token available. Set one in Settings, enter a custom token, or choose no authentication for a public repository.</string>
+    <string name="clone_auth_key_required">No SSH key available. Configure one in Settings or enter a temporary private key.</string>
+    <string name="clone_auth_https_required">Token authentication requires a secure HTTPS URL.</string>
+    <string name="clone_auth_github_only">Saved credentials are for GitHub. Use custom credentials for other hosts.</string>
+    <string name="clone_invalid_folder">Enter a single valid folder name.</string>
 </resources>

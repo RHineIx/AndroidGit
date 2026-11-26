@@ -624,8 +624,12 @@ class GitManager(
             onProgress: (String, Float, String) -> Unit
         ): Pair<File?, String> = withContext(Dispatchers.IO) {
             val authManager = GitAuthManager(secureStorageDir)
-            val destDir = File(parentDir, folderName)
-            if (destDir.exists() && destDir.listFiles()?.isNotEmpty() == true) {
+            val name = folderName.trim()
+            if (name.isBlank() || name == "." || name == ".." || '/' in name || '\\' in name || name.any { it.isISOControl() }) {
+                return@withContext Pair(null, "Error: Invalid destination folder name.")
+            }
+            val destDir = File(parentDir, name)
+            if (destDir.exists() && (!destDir.isDirectory || destDir.listFiles()?.isNotEmpty() != false)) {
                 return@withContext Pair(null, "Error: Folder exists.")
             }
 

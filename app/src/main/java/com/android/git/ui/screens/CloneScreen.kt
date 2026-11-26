@@ -11,10 +11,8 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -40,7 +38,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.android.git.R
 import com.android.git.ui.components.LinearProgressIndicator
 import com.android.git.ui.components.CircularProgressIndicator
@@ -48,15 +45,17 @@ import com.android.git.ui.components.Button
 import com.android.git.ui.components.ElevatedCard
 import com.android.git.ui.components.IconButton
 import com.android.git.ui.components.OutlinedButton
-import com.android.git.ui.components.Switch
 import com.android.git.ui.components.TextField
 import com.android.git.ui.components.GitScaffold
 import com.android.git.ui.components.SectionTitle
 import com.android.git.data.GitAuthMode
 import com.android.git.data.GitRemoteUrl
 import com.android.git.data.PreferencesManager
-import com.android.git.ui.components.AuthenticationCard
-import com.android.git.ui.components.rememberAuthenticationForm
+import com.android.git.ui.components.CloneAuthentication
+import com.android.git.data.CloneAuthChoice
+import com.android.git.data.CloneAuthPolicy
+import com.android.git.data.GitAuthConfig
+import com.android.git.data.GitRemoteScheme
 import com.android.git.ui.components.SnackbarType
 import com.android.git.ui.components.GitHubRepoBottomSheet
 import com.android.git.ui.viewmodel.MainViewModel
@@ -74,7 +73,19 @@ fun CloneScreen(
     val prefsManager = remember { PreferencesManager(context) }
     val focusManager = LocalFocusManager.current
 
-    val authForm = rememberAuthenticationForm(prefsManager, rememberTokenDefault = false)
+    val savedHttps = remember(prefsManager) { GitAuthConfig(token = prefsManager.getToken()) }
+    val savedSsh = remember(prefsManager) {
+        GitAuthConfig(mode = GitAuthMode.SSH, privateKey = prefsManager.getSshPrivateKey(),
+            passphrase = prefsManager.getSshPassphrase())
+    }
+    val savedMode = remember(prefsManager) { prefsManager.getAuthMode() }
+    var authChoice by remember {
+        mutableStateOf(if (savedHttps.token.isNotBlank() || savedSsh.privateKey.isNotBlank())
+            CloneAuthChoice.SAVED else CloneAuthChoice.NONE)
+    }
+    var customToken by remember { mutableStateOf("") }
+    var customKey by remember { mutableStateOf("") }
+    var customPassphrase by remember { mutableStateOf("") }
 
     var repoUrl by remember { mutableStateOf("") }
     var folderName by remember { mutableStateOf("") }
@@ -84,7 +95,6 @@ fun CloneScreen(
         mutableStateOf(prefsManager.getDefaultCloneDir()?.let { File(it) } ?: Environment.getExternalStorageDirectory())
     }
 
-    // [New] State for GitHub Repo Bottom Sheet
     var showMyReposSheet by remember { mutableStateOf(false) }
 
     val dirLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
@@ -124,6 +134,13 @@ fun CloneScreen(
 
     val parsedRemoteUrl = remember(repoUrl) { GitRemoteUrl.parse(repoUrl) }
     val sshRemoteUrl = remember(repoUrl) { GitRemoteUrl.toSshUrl(repoUrl) }
+    val isSsh = parsedRemoteUrl?.scheme == GitRemoteScheme.SSH
+    val customAuth = if (isSsh) GitAuthConfig(GitAuthMode.SSH, privateKey = customKey, passphrase = customPassphrase)
+        else GitAuthConfig(token = customToken)
+    val authResult = CloneAuthPolicy.resolve(repoUrl, authChoice, savedHttps, savedSsh, customAuth)
+    val destinationName = folderName.trim().ifEmpty { parsedRemoteUrl?.path?.substringAfterLast('/')?.removeSuffix(".git").orEmpty() }
+    val validFolder = destinationName.isNotBlank() && destinationName != "." && destinationName != ".." &&
+        '/' !in destinationName && '\\' !in destinationName && destinationName.none { it.isISOControl() }
 
     LaunchedEffect(repoUrl) {
         val cleanUrl = repoUrl.trim().removeSuffix("/")
@@ -150,7 +167,7 @@ fun CloneScreen(
             onDismiss = { showMyReposSheet = false },
             onRepoSelected = { repo ->
                 showMyReposSheet = false
-                repoUrl = if (authForm.draft.mode == GitAuthMode.SSH) {
+                repoUrl = if (isSsh || (repoUrl.isBlank() && authChoice == CloneAuthChoice.SAVED && savedMode == GitAuthMode.SSH && savedSsh.privateKey.isNotBlank())) {
                     repo.sshUrl.ifBlank { repo.cloneUrl }
                 } else {
                     repo.cloneUrl.ifBlank { repo.htmlUrl }
@@ -251,7 +268,7 @@ fun CloneScreen(
                         maxLines = Int.MAX_VALUE
                     )
 
-                    // [New] Browse My Repositories Button
+                    // GitHub API browsing uses the saved account token, independently of clone authentication.
                     Spacer(Modifier.height(8.dp))
                     OutlinedButton(
                         onClick = {
@@ -319,23 +336,46 @@ fun CloneScreen(
                 }
             }
 
-            AuthenticationCard(authForm, isLoading)
+            CloneAuthentication(
+                choice = authChoice,
+                onChoiceChange = {
+                    authChoice = it
+                    if (it != CloneAuthChoice.CUSTOM) {
+                        customToken = ""
+                        customKey = ""
+                        customPassphrase = ""
+                    }
+                },
+                isSsh = isSsh,
+                urlEntered = repoUrl.isNotBlank(),
+                savedHttpsAvailable = savedHttps.token.isNotBlank(),
+                savedSshAvailable = savedSsh.privateKey.isNotBlank(),
+                customToken = customToken,
+                onTokenChange = { customToken = it },
+                customKey = customKey,
+                onKeyChange = { customKey = it },
+                customPassphrase = customPassphrase,
+                onPassphraseChange = { customPassphrase = it },
+                error = authResult.error,
+                enabled = !isLoading
+            )
+            if (!validFolder && folderName.isNotBlank()) {
+                Text(stringResource(R.string.clone_invalid_folder), color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+            }
 
             Spacer(Modifier.height(16.dp))
 
             Button(
                 onClick = {
                     focusManager.clearFocus()
-                    if (parsedRemoteUrl == null) {
-                        focusManager.clearFocus()
-                    } else {
-                        val draft = authForm.draft
-                        authForm.save(draft)
+                    val config = authResult.config
+                    if (config != null && validFolder) {
                         viewModel.cloneRepository(
                             repoUrl.trim(),
                             cloneParentDir,
-                            folderName,
-                            draft.config(),
+                            destinationName,
+                            config,
                             onCloneSuccess
                         )
                     }
@@ -344,8 +384,7 @@ fun CloneScreen(
                     .fillMaxWidth()
                     .heightIn(min = 52.dp),
                 shape = RoundedCornerShape(16.dp),
-                enabled = !isLoading && parsedRemoteUrl != null &&
-                        !authForm.generating && authForm.draft.isValid
+                enabled = !isLoading && authResult.config != null && validFolder
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(

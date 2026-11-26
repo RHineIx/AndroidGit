@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import com.android.git.R
 import com.android.git.data.GitAuthManager
 import com.android.git.data.GitAuthMode
-import com.android.git.data.GitAuthConfig
 import com.android.git.data.PreferencesManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -365,16 +364,15 @@ internal data class AuthenticationDraft(
     val rememberToken: Boolean
 ) {
     val isValid: Boolean get() = mode == GitAuthMode.HTTPS || privateKey.isNotBlank()
-    fun config() = GitAuthConfig(mode, token, privateKey, passphrase)
 }
 
 @Stable
-internal class AuthenticationFormState(private val prefs: PreferencesManager, rememberTokenDefault: Boolean) {
+internal class AuthenticationFormState(private val prefs: PreferencesManager) {
     var draft by mutableStateOf(
         AuthenticationDraft(
             prefs.getUserName(), prefs.getUserEmail(), prefs.getAuthMode(),
             prefs.getToken(), prefs.getSshPrivateKey(), prefs.getSshPublicKey(),
-            prefs.getSshPassphrase(), rememberTokenDefault || prefs.getToken().isNotEmpty()
+            prefs.getSshPassphrase(), true
         )
     )
     var generating by mutableStateOf(false)
@@ -397,11 +395,10 @@ internal class AuthenticationFormState(private val prefs: PreferencesManager, re
 
 @Composable
 internal fun rememberAuthenticationForm(
-    prefs: PreferencesManager,
-    rememberTokenDefault: Boolean = true
-): AuthenticationFormState = remember(prefs) { AuthenticationFormState(prefs, rememberTokenDefault) }
+    prefs: PreferencesManager
+): AuthenticationFormState = remember(prefs) { AuthenticationFormState(prefs) }
 
-/** Shared identity, authentication modes and credential controls for all three screens. */
+/** Shared identity, authentication modes and credential controls for both settings screens. */
 @Composable
 internal fun AuthenticationFields(
     state: AuthenticationFormState,
@@ -483,7 +480,7 @@ internal fun AuthenticationFields(
     }
 }
 
-/** One card layout shared by Settings, Repository Settings and Clone. */
+/** One card layout shared by Settings and Repository Settings. */
 @Composable
 internal fun AuthenticationCard(
     state: AuthenticationFormState,
