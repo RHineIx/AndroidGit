@@ -4,10 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -15,8 +18,6 @@ import androidx.compose.ui.unit.sp
 import com.android.git.R
 import com.android.git.data.GitManager
 import com.android.git.ui.components.AppSnackbar
-import com.android.git.ui.components.Button
-import com.android.git.ui.components.OplusScaffold
 import com.android.git.ui.components.SnackbarType
 import com.android.git.utils.isGitFailureMessage
 import kotlinx.coroutines.launch
@@ -29,7 +30,7 @@ fun ConflictResolverScreen(
     onBack: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
-
+    
     var fileContent by remember { mutableStateOf("") } // Init empty, load in LaunchedEffect
     var isResolving by remember { mutableStateOf(false) }
     var statusMessage by remember { mutableStateOf("") }
@@ -41,17 +42,29 @@ fun ConflictResolverScreen(
         fileContent = gitManager.readFileContent(filePath)
     }
 
-    OplusScaffold(
-        title = stringResource(R.string.conflict_resolver_title),
-        onBack = onBack,
-        subtitle = filePath,
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { 
+                    Column {
+                        Text(stringResource(R.string.conflict_resolver_title))
+                        Text(filePath, style = MaterialTheme.typography.labelSmall)
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+            )
+        },
         bottomBar = {
-            Column(Modifier
-                .background(MaterialTheme.colorScheme.background)
-                .navigationBarsPadding()) {
+            Column(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
+                HorizontalDivider()
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Button(
                         onClick = {
@@ -70,11 +83,11 @@ fun ConflictResolverScreen(
                         },
                         enabled = !isResolving,
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)) // Green
                     ) {
                         Text(stringResource(R.string.conflict_btn_ours))
                     }
-
+                    
                     Button(
                         onClick = {
                             if (isResolving) return@Button
@@ -92,10 +105,7 @@ fun ConflictResolverScreen(
                         },
                         enabled = !isResolving,
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828)) // Red
                     ) {
                         Text(stringResource(R.string.conflict_btn_theirs))
                     }
@@ -105,18 +115,17 @@ fun ConflictResolverScreen(
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
-
+            
             // Info Header
             Surface(
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     stringResource(R.string.conflict_instruction),
                     modifier = Modifier.padding(16.dp),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
             }
 
@@ -125,8 +134,7 @@ fun ConflictResolverScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp)
-                    .background(MaterialTheme.colorScheme.surfaceContainerLow, androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surface)
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp)
             ) {

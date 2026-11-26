@@ -1,25 +1,20 @@
 package com.android.git.ui.screens
 
-import com.android.git.ui.components.CircularProgressIndicator
-
-import com.android.git.ui.components.GitIcons as Icons
-
-import com.android.git.ui.components.OplusScaffold
-import com.android.git.ui.components.OplusSectionTitle
-import com.android.git.ui.components.OplusPreferenceGroup
-import com.android.git.ui.components.Button
-import com.android.git.ui.components.OutlinedTextField
-
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.android.git.R
@@ -52,44 +47,63 @@ fun RepoSettingsScreen(
     var sshPassphrase by remember { mutableStateOf(prefs.getSshPassphrase()) }
     var isSaving by remember { mutableStateOf(false) }
 
-    val cardShape = RoundedCornerShape(12.dp)
-    val textFieldShape = RoundedCornerShape(12.dp)
+    val cardShape = RoundedCornerShape(16.dp)
+    val textFieldShape = RoundedCornerShape(16.dp)
 
-    OplusScaffold(
-        title = stringResource(R.string.repo_settings_title),
-        onBack = onBack
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.repo_settings_title), fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+            )
+        }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
                 .padding(padding)
-                .padding(horizontal = 12.dp)
+                .padding(horizontal = 16.dp)
+                .verticalScroll(rememberScrollState())
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            OplusSectionTitle(title = stringResource(R.string.repo_settings_section_auth))
+            Text(
+                text = stringResource(R.string.repo_settings_section_auth),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 12.dp, start = 4.dp)
+            )
 
-            OplusPreferenceGroup {
-                Column(modifier = Modifier.padding(16.dp)) {
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = cardShape,
+                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
                     OutlinedTextField(
                         value = userName,
                         onValueChange = { userName = it },
                         label = { Text(stringResource(R.string.repo_settings_label_user)) },
-                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(22.dp)) },
+                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = textFieldShape,
                         singleLine = true,
                         enabled = !isSaving
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     OutlinedTextField(
                         value = userEmail,
                         onValueChange = { userEmail = it },
                         label = { Text(stringResource(R.string.repo_settings_label_email)) },
-                        leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(22.dp)) },
+                        leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = textFieldShape,
                         singleLine = true,
@@ -97,17 +111,18 @@ fun RepoSettingsScreen(
                         enabled = !isSaving
                     )
 
-                }
-            }
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 20.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
 
-            Text(
-                text = stringResource(R.string.repo_settings_auth_help),
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            OplusPreferenceGroup {
-                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = stringResource(R.string.repo_settings_auth_help),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
                     GitAuthenticationPanel(
                         authManager = authManager,
                         userEmail = userEmail,
@@ -127,7 +142,7 @@ fun RepoSettingsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
             Button(
                 onClick = {
@@ -151,7 +166,7 @@ fun RepoSettingsScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 44.dp),
+                    .height(56.dp),
                 shape = cardShape,
                 enabled = !isSaving && (authMode == GitAuthMode.HTTPS || sshPrivateKey.isNotBlank())
             ) {

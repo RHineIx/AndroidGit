@@ -2,8 +2,6 @@
 
 package com.android.git.ui.components
 
-import com.android.git.ui.components.GitIcons as Icons
-
 import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
@@ -19,6 +17,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -56,34 +61,74 @@ fun AppSnackbar(
     type: SnackbarType = SnackbarType.INFO,
     onDismiss: () -> Unit
 ) {
-    val state = remember { io.github.suqi8.coui.kmp.basic.SnackbarHostState() }
-    val dismiss by rememberUpdatedState(onDismiss)
     LaunchedEffect(message, type) {
         if (message.isNotEmpty()) {
-            state.showSnackbar(
-                message = message,
-                withDismissAction = true,
-                duration = io.github.suqi8.coui.kmp.basic.SnackbarDuration.Custom(
-                    if (type == SnackbarType.ERROR) 4000L else 2500L
-                )
-            )
-            dismiss()
+            val duration = if (type == SnackbarType.ERROR) 4000.milliseconds else 2500.milliseconds
+            delay(duration)
+            onDismiss()
         }
     }
-    val (tint, icon) = when (type) {
-        SnackbarType.SUCCESS -> MaterialTheme.colorScheme.primary to Icons.Default.CheckCircle
-        SnackbarType.ERROR -> MaterialTheme.colorScheme.error to Icons.Default.Error
-        SnackbarType.WARNING -> MaterialTheme.colorScheme.error to Icons.Default.Warning
-        SnackbarType.INFO -> MaterialTheme.colorScheme.onSurfaceVariant to Icons.Default.Info
+
+    val (backgroundColor, contentColor, icon) = when (type) {
+        SnackbarType.SUCCESS -> Triple(Color(0xFFE8F5E9), Color(0xFF2E7D32), Icons.Default.CheckCircle)
+        SnackbarType.ERROR -> Triple(Color(0xFFFFEBEE), Color(0xFFC62828), Icons.Default.Error)
+        SnackbarType.WARNING -> Triple(Color(0xFFFFF8E1), Color(0xFFF57F17), Icons.Default.Warning)
+        SnackbarType.INFO -> Triple(MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurface, Icons.Default.Info)
     }
-    io.github.suqi8.coui.kmp.basic.SnackbarHost(
-        state = state,
-        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp).fillMaxWidth()
-    ) { data ->
-        io.github.suqi8.coui.kmp.basic.Snackbar(
-            data = data,
-            icon = { Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp)) }
-        )
+
+    AnimatedVisibility(
+        visible = message.isNotEmpty(),
+        enter = slideInVertically(
+            initialOffsetY = { it },
+            animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+        ) + fadeIn(),
+        exit = slideOutVertically(
+            targetOffsetY = { it },
+            animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+        ) + fadeOut()
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth()
+                .wrapContentHeight(),
+            contentAlignment = Alignment.Center
+        ) {
+            Surface(
+                modifier = Modifier
+                    .widthIn(max = 400.dp)
+                    .shadow(12.dp, RoundedCornerShape(16.dp)),
+                shape = RoundedCornerShape(16.dp),
+                color = backgroundColor,
+                contentColor = contentColor,
+                border = BorderStroke(1.dp, contentColor.copy(alpha = 0.2f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(28.dp),
+                        tint = contentColor
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = stringResource(R.string.action_dismiss), tint = contentColor.copy(alpha = 0.6f))
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -117,7 +162,7 @@ fun UpdateBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp)
+                .padding(horizontal = 24.dp)
                 .padding(bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -167,7 +212,7 @@ fun UpdateBottomSheet(
 
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(24.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 350.dp)
@@ -177,7 +222,7 @@ fun UpdateBottomSheet(
                     }
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier.padding(24.dp)
                 ) {
                     Text(
                         text = "Changelog",
@@ -188,8 +233,7 @@ fun UpdateBottomSheet(
 
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 12.dp),
-                        thickness = 0.33.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     )
 
                     Column(

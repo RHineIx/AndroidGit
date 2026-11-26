@@ -29,12 +29,10 @@ import com.android.git.data.PreferencesManager
 import com.android.git.data.ThemeMode
 import com.android.git.navigation.AppNavGraph
 import com.android.git.ui.components.UpdateBottomSheet
-import com.android.git.ui.components.LocalOplusHazeState
 import com.android.git.ui.screens.PermissionScreen
 import com.android.git.ui.theme.AndroidGitTheme
 import com.android.git.ui.viewmodel.MainViewModel
 import java.io.File
-import dev.chrisbanes.haze.rememberHazeState
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -108,33 +106,28 @@ fun MainAppContent(
 
     // Apply the Theme dynamically
     AndroidGitTheme(darkTheme = isDarkTheme) {
-        // Dialogs are often siblings of the page scaffold; share its blur samples.
-        CompositionLocalProvider(LocalOplusHazeState provides rememberHazeState()) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxSize()
-                    // Resize every page above the IME and consume its inset once.
-                    // Scrollable forms and full-screen editors then share the same viewport.
-                    .imePadding()
-                    // Clear focus globally when tapping outside of input fields
-                    .pointerInput(Unit) {
-                        detectTapGestures(onTap = {
-                            focusManager.clearFocus()
-                        })
-                    },
-                color = MaterialTheme.colorScheme.background
-            ) {
-                if (!hasPermission) {
-                    PermissionScreen { requestPermission() }
-                } else {
-                    AppNavGraph(navController = navController, viewModel = viewModel)
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding()
+                // Clear focus globally when tapping outside of input fields
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = {
+                        focusManager.clearFocus()
+                    })
+                },
+            color = MaterialTheme.colorScheme.background
+        ) {
+            if (!hasPermission) {
+                PermissionScreen { requestPermission() }
+            } else {
+                AppNavGraph(navController = navController, viewModel = viewModel)
 
-                    if (viewModel.showUpdateSheet && viewModel.updateInfo != null) {
-                        UpdateBottomSheet(
-                            updateInfo = viewModel.updateInfo!!,
-                            onDismiss = { viewModel.dismissUpdateSheet() }
-                        )
-                    }
+                if (viewModel.showUpdateSheet && viewModel.updateInfo != null) {
+                    UpdateBottomSheet(
+                        updateInfo = viewModel.updateInfo!!,
+                        onDismiss = { viewModel.dismissUpdateSheet() }
+                    )
                 }
             }
         }

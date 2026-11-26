@@ -1,7 +1,5 @@
 package com.android.git.ui.components
 
-import com.android.git.ui.components.GitIcons as Icons
-
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -16,11 +14,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -58,7 +57,7 @@ fun GitAuthenticationPanel(
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
-    val modernShape = RoundedCornerShape(12.dp)
+    val modernShape = RoundedCornerShape(16.dp)
 
     // Internal states managed entirely by the component
     var tokenVisible by remember { mutableStateOf(false) }
@@ -105,17 +104,67 @@ fun GitAuthenticationPanel(
 
     Column(modifier = modifier.fillMaxWidth()) {
 
-        // Use the same native segmented control as the reference's binding pages.
-        val authTabs = listOf(
-            stringResource(R.string.auth_mode_https),
-            stringResource(R.string.auth_mode_ssh)
-        )
-        io.github.suqi8.coui.kmp.basic.TabRowWithContour(
-            tabs = authTabs,
-            selectedTabIndex = if (authMode == GitAuthMode.HTTPS) 0 else 1,
-            onTabSelected = { if (!isBusy) onAuthModeChange(if (it == 0) GitAuthMode.HTTPS else GitAuthMode.SSH) },
-            modifier = Modifier.fillMaxWidth().then(if (isBusy) Modifier.alpha(0.4f) else Modifier)
-        )
+        // Modern Segmented Control for Auth Mode
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh, modernShape)
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            val httpsSelected = authMode == GitAuthMode.HTTPS
+            val sshSelected = authMode == GitAuthMode.SSH
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (httpsSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                    .clickable(enabled = !isBusy) { onAuthModeChange(GitAuthMode.HTTPS) }
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Lock,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = if (httpsSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        stringResource(R.string.auth_mode_https),
+                        color = if (httpsSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (sshSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                    .clickable(enabled = !isBusy) { onAuthModeChange(GitAuthMode.SSH) }
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Key,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = if (sshSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        stringResource(R.string.auth_mode_ssh),
+                        color = if (sshSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
 
         Spacer(Modifier.height(16.dp))
 
@@ -200,7 +249,7 @@ fun GitAuthenticationPanel(
                         value = sshPassphrase,
                         onValueChange = onSshPassphraseChange,
                         label = { Text(stringResource(R.string.ssh_passphrase_label)) },
-                        leadingIcon = Icons.Default.Lock,
+                        leadingIcon = Icons.Default.Password,
                         enabled = !isBusy,
                         isSecret = true,
                         showDescription = stringResource(R.string.ssh_show_value),
@@ -230,7 +279,7 @@ fun GitAuthenticationPanel(
                             shape = modernShape
                         )
                         Spacer(Modifier.width(8.dp))
-                        IconButton(
+                        FilledTonalIconButton(
                             onClick = {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
                                 clipboard?.setPrimaryClip(
@@ -239,6 +288,7 @@ fun GitAuthenticationPanel(
                             },
                             enabled = !isBusy && sshPublicKey.isNotBlank(),
                             modifier = Modifier.size(50.dp),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             Icon(
                                 Icons.Default.ContentCopy,
@@ -285,17 +335,17 @@ fun GitAuthenticationPanel(
                     if (generatedAlgorithm.isNotBlank()) {
                         Spacer(Modifier.height(12.dp))
                         Surface(
-                            color = MaterialTheme.colorScheme.primaryContainer,
+                            color = Color(0xFFE8F5E9),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(20.dp))
+                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF2E7D32), modifier = Modifier.size(20.dp))
                                 Spacer(Modifier.width(12.dp))
                                 Text(
                                     text = stringResource(R.string.ssh_generated_fmt, generatedAlgorithm),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    color = Color(0xFF2E7D32),
                                     fontWeight = FontWeight.Medium
                                 )
                             }

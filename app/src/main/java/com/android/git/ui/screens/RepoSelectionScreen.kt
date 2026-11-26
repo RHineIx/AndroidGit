@@ -1,15 +1,5 @@
 package com.android.git.ui.screens
 
-import com.android.git.ui.components.GitIcons as Icons
-
-import com.android.git.ui.components.OplusScaffold
-import com.android.git.ui.components.OplusSectionTitle
-import com.android.git.ui.components.OplusActionCard
-import com.android.git.ui.components.Card
-import com.android.git.ui.components.ElevatedCard
-import com.android.git.ui.components.IconButton
-import com.android.git.ui.components.TextButton
-
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -19,10 +9,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,8 +24,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.git.R
 import com.android.git.data.PreferencesManager
+import com.android.git.ui.theme.LocalAndroidGitDarkTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -60,6 +56,7 @@ fun RepoSelectionScreen(
     val context = LocalContext.current
     val prefs = remember { PreferencesManager(context) }
     val scope = rememberCoroutineScope()
+    val isDarkTheme = LocalAndroidGitDarkTheme.current
 
     var recentProjects by remember { mutableStateOf<List<String>>(emptyList()) }
 
@@ -81,86 +78,128 @@ fun RepoSelectionScreen(
         }
     }
 
-    OplusScaffold(
-        title = stringResource(R.string.selection_title),
-        actions = {
-            IconButton(onClick = onGeneralSettingsClick) {
-                Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
-            }
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painter = painterResource(
+                                id = if (isDarkTheme) R.drawable.icon_dark else R.drawable.icon_light
+                            ),
+                            contentDescription = null,
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(38.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.selection_title), fontWeight = FontWeight.Bold)
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onGeneralSettingsClick) {
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = 12.dp,
-                end = 12.dp,
-                top = padding.calculateTopPadding() + 8.dp,
-                bottom = padding.calculateBottomPadding() + 32.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OplusActionCard(
-                        title = stringResource(R.string.selection_clone_repo),
-                        icon = Icons.Default.Download,
-                        onClick = onCloneRequest,
-                        modifier = Modifier.weight(1f).fillMaxHeight()
-                    )
-                    OplusActionCard(
-                        title = stringResource(R.string.selection_open_local),
-                        icon = Icons.Default.FolderOpen,
-                        onClick = { launcher.launch(null) },
-                        modifier = Modifier.weight(1f).fillMaxHeight()
-                    )
-                }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                ActionCard(
+                    title = stringResource(R.string.selection_open_local),
+                    icon = Icons.Default.FolderOpen,
+                    modifier = Modifier.weight(1f),
+                    onClick = { launcher.launch(null) }
+                )
+
+                ActionCard(
+                    title = stringResource(R.string.selection_clone_repo),
+                    icon = Icons.Default.Download,
+                    modifier = Modifier.weight(1f),
+                    onClick = onCloneRequest
+                )
             }
-            item {
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    OplusSectionTitle(
-                        title = stringResource(R.string.selection_recent_projects),
-                        modifier = Modifier.weight(1f)
-                    )
-                    if (recentProjects.isNotEmpty()) {
-                        TextButton(onClick = {
-                            scope.launch {
-                                recentProjects.forEach { prefs.removeRecentProject(it) }
-                                recentProjects = emptyList()
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.selection_recent_projects),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.weight(1f))
+                if (recentProjects.isNotEmpty()) {
+                    Text(
+                        text = stringResource(R.string.action_clear_all),
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                scope.launch {
+                                    recentProjects.forEach { prefs.removeRecentProject(it) }
+                                    recentProjects = emptyList()
+                                }
                             }
-                        }) {
-                            Text(stringResource(R.string.action_clear_all), color = MaterialTheme.colorScheme.error)
-                        }
-                    }
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelMedium
+                    )
                 }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             if (recentProjects.isEmpty()) {
-                item {
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.selection_no_recent), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-                        }
+                Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.History,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            text = stringResource(R.string.selection_no_recent),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             } else {
-                items(recentProjects, key = { it }) { path ->
-                    val file = File(path)
-                    val exists = file.exists()
-                    RecentProjectItem(
-                        file = file,
-                        isMissing = !exists,
-                        onClick = { if (exists) onRepoSelected(Uri.fromFile(file)) },
-                        onRemove = {
-                            scope.launch {
-                                prefs.removeRecentProject(path)
-                                recentProjects = prefs.getRecentProjects()
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(recentProjects, key = { it }) { path ->
+                        val file = File(path)
+                        val exists = file.exists()
+                        RecentProjectItem(
+                            file = file,
+                            isMissing = !exists,
+                            onClick = { if (exists) onRepoSelected(Uri.fromFile(file)) },
+                            onRemove = {
+                                scope.launch {
+                                    prefs.removeRecentProject(path)
+                                    recentProjects = prefs.getRecentProjects()
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
                 }
             }
         }
@@ -168,31 +207,63 @@ fun RepoSelectionScreen(
 }
 
 @Composable
+fun ActionCard(title: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    ElevatedCard(
+        modifier = modifier.height(100.dp).clickable { onClick() },
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(32.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = title,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
 fun RecentProjectItem(file: File, isMissing: Boolean = false, onClick: () -> Unit, onRemove: () -> Unit) {
     ElevatedCard(
-        onClick = onClick,
-        enabled = !isMissing,
         modifier = Modifier
             .fillMaxWidth()
-            .alpha(if (isMissing) 0.6f else 1f),
-        shape = RoundedCornerShape(12.dp),
+            .alpha(if (isMissing) 0.6f else 1f)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(enabled = !isMissing, onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = if (isMissing) 0.dp else 2.dp)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).fillMaxWidth(),
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             ProjectIcon(projectDir = file, isMissing = isMissing)
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = file.name,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -200,7 +271,7 @@ fun RecentProjectItem(file: File, isMissing: Boolean = false, onClick: () -> Uni
                 Text(
                     text = if(isMissing) stringResource(R.string.selection_dir_not_found) else file.absolutePath,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -209,7 +280,6 @@ fun RecentProjectItem(file: File, isMissing: Boolean = false, onClick: () -> Uni
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = stringResource(R.string.action_delete),
-                    modifier = Modifier.size(22.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
