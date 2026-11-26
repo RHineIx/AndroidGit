@@ -48,7 +48,7 @@ Use a full JDK and Android SDK 37:
 ./gradlew :app:assembleRelease :app:lintRelease
 ```
 
-Release builds use code and resource shrinking. Signing and publishing are configured through the manually triggered GitHub Actions workflow; local signing credentials and SDK paths are kept outside version control.
+Release builds use code and resource shrinking. Official releases are triggered by version tags on main; manual workflow runs produce internal artifacts only. The version fields are derived from the tag without modifying repository files; local signing credentials and SDK paths are kept outside version control.
 
 COUI 2.1.0 changes color and text style slots and component motion. Release compilation, lint and visual review on a device are required for this upgrade.
 

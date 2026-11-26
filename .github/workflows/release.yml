@@ -1,45 +1,19 @@
 name: AndroidGit Release
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
-      release_type:
-        description: "How should this build be published?"
-        required: true
-        default: stable
-        type: choice
-        options:
-          - stable
-          - prerelease
-          - internal
-      bump_type:
-        description: "Version bump when version_override is empty"
-        required: true
-        default: patch
-        type: choice
-        options:
-          - none
-          - patch
-          - minor
-          - major
-      bump_count:
-        description: "How many times to apply the selected bump"
-        required: true
-        default: "1"
-        type: string
-      version_override:
-        description: "Optional full version, for example 6.3.0-stable or 6.3.0-rc.1"
+      version_tag:
+        description: "Optional internal APK version (vMAJOR.MINOR.PATCH); defaults to the nearest release tag"
         required: false
-        default: ""
         type: string
-      version_code_override:
-        description: "Optional positive Android versionCode override"
-        required: false
         default: ""
-        type: string
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: androidgit-release-${{ github.ref }}
@@ -49,94 +23,81 @@ env:
   GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx1536m
 
 jobs:
-  release:
-    name: Validate, Build, Sign and Publish
+  build:
+    name: Build and verify signed APK
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
+    timeout-minutes: 35
+    outputs:
+      tag: ${{ steps.version.outputs.TAG_NAME }}
+      version: ${{ steps.version.outputs.VERSION_NAME }}
+      code: ${{ steps.version.outputs.VERSION_CODE }}
+      prerelease: ${{ steps.version.outputs.PRERELEASE }}
+      artifact: ${{ steps.version.outputs.ARTIFACT_NAME }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false
+
+      - name: Resolve build version
+        id: version
+        env:
+          INTERNAL_TAG: ${{ inputs.version_tag }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            [[ "$GITHUB_REF_TYPE" == "tag" ]] || exit 1
+            TAG_NAME="$GITHUB_REF_NAME"
+            if ! git merge-base --is-ancestor HEAD refs/remotes/origin/main; then
+              echo "::error::Release tag must point to a commit on main."
+              exit 1
+            fi
+            RELEASE_TYPE=stable
+          else
+            TAG_NAME="$INTERNAL_TAG"
+            if [[ -z "$TAG_NAME" ]]; then
+              TAG_NAME="$(git describe --tags --match 'v[0-9]*' --abbrev=0 2>/dev/null || true)"
+              TAG_NAME="${TAG_NAME:-v7.0.1-stable}"
+            fi
+            RELEASE_TYPE=internal
+          fi
+          PATTERN='^v(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)(-([0-9A-Za-z]+([.-][0-9A-Za-z]+)*))?$'
+          if [[ ! "$TAG_NAME" =~ $PATTERN ]]; then
+            echo "::error::Expected vMAJOR.MINOR.PATCH with optional suffix; minor/patch must be 0..99."
+            exit 1
+          fi
+          MAJOR="${BASH_REMATCH[1]}"
+          MINOR="${BASH_REMATCH[2]}"
+          PATCH="${BASH_REMATCH[3]}"
+          SUFFIX="${BASH_REMATCH[5]:-}"
+          VERSION_CODE=$((MAJOR * 10000 + MINOR * 100 + PATCH))
+          (( VERSION_CODE >= 1 && VERSION_CODE <= 2100000000 )) || { echo "::error::Invalid Android versionCode"; exit 1; }
+          VERSION_NAME="${TAG_NAME#v}"
+          PRERELEASE=false
+          if [[ "$RELEASE_TYPE" != "internal" && -n "$SUFFIX" && "$SUFFIX" != "stable" ]]; then
+            RELEASE_TYPE=prerelease
+            PRERELEASE=true
+          fi
+          if [[ "$RELEASE_TYPE" == "internal" ]]; then
+            ARTIFACT_NAME="AndroidGit-${TAG_NAME}-internal-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          else
+            ARTIFACT_NAME="AndroidGit-${TAG_NAME}-arm64-v8a"
+          fi
+          {
+            printf 'TAG_NAME=%s\nVERSION_NAME=%s\nVERSION_CODE=%s\n' "$TAG_NAME" "$VERSION_NAME" "$VERSION_CODE"
+            printf 'RELEASE_TYPE=%s\nPRERELEASE=%s\nARTIFACT_NAME=%s\n' "$RELEASE_TYPE" "$PRERELEASE" "$ARTIFACT_NAME"
+          } >> "$GITHUB_OUTPUT"
+          echo "Building $VERSION_NAME (versionCode $VERSION_CODE) [$RELEASE_TYPE]"
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Validate workflow inputs
-        env:
-          RELEASE_TYPE: ${{ inputs.release_type }}
-          BUMP_TYPE: ${{ inputs.bump_type }}
-          BUMP_COUNT: ${{ inputs.bump_count }}
-          VERSION_OVERRIDE: ${{ inputs.version_override }}
-          VERSION_CODE_OVERRIDE: ${{ inputs.version_code_override }}
-        run: |
-          set -euo pipefail
-          [[ "$RELEASE_TYPE" =~ ^(stable|prerelease|internal)$ ]] || { echo "Invalid release_type"; exit 1; }
-          [[ "$BUMP_TYPE" =~ ^(none|patch|minor|major)$ ]] || { echo "Invalid bump_type"; exit 1; }
-          [[ "$BUMP_COUNT" =~ ^[1-9][0-9]*$ ]] || { echo "bump_count must be a positive integer"; exit 1; }
-          (( BUMP_COUNT <= 20 )) || { echo "bump_count must be no greater than 20"; exit 1; }
-          if [[ -n "$VERSION_CODE_OVERRIDE" && ! "$VERSION_CODE_OVERRIDE" =~ ^[1-9][0-9]*$ ]]; then
-            echo "version_code_override must be a positive integer"
-            exit 1
-          fi
-          if [[ -n "$VERSION_OVERRIDE" && ! "$VERSION_OVERRIDE" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
-            echo "version_override must use MAJOR.MINOR.PATCH with an optional suffix"
-            exit 1
-          fi
-          if [[ -n "$VERSION_CODE_OVERRIDE" && -z "$VERSION_OVERRIDE" ]]; then
-            echo "version_code_override requires version_override"
-            exit 1
-          fi
-          if [[ "$BUMP_TYPE" != "none" || -n "$VERSION_OVERRIDE" ]] && [[ "$GITHUB_REF_TYPE" != "branch" ]]; then
-            echo "Version changes can only be committed from a branch, not a tag or commit ref."
-            exit 1
-          fi
-
-      - name: Apply version bump or override
-        if: ${{ inputs.bump_type != 'none' || inputs.version_override != '' }}
-        env:
-          BUMP_TYPE: ${{ inputs.bump_type }}
-          BUMP_COUNT: ${{ inputs.bump_count }}
-          VERSION_OVERRIDE: ${{ inputs.version_override }}
-          VERSION_CODE_OVERRIDE: ${{ inputs.version_code_override }}
-        run: |
-          set -euo pipefail
-          if [[ -n "$VERSION_OVERRIDE" ]]; then
-            if [[ -n "$VERSION_CODE_OVERRIDE" ]]; then
-              python3 tools/version.py bump --type patch --version "$VERSION_OVERRIDE" --version-code "$VERSION_CODE_OVERRIDE"
-            else
-              python3 tools/version.py bump --type patch --version "$VERSION_OVERRIDE"
-            fi
-          else
-            python3 tools/version.py bump --type "$BUMP_TYPE" --count "$BUMP_COUNT"
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add app/build.gradle.kts
-          if git diff --cached --quiet; then
-            echo "The requested version is already present; refusing to create an empty release commit."
-            exit 1
-          fi
-          VERSION_NAME=$(python3 tools/version.py print | awk -F= '$1 == "VERSION_NAME" {print $2}')
-          git commit -m "chore(release): bump version to $VERSION_NAME"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
-
-      - name: Read and validate version info
-        id: version
-        run: |
-          set -euo pipefail
-          python3 tools/version.py validate
-          python3 tools/version.py print --github-output "$GITHUB_OUTPUT"
+        uses: gradle/actions/setup-gradle@v5
 
       - name: Decode signing keystore
         env:
@@ -149,115 +110,113 @@ jobs:
           for variable in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
             [[ -n "${!variable}" ]] || { echo "Missing required secret: $variable"; exit 1; }
           done
+          umask 077
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > app/release.keystore
           test -s app/release.keystore
 
       - name: Build signed release APK
         env:
+          TAG_NAME: ${{ steps.version.outputs.TAG_NAME }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           set -euo pipefail
           chmod +x ./gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace \
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace \
+            -PreleaseTag="$TAG_NAME" \
             -Pandroid.injected.signing.store.file="$GITHUB_WORKSPACE/app/release.keystore" \
             -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
             -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
             -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
 
-      - name: Verify APKs and create checksums
-        id: artifacts
+      - name: Verify APK, version, ABI and checksum
         env:
+          TAG_NAME: ${{ steps.version.outputs.TAG_NAME }}
           VERSION_NAME: ${{ steps.version.outputs.VERSION_NAME }}
           VERSION_CODE: ${{ steps.version.outputs.VERSION_CODE }}
+          RELEASE_TYPE: ${{ steps.version.outputs.RELEASE_TYPE }}
         run: |
           set -euo pipefail
           mapfile -t APKS < <(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | sort)
-          (( ${#APKS[@]} > 0 )) || { echo "No release APK was produced"; exit 1; }
-
+          (( ${#APKS[@]} == 1 )) || { echo "::error::Expected exactly one arm64 APK"; exit 1; }
+          APK="${APKS[0]}"
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)
-          [[ -x "$APKSIGNER" ]] || { echo "Android apksigner was not found"; exit 1; }
-          for apk in "${APKS[@]}"; do
-            "$APKSIGNER" verify --verbose "$apk"
-          done
-
+          AAPT="$(dirname "$APKSIGNER")/aapt"
+          [[ -x "$APKSIGNER" && -x "$AAPT" ]] || { echo "::error::Android build tools missing"; exit 1; }
+          "$APKSIGNER" verify --verbose "$APK"
+          BADGING="$("$AAPT" dump badging "$APK")"
+          PACKAGE_LINE="$(sed -n '/^package: /p' <<< "$BADGING")"
+          ACTUAL_NAME="$(sed -nE "s/.*versionName='([^']+)'.*/\1/p" <<< "$PACKAGE_LINE")"
+          ACTUAL_CODE="$(sed -nE "s/.*versionCode='([0-9]+)'.*/\1/p" <<< "$PACKAGE_LINE")"
+          [[ "$ACTUAL_NAME" == "$VERSION_NAME" && "$ACTUAL_CODE" == "$VERSION_CODE" ]] || {
+            echo "::error::APK version $ACTUAL_NAME ($ACTUAL_CODE) does not match $VERSION_NAME ($VERSION_CODE)"
+            exit 1
+          }
+          ABIS="$(unzip -Z1 "$APK" | awk -F/ '$1 == "lib" && $NF ~ /\.so$/ {print $2}' | sort -u)"
+          [[ "$ABIS" == "arm64-v8a" ]] || { echo "::error::Unexpected native ABIs: $ABIS"; exit 1; }
           mkdir -p release_artifacts
-          for apk in "${APKS[@]}"; do
-            cp "$apk" release_artifacts/AndroidGit-v${VERSION_NAME}-$(basename "$apk")
-          done
-          printf 'AndroidGit release %s (versionCode %s)\n' "$VERSION_NAME" "$VERSION_CODE" > release_artifacts/SHA256SUMS.txt
-          (cd release_artifacts && sha256sum *.apk) >> release_artifacts/SHA256SUMS.txt
-          printf 'APK_COUNT=%s\n' "${#APKS[@]}" >> "$GITHUB_OUTPUT"
-          cat release_artifacts/SHA256SUMS.txt
+          if [[ "$RELEASE_TYPE" == "internal" ]]; then
+            FILE_NAME="AndroidGit-${TAG_NAME}-internal-arm64-v8a.apk"
+          else
+            FILE_NAME="AndroidGit-${TAG_NAME}-arm64-v8a.apk"
+          fi
+          cp "$APK" "release_artifacts/$FILE_NAME"
+          (cd release_artifacts && sha256sum "$FILE_NAME" > SHA256SUMS.txt && sha256sum -c SHA256SUMS.txt)
+          {
+            echo "### AndroidGit $TAG_NAME"
+            echo "- Version: $VERSION_NAME ($VERSION_CODE)"
+            echo "- Channel: $RELEASE_TYPE"
+            echo "- ABI: arm64-v8a"
+            echo "- Signed APK verified"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Create release notes
-        env:
-          VERSION_NAME: ${{ steps.version.outputs.VERSION_NAME }}
-          VERSION_CODE: ${{ steps.version.outputs.VERSION_CODE }}
-          TAG_NAME: ${{ steps.version.outputs.TAG_NAME }}
-          RELEASE_TYPE: ${{ inputs.release_type }}
-        run: |
-          set -euo pipefail
-          cat > RELEASE_BODY.md <<EOF
-          ## AndroidGit ${TAG_NAME}
-
-          **Version name:** ${VERSION_NAME}
-          **Version code:** ${VERSION_CODE}
-          **Release type:** ${RELEASE_TYPE}
-          **Workflow run:** #${GITHUB_RUN_NUMBER}
-          **Commit:** ${GITHUB_SHA}
-
-          APK integrity hashes are available in \`SHA256SUMS.txt\`.
-          EOF
-
-      - name: Upload release artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v6
         with:
-          name: AndroidGit-${{ steps.version.outputs.TAG_NAME }}-${{ inputs.release_type }}
-          path: |
-            release_artifacts/*.apk
-            release_artifacts/SHA256SUMS.txt
-            RELEASE_BODY.md
+          name: ${{ steps.version.outputs.ARTIFACT_NAME }}
+          path: release_artifacts/*
           if-no-files-found: error
           retention-days: 14
-
-      - name: Create or verify Git tag
-        if: ${{ inputs.release_type != 'internal' }}
-        env:
-          TAG_NAME: ${{ steps.version.outputs.TAG_NAME }}
-        run: |
-          set -euo pipefail
-          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-            EXISTING_SHA=$(git rev-list -n 1 "$TAG_NAME")
-            CURRENT_SHA=$(git rev-parse HEAD)
-            [[ "$EXISTING_SHA" == "$CURRENT_SHA" ]] || {
-              echo "Tag $TAG_NAME already points to $EXISTING_SHA, not $CURRENT_SHA"
-              exit 1
-            }
-            echo "Tag $TAG_NAME already exists at the current commit."
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git tag -a "$TAG_NAME" -m "AndroidGit $TAG_NAME" HEAD
-            git push origin "$TAG_NAME"
-          fi
-
-      - name: Publish GitHub Release
-        if: ${{ inputs.release_type != 'internal' }}
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.TAG_NAME }}
-          name: AndroidGit ${{ steps.version.outputs.TAG_NAME }}
-          body_path: RELEASE_BODY.md
-          generate_release_notes: true
-          prerelease: ${{ inputs.release_type == 'prerelease' }}
-          files: |
-            release_artifacts/*.apk
-            release_artifacts/SHA256SUMS.txt
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Clean signing material
         if: ${{ always() }}
         run: rm -f app/release.keystore
+
+  publish:
+    name: Publish tagged release
+    if: ${{ github.event_name == 'push' && github.ref_type == 'tag' }}
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download verified artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: ${{ needs.build.outputs.artifact }}
+          path: release_artifacts
+
+      - name: Check artifact integrity
+        working-directory: release_artifacts
+        run: sha256sum -c SHA256SUMS.txt
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.build.outputs.tag }}
+          name: AndroidGit ${{ needs.build.outputs.tag }}
+          generate_release_notes: true
+          prerelease: ${{ needs.build.outputs.prerelease == 'true' }}
+          make_latest: ${{ needs.build.outputs.prerelease == 'true' && 'false' || 'true' }}
+          fail_on_unmatched_files: true
+          body: |
+            **Version:** ${{ needs.build.outputs.version }} (versionCode ${{ needs.build.outputs.code }})
+            **ABI:** arm64-v8a
+            **Build:** R8 optimized and signed
+            **Commit:** ${{ github.sha }}
+
+            Verify the APK using SHA256SUMS.txt.
+          files: |
+            release_artifacts/*.apk
+            release_artifacts/SHA256SUMS.txt
