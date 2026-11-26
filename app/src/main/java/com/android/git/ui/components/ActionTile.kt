@@ -22,18 +22,18 @@ fun ActionTile(title: String, icon: ImageVector, onClick: () -> Unit, modifier: 
         onClick = onClick, enabled = enabled, modifier = modifier,
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.elevatedCardColors(containerColor = colors.surfaceContainerLow),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
     ) {
         Column(
-            Modifier.fillMaxWidth().heightIn(min = 116.dp).padding(16.dp),
+            Modifier.fillMaxWidth().heightIn(min = 84.dp).padding(horizontal = 8.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)
+            verticalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterVertically)
         ) {
-            Box(Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(accent.copy(alpha = 0.12f)),
+            Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(accent.copy(alpha = 0.12f)),
                 contentAlignment = Alignment.Center) {
-                Icon(icon, null, Modifier.size(26.dp), tint = accent.copy(alpha = if (enabled) 1f else 0.38f))
+                Icon(icon, null, Modifier.size(22.dp), tint = accent.copy(alpha = if (enabled) 1f else 0.38f))
             }
-            Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+            Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
         }
     }
 }
