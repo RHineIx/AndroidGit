@@ -55,7 +55,7 @@ COUI 2.1.0 changes color and text style slots and component motion. Release comp
 ## Dependency upgrade policy
 
 - All direct dependency versions are pinned in `gradle/libs.versions.toml`.
-- Kotlin/Compose compiler 2.4.21, AGP 9.3.1 and Gradle 9.7.0 follow the documented fully supported Kotlin compatibility range; AGP 9.3 also supports API 37.
+- Kotlin/Compose compiler 2.4.10 and AGP 9.3.1 match COUI 2.1.0's upstream build catalog. Gradle stays at 9.7.0. Kotlin 2.4.21 could not be resolved during a fresh CI build (run 45838406624); use the upstream baseline until clean dependency resolution and APK compilation are verified. AGP 9.3 supports API 37.
 - Activity Compose 1.13.0 is retained as the current stable release. The legacy Gemini Android client remains at 0.9.0 pending a separate migration; security-crypto 1.1.0 is retained pending a separate credential-storage migration.
 - JGit and its SSH module share one version; Apache SSHD stays on stable 2.x. Test SSH clone, fetch, pull and push on Android before merging.
 - Authentication uses one shared COUI card and state holder for Settings, Repository Settings and Clone. The settings screens share Save; Clone retains its Clone action.

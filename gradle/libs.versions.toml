@@ -1,7 +1,7 @@
 [versions]
 # Core Build System
 agp = "9.3.1"
-kotlin = "2.4.21"
+kotlin = "2.4.10"
 
 # AndroidX & Compose
 coreKtx = "1.19.1"
