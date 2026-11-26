@@ -1,14 +1,14 @@
 # AndroidGit UI implementation
 
-AndroidGit uses COUI, Haze, and Tabler Icons to provide a consistent ColorOS 16 interface across its Git tools and settings.
+AndroidGit uses COUI, Haze, and Tabler Icons to provide a consistent ColorOS 17 interface across its Git tools and settings.
 
 ## UI libraries
 
 | Library | Version | Purpose |
 | --- | --- | --- |
-| COUI UI | `1.1.0` | Themes, headers, cards, preference rows, buttons, fields, dialogs, menus, and bottom sheets |
-| Haze and Haze Blur | `2.0.1` | Frosted surfaces on Android 12 and later, with solid backgrounds on older versions |
-| Tabler Icons | `3.49.0` | Outline icons shared through `GitIcons` |
+| COUI UI | `2.1.0` | Themes, headers, cards, preference rows, buttons, fields, dialogs, menus, and bottom sheets |
+| Haze and Haze Blur | `2.1.0` | Frosted surfaces on Android 12 and later, with solid backgrounds on older versions |
+| Tabler Icons | `3.50.0` | Outline icons shared through `GitIcons` |
 
 Jetpack Compose, AndroidX Navigation, and the existing ViewModel architecture continue to support the screens and their behavior.
 
@@ -25,16 +25,7 @@ These components cover repository selection, cloning, the dashboard, changes, br
 
 ## Appearance
 
-| Element | Light | Dark |
-| --- | --- | --- |
-| Page background | `#F0F1F2` | `#000000` |
-| Card background | `#FFFFFF` | `#1A1A1A` |
-| Accent | `#0066FF` | `#247CFF` |
-| Primary text | `#E6000000` | `#E6FFFFFF` |
-| Secondary text | `#66000000` | `#66FFFFFF` |
-| Error | `#DB382C` | `#FF6C61` |
-
-The app supports light, dark, and system themes with fixed accent colors. Typography uses the system font, including semibold expanded titles and medium collapsed titles.
+The app uses the COUI 17 color scheme and typography, with corresponding Material colors for specialized Git controls. Supports light, dark and system themes.
 
 Shared layout and interaction details:
 
@@ -59,4 +50,4 @@ Use a full JDK and Android SDK 37:
 
 Release builds use code and resource shrinking. Signing and publishing are configured through the manually triggered GitHub Actions workflow; local signing credentials and SDK paths are kept outside version control.
 
-The UI changes passed Release compilation and lint with no errors and 109 warnings. Final visual review is performed on the project owner's device. Private screenshots and account details are not included in the repository.
+COUI 2.1.0 changes color and text style slots and component motion. Release compilation, lint and visual review on a device are required for this upgrade.

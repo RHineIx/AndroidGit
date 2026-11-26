@@ -42,7 +42,7 @@ android {
     }
 
     compileOptions {
-        // JGit 7.6.0 requires Java 17, ensuring compatibility here
+        // JGit 7.x requires Java 17, ensuring compatibility here
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -80,11 +80,11 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
 
-    // ColorOS 16 interface powered by COUI, Haze, and Tabler Icons.
-    implementation("io.github.suqi8.coui.kmp:coui-ui-android:1.1.0")
-    implementation("dev.chrisbanes.haze:haze:2.0.1")
-    implementation("dev.chrisbanes.haze:haze-blur:2.0.1")
-    implementation("io.github.lyxnx.compose.ui:tabler-icons-android:3.49.0")
+    // ColorOS 17 interface powered by COUI, Haze, and Tabler Icons.
+    implementation(libs.coui.ui)
+    implementation(libs.haze.core)
+    implementation(libs.haze.blur)
+    implementation(libs.tabler.icons)
 
     implementation(libs.androidx.navigation.compose)
     // JGit & Required Crypto Dependencies for modern SSH support

@@ -1,6 +1,6 @@
 # AndroidGit
 
-A native Android Git client built with Kotlin and Jetpack Compose, featuring a ColorOS 16 interface powered by **COUI**, **Haze**, and **Tabler Icons**.
+A native Android Git client built with Kotlin and Jetpack Compose, featuring a ColorOS 17 interface powered by **COUI**, **Haze**, and **Tabler Icons**.
 
 Manage repositories, branches, commits, SSH authentication, and GitHub Actions from a consistent mobile interface.
 
