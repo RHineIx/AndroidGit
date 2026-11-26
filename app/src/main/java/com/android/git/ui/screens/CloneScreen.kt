@@ -1,5 +1,7 @@
 package com.android.git.ui.screens
 
+import com.android.git.ui.components.GitIcons
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -23,9 +25,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -159,7 +158,7 @@ fun CloneScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack, enabled = !isLoading) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            imageVector = GitIcons.Default.ArrowBack,
                             contentDescription = stringResource(R.string.action_back)
                         )
                     }
@@ -203,7 +202,7 @@ fun CloneScreen(
                         onValueChange = { repoUrl = it },
                         label = { Text(stringResource(R.string.clone_url_label)) },
                         placeholder = { Text(stringResource(R.string.clone_url_placeholder)) },
-                        leadingIcon = { Icon(Icons.Default.Link, contentDescription = null) },
+                        leadingIcon = { Icon(GitIcons.Default.Link, contentDescription = null) },
                         trailingIcon = {
                             Row {
                                 IconButton(
@@ -220,7 +219,7 @@ fun CloneScreen(
                                     enabled = !isLoading
                                 ) {
                                     Icon(
-                                        imageVector = if (repoUrl.isBlank()) Icons.Default.ContentPaste else Icons.Default.ContentCopy,
+                                        imageVector = if (repoUrl.isBlank()) GitIcons.Default.ContentPaste else GitIcons.Default.ContentCopy,
                                         contentDescription = stringResource(
                                             if (repoUrl.isBlank()) R.string.clone_url_paste else R.string.clone_url_copy
                                         )
@@ -232,7 +231,7 @@ fun CloneScreen(
                                         enabled = !isLoading
                                     ) {
                                         Icon(
-                                            Icons.Default.AutoFixHigh,
+                                            GitIcons.Default.AutoFixHigh,
                                             contentDescription = stringResource(R.string.clone_url_use_ssh)
                                         )
                                     }
@@ -274,7 +273,7 @@ fun CloneScreen(
                         shape = RoundedCornerShape(12.dp),
                         enabled = !isLoading
                     ) {
-                        Icon(Icons.Default.Source, contentDescription = null)
+                        Icon(GitIcons.Default.Source, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.clone_browse_repos), fontWeight = FontWeight.Bold)
                     }
@@ -290,7 +289,7 @@ fun CloneScreen(
                             .clickable(enabled = !isLoading) { dirLauncher.launch(null) }
                             .padding(16.dp)
                     ) {
-                        Icon(Icons.Default.FolderOpen, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Icon(GitIcons.Default.FolderOpen, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Base Directory", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
@@ -302,7 +301,7 @@ fun CloneScreen(
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
-                        Icon(Icons.Default.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(GitIcons.Default.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
 
                     Spacer(Modifier.height(16.dp))
@@ -312,7 +311,7 @@ fun CloneScreen(
                         onValueChange = { folderName = it },
                         label = { Text(stringResource(R.string.clone_folder_label)) },
                         placeholder = { Text(stringResource(R.string.clone_folder_hint)) },
-                        leadingIcon = { Icon(Icons.Default.CreateNewFolder, contentDescription = null) },
+                        leadingIcon = { Icon(GitIcons.Default.CreateNewFolder, contentDescription = null) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = textFieldShape,
                         colors = textFieldColors,
@@ -373,7 +372,7 @@ fun CloneScreen(
                         strokeWidth = 2.5.dp
                     )
                 } else {
-                    Icon(Icons.Default.CloudDownload, contentDescription = null)
+                    Icon(GitIcons.Default.CloudDownload, contentDescription = null)
                     Spacer(Modifier.width(12.dp))
                     Text(
                         text = stringResource(R.string.clone_btn_action),
@@ -461,7 +460,7 @@ fun CloneScreen(
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
                             ) {
-                                Icon(Icons.Default.Stop, contentDescription = null)
+                                Icon(GitIcons.Default.Stop, contentDescription = null)
                                 Spacer(Modifier.width(8.dp))
                                 Text(stringResource(R.string.action_cancel_clone), fontWeight = FontWeight.Bold)
                             }
@@ -469,9 +468,9 @@ fun CloneScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
                                     imageVector = when(statusType) {
-                                        SnackbarType.ERROR -> Icons.Default.Error
-                                        SnackbarType.SUCCESS -> Icons.Default.CheckCircle
-                                        else -> Icons.Default.Info
+                                        SnackbarType.ERROR -> GitIcons.Default.Error
+                                        SnackbarType.SUCCESS -> GitIcons.Default.CheckCircle
+                                        else -> GitIcons.Default.Info
                                     },
                                     contentDescription = null,
                                     tint = contentColor
@@ -485,7 +484,7 @@ fun CloneScreen(
                                     modifier = Modifier.weight(1f)
                                 )
                                 IconButton(onClick = { viewModel.clearStatus() }) {
-                                    Icon(Icons.Default.Close, contentDescription = null, tint = contentColor.copy(alpha = 0.5f), modifier = Modifier.size(18.dp))
+                                    Icon(GitIcons.Default.Close, contentDescription = null, tint = contentColor.copy(alpha = 0.5f), modifier = Modifier.size(18.dp))
                                 }
                             }
                         }

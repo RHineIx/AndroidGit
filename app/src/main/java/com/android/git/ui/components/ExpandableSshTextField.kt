@@ -2,9 +2,10 @@ package com.android.git.ui.components
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
@@ -42,6 +43,13 @@ fun ExpandableSshTextField(
     var focused by remember { mutableStateOf(false) }
     var visible by remember { mutableStateOf(false) }
     val expanded = focused
+    val requester = remember { BringIntoViewRequester() }
+    LaunchedEffect(focused) {
+        if (focused) {
+            delay(250)
+            requester.bringIntoView()
+        } else visible = false
+    }
 
     OutlinedTextField(
         value = value,
@@ -52,7 +60,7 @@ fun ExpandableSshTextField(
             if (isSecret) {
                 androidx.compose.material3.IconButton(onClick = { visible = !visible }, enabled = enabled) {
                     Icon(
-                        imageVector = if (visible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                        imageVector = if (visible) GitIcons.Default.Visibility else GitIcons.Default.VisibilityOff,
                         contentDescription = if (visible) hideDescription else showDescription
                     )
                 }
@@ -62,6 +70,7 @@ fun ExpandableSshTextField(
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize()
+            .bringIntoViewRequester(requester)
             .onFocusChanged { focused = it.isFocused },
         singleLine = !expanded,
         minLines = if (expanded) 3 else 1,

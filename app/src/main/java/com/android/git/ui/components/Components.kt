@@ -17,13 +17,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.SystemUpdate
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -70,10 +63,10 @@ fun AppSnackbar(
     }
 
     val (backgroundColor, contentColor, icon) = when (type) {
-        SnackbarType.SUCCESS -> Triple(Color(0xFFE8F5E9), Color(0xFF2E7D32), Icons.Default.CheckCircle)
-        SnackbarType.ERROR -> Triple(Color(0xFFFFEBEE), Color(0xFFC62828), Icons.Default.Error)
-        SnackbarType.WARNING -> Triple(Color(0xFFFFF8E1), Color(0xFFF57F17), Icons.Default.Warning)
-        SnackbarType.INFO -> Triple(MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurface, Icons.Default.Info)
+        SnackbarType.SUCCESS -> Triple(Color(0xFFE8F5E9), Color(0xFF2E7D32), GitIcons.Default.CheckCircle)
+        SnackbarType.ERROR -> Triple(Color(0xFFFFEBEE), Color(0xFFC62828), GitIcons.Default.Error)
+        SnackbarType.WARNING -> Triple(Color(0xFFFFF8E1), Color(0xFFF57F17), GitIcons.Default.Warning)
+        SnackbarType.INFO -> Triple(MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurface, GitIcons.Default.Info)
     }
 
     AnimatedVisibility(
@@ -124,7 +117,7 @@ fun AppSnackbar(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
-                        Icon(imageVector = Icons.Default.Close, contentDescription = stringResource(R.string.action_dismiss), tint = contentColor.copy(alpha = 0.6f))
+                        Icon(imageVector = GitIcons.Default.Close, contentDescription = stringResource(R.string.action_dismiss), tint = contentColor.copy(alpha = 0.6f))
                     }
                 }
             }
@@ -179,7 +172,7 @@ fun UpdateBottomSheet(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
-                        imageVector = Icons.Default.SystemUpdate,
+                        imageVector = GitIcons.Default.SystemUpdate,
                         contentDescription = null,
                         modifier = Modifier.size(64.dp),
                         tint = MaterialTheme.colorScheme.primary

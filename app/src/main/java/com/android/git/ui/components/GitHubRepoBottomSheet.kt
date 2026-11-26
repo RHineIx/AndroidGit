@@ -5,10 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.Source
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -102,7 +98,7 @@ fun GitHubRepoItem(repo: GitHubRepoModel, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Default.Source,
+                imageVector = GitIcons.Default.Source,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)
@@ -129,7 +125,7 @@ fun GitHubRepoItem(repo: GitHubRepoModel, onClick: () -> Unit) {
             }
             Spacer(modifier = Modifier.width(8.dp))
             Icon(
-                imageVector = if (repo.isPrivate) Icons.Default.Lock else Icons.Default.Public,
+                imageVector = if (repo.isPrivate) GitIcons.Default.Lock else GitIcons.Default.Public,
                 contentDescription = if (repo.isPrivate) "Private" else "Public",
                 tint = if (repo.isPrivate) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.size(16.dp)

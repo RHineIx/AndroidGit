@@ -1,5 +1,7 @@
 package com.android.git.ui.screens
 
+import com.android.git.ui.components.GitIcons
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,22 +18,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.CallMerge
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Computer
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SyncAlt
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -159,7 +145,7 @@ fun BranchManagerScreen(
                 title = { Text(stringResource(R.string.branch_title), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack, enabled = !isLoading) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(GitIcons.Default.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 actions = {
@@ -167,7 +153,7 @@ fun BranchManagerScreen(
                         onClick = { viewModel.fetchAll() },
                         enabled = !isLoading
                     ) {
-                        Icon(Icons.Default.CloudDownload, contentDescription = stringResource(R.string.branch_fetch))
+                        Icon(GitIcons.Default.CloudDownload, contentDescription = stringResource(R.string.branch_fetch))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -176,7 +162,7 @@ fun BranchManagerScreen(
         floatingActionButton = {
             androidx.compose.material3.ExtendedFloatingActionButton(
                 onClick = { if (!isLoading) showCreateDialog = true },
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                icon = { Icon(GitIcons.Default.Add, contentDescription = null) },
                 text = { Text(stringResource(R.string.branch_create_action)) },
                 expanded = !isLoading,
                 containerColor = MaterialTheme.colorScheme.primary
@@ -249,14 +235,14 @@ private fun BranchHeader(
                 onClick = {},
                 enabled = false,
                 label = { Text(stringResource(R.string.branch_local_count, localCount)) },
-                leadingIcon = { Icon(Icons.Default.Computer, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                leadingIcon = { Icon(GitIcons.Default.Computer, contentDescription = null, modifier = Modifier.size(16.dp)) }
             )
             FilterChip(
                 selected = false,
                 onClick = {},
                 enabled = false,
                 label = { Text(stringResource(R.string.branch_remote_count, remoteCount)) },
-                leadingIcon = { Icon(Icons.Default.Cloud, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                leadingIcon = { Icon(GitIcons.Default.Cloud, contentDescription = null, modifier = Modifier.size(16.dp)) }
             )
             if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
         }
@@ -334,7 +320,7 @@ private fun BranchConfirmationDialog(
         text = { Text(message) },
         icon = {
             Icon(
-                imageVector = if (isDelete) Icons.Default.Delete else Icons.Default.Warning,
+                imageVector = if (isDelete) GitIcons.Default.Delete else GitIcons.Default.Warning,
                 contentDescription = null,
                 tint = if (isDelete) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
             )
@@ -425,7 +411,7 @@ private fun BranchListContent(
             onValueChange = onSearchChange,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             placeholder = { Text(stringResource(R.string.branch_search_hint)) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            leadingIcon = { Icon(GitIcons.Default.Search, contentDescription = null) },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
                     IconButton(onClick = { onSearchChange("") }) {
@@ -443,13 +429,13 @@ private fun BranchListContent(
                 selected = selectedTab == 0,
                 onClick = { onTabChange(0) },
                 text = { Text(stringResource(R.string.branch_tab_local)) },
-                icon = { Icon(Icons.Default.Computer, contentDescription = null) }
+                icon = { Icon(GitIcons.Default.Computer, contentDescription = null) }
             )
             Tab(
                 selected = selectedTab == 1,
                 onClick = { onTabChange(1) },
                 text = { Text(stringResource(R.string.branch_tab_remote)) },
-                icon = { Icon(Icons.Default.Cloud, contentDescription = null) }
+                icon = { Icon(GitIcons.Default.Cloud, contentDescription = null) }
             )
         }
 
@@ -524,7 +510,7 @@ fun BranchItemRich(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = if (isRemote) Icons.Default.Cloud else Icons.Default.Computer,
+                imageVector = if (isRemote) GitIcons.Default.Cloud else GitIcons.Default.Computer,
                 contentDescription = if (isRemote) stringResource(R.string.branch_remote) else stringResource(R.string.branch_local),
                 tint = if (branch.isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
             )
@@ -575,14 +561,14 @@ fun BranchItemRich(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (branch.aheadCount > 0) {
                             BranchCount(
-                                icon = Icons.Default.ArrowUpward,
+                                icon = GitIcons.Default.ArrowUpward,
                                 text = stringResource(R.string.branch_ahead_fmt, branch.aheadCount),
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }
                         if (branch.behindCount > 0) {
                             BranchCount(
-                                icon = Icons.Default.ArrowDownward,
+                                icon = GitIcons.Default.ArrowDownward,
                                 text = stringResource(R.string.branch_behind_fmt, branch.behindCount),
                                 tint = MaterialTheme.colorScheme.tertiary
                             )
@@ -592,7 +578,7 @@ fun BranchItemRich(
             }
 
             IconButton(onClick = { if (enabled) showMenu = true }, enabled = enabled) {
-                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.branch_actions))
+                Icon(GitIcons.Default.MoreVert, contentDescription = stringResource(R.string.branch_actions))
             }
 
             BranchActionMenu(
@@ -654,17 +640,17 @@ private fun BranchActionMenu(
         if (!branch.isCurrent) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.branch_menu_checkout)) },
-                leadingIcon = { Icon(Icons.Default.Check, contentDescription = null) },
+                leadingIcon = { Icon(GitIcons.Default.Check, contentDescription = null) },
                 onClick = { onDismiss(); onAction(BranchAction.CHECKOUT) }
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.branch_menu_merge)) },
-                leadingIcon = { Icon(Icons.AutoMirrored.Filled.CallMerge, contentDescription = null) },
+                leadingIcon = { Icon(GitIcons.Default.CallMerge, contentDescription = null) },
                 onClick = { onDismiss(); onAction(BranchAction.MERGE) }
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.branch_menu_rebase)) },
-                leadingIcon = { Icon(Icons.Default.SyncAlt, contentDescription = null) },
+                leadingIcon = { Icon(GitIcons.Default.SyncAlt, contentDescription = null) },
                 onClick = { onDismiss(); onAction(BranchAction.REBASE) }
             )
         }
@@ -672,7 +658,7 @@ private fun BranchActionMenu(
         if (!isRemote) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.action_rename)) },
-                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                leadingIcon = { Icon(GitIcons.Default.Edit, contentDescription = null) },
                 onClick = { onDismiss(); onAction(BranchAction.RENAME) }
             )
         }
@@ -681,7 +667,7 @@ private fun BranchActionMenu(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error) },
-                leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                leadingIcon = { Icon(GitIcons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                 onClick = { onDismiss(); onAction(BranchAction.DELETE) }
             )
         }

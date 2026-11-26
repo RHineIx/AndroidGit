@@ -1,5 +1,7 @@
 package com.android.git.ui.screens
 
+import com.android.git.ui.components.GitIcons
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -14,9 +16,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -221,7 +220,7 @@ fun ChangesScreen(
                     Text(stringResource(R.string.action_cancel))
                 }
             },
-            icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
+            icon = { Icon(GitIcons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
         )
     }
 
@@ -241,13 +240,13 @@ fun ChangesScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = onBack, enabled = !isLoading && !isAIGenerating) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                            Icon(GitIcons.Default.ArrowBack, contentDescription = stringResource(R.string.action_back))
                         }
                     },
                     actions = {
                         Box {
                             IconButton(onClick = { showFilterMenu = true }) {
-                                Icon(Icons.Default.FilterList, contentDescription = null)
+                                Icon(GitIcons.Default.FilterList, contentDescription = null)
                             }
                             DropdownMenu(
                                 expanded = showFilterMenu,
@@ -256,12 +255,12 @@ fun ChangesScreen(
                             ) {
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.changes_filter_select_all)) },
-                                    leadingIcon = { Icon(Icons.Default.SelectAll, contentDescription = null) },
+                                    leadingIcon = { Icon(GitIcons.Default.SelectAll, contentDescription = null) },
                                     onClick = { selectedFiles = files.map { it.path }.toSet(); showFilterMenu = false }
                                 )
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.changes_filter_deselect_all)) },
-                                    leadingIcon = { Icon(Icons.Default.Deselect, contentDescription = null) },
+                                    leadingIcon = { Icon(GitIcons.Default.Deselect, contentDescription = null) },
                                     onClick = { selectedFiles = emptySet(); showFilterMenu = false }
                                 )
                                 DropdownMenuItem(
@@ -272,7 +271,7 @@ fun ChangesScreen(
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.changes_filter_extension)) },
-                                    leadingIcon = { Icon(Icons.Default.FilterAlt, contentDescription = null) },
+                                    leadingIcon = { Icon(GitIcons.Default.FilterAlt, contentDescription = null) },
                                     onClick = { showFilterMenu = false; showExtensionDialog = true }
                                 )
                             }
@@ -345,14 +344,14 @@ fun ChangesScreen(
                                             enabled = selectedFiles.isNotEmpty()
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Default.AutoAwesome, 
+                                                imageVector = GitIcons.Default.AutoAwesome, 
                                                 contentDescription = stringResource(R.string.changes_ai_generate),
                                                 tint = if (selectedFiles.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                                             )
                                         }
                                     }
                                     IconButton(onClick = { isMessageExpanded = true }) {
-                                        Icon(Icons.Default.Fullscreen, contentDescription = stringResource(R.string.changes_expand_message))
+                                        Icon(GitIcons.Default.Fullscreen, contentDescription = stringResource(R.string.changes_expand_message))
                                     }
                                 }
                             }
@@ -388,7 +387,7 @@ fun ChangesScreen(
                                 Spacer(Modifier.width(12.dp))
                                 Text(stringResource(R.string.changes_status_committing), style = MaterialTheme.typography.titleMedium)
                             } else {
-                                Icon(Icons.Default.Check, contentDescription = null)
+                                Icon(GitIcons.Default.Check, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = if (isAmend) stringResource(R.string.changes_btn_amend) else stringResource(R.string.changes_btn_commit),
@@ -439,7 +438,7 @@ fun ChangesScreen(
                     Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(
-                                imageVector = Icons.Default.CheckCircleOutline,
+                                imageVector = GitIcons.Default.CheckCircleOutline,
                                 contentDescription = null,
                                 modifier = Modifier.size(64.dp),
                                 tint = MaterialTheme.colorScheme.surfaceVariant
@@ -472,7 +471,7 @@ fun ChangesScreen(
                         },
                         navigationIcon = {
                             IconButton(onClick = { isMessageExpanded = false }) {
-                                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.action_close))
+                                Icon(GitIcons.Default.Close, contentDescription = stringResource(R.string.action_close))
                             }
                         },
                         actions = {
@@ -492,7 +491,7 @@ fun ChangesScreen(
                                     enabled = selectedFiles.isNotEmpty()
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.AutoAwesome, 
+                                        imageVector = GitIcons.Default.AutoAwesome, 
                                         contentDescription = stringResource(R.string.changes_ai_generate),
                                         tint = if (selectedFiles.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                                     )
@@ -638,11 +637,11 @@ fun getFriendlyStatusName(type: ChangeType): String {
 @Composable
 fun StatusIcon(type: ChangeType) {
     val icon: ImageVector = when (type) {
-        ChangeType.ADDED -> Icons.Default.AddCircleOutline
-        ChangeType.MODIFIED -> Icons.Default.Create
-        ChangeType.DELETED -> Icons.Default.Delete
-        ChangeType.UNTRACKED -> Icons.Default.Add
-        ChangeType.MISSING -> Icons.Default.Delete
+        ChangeType.ADDED -> GitIcons.Default.AddCircleOutline
+        ChangeType.MODIFIED -> GitIcons.Default.Create
+        ChangeType.DELETED -> GitIcons.Default.Delete
+        ChangeType.UNTRACKED -> GitIcons.Default.Add
+        ChangeType.MISSING -> GitIcons.Default.Delete
     }
     val color = getStatusColor(type)
 
