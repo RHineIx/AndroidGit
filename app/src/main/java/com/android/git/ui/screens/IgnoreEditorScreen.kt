@@ -1,11 +1,9 @@
 package com.android.git.ui.screens
 
+import com.android.git.ui.components.GitIcons
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -55,13 +53,13 @@ fun IgnoreEditorScreen(
                 title = { Text(stringResource(R.string.ignore_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(GitIcons.Default.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 actions = {
                     Box {
                         IconButton(onClick = { showTemplateMenu = true }) {
-                            Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = stringResource(R.string.ignore_add_template))
+                            Icon(GitIcons.Default.PlaylistAdd, contentDescription = stringResource(R.string.ignore_add_template))
                         }
                         
                         DropdownMenu(
@@ -95,7 +93,7 @@ fun IgnoreEditorScreen(
                         },
                         enabled = !isLoading && !isSaving
                     ) {
-                        Icon(Icons.Default.Save, contentDescription = stringResource(R.string.action_save))
+                        Icon(GitIcons.Default.Save, contentDescription = stringResource(R.string.action_save))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)

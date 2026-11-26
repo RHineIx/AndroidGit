@@ -1,5 +1,7 @@
 package com.android.git.ui.screens
 
+import com.android.git.ui.components.GitIcons
+
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -14,8 +16,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -97,7 +97,7 @@ fun RepoSelectionScreen(
                 },
                 actions = {
                     IconButton(onClick = onGeneralSettingsClick) {
-                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
+                        Icon(GitIcons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -119,14 +119,14 @@ fun RepoSelectionScreen(
             ) {
                 ActionCard(
                     title = stringResource(R.string.selection_open_local),
-                    icon = Icons.Default.FolderOpen,
+                    icon = GitIcons.Default.FolderOpen,
                     modifier = Modifier.weight(1f),
                     onClick = { launcher.launch(null) }
                 )
 
                 ActionCard(
                     title = stringResource(R.string.selection_clone_repo),
-                    icon = Icons.Default.Download,
+                    icon = GitIcons.Default.Download,
                     modifier = Modifier.weight(1f),
                     onClick = onCloneRequest
                 )
@@ -168,7 +168,7 @@ fun RepoSelectionScreen(
                 Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
-                            imageVector = Icons.Default.History,
+                            imageVector = GitIcons.Default.History,
                             contentDescription = null,
                             modifier = Modifier.size(64.dp),
                             tint = MaterialTheme.colorScheme.surfaceVariant
@@ -278,7 +278,7 @@ fun RecentProjectItem(file: File, isMissing: Boolean = false, onClick: () -> Uni
             }
             IconButton(onClick = onRemove) {
                 Icon(
-                    Icons.Default.Delete,
+                    GitIcons.Default.Delete,
                     contentDescription = stringResource(R.string.action_delete),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -291,7 +291,7 @@ fun RecentProjectItem(file: File, isMissing: Boolean = false, onClick: () -> Uni
 fun ProjectIcon(projectDir: File, isMissing: Boolean) {
     val pathKey = projectDir.absolutePath
     var projectBitmap by remember(pathKey) { mutableStateOf(ProjectImageCache.memoryCache.get(pathKey)) }
-    var projectTypeIcon by remember { mutableStateOf(Icons.Default.Folder) }
+    var projectTypeIcon by remember { mutableStateOf(GitIcons.Default.Folder) }
     var iconTint by remember { mutableStateOf(Color.Unspecified) }
     val primaryColor = MaterialTheme.colorScheme.primary
 
@@ -302,16 +302,16 @@ fun ProjectIcon(projectDir: File, isMissing: Boolean) {
 
                 // Determine Project Type
                 if (fileNames.contains("pubspec.yaml")) {
-                    projectTypeIcon = Icons.Default.Smartphone
+                    projectTypeIcon = GitIcons.Default.Smartphone
                     iconTint = Color(0xFF02569B) // Flutter Blue
                 } else if (fileNames.any { it.contains("build.gradle") }) {
-                    projectTypeIcon = Icons.Default.Android
+                    projectTypeIcon = GitIcons.Default.Android
                     iconTint = Color(0xFF3DDC84) // Android Green
                 } else if (fileNames.contains("package.json")) {
-                    projectTypeIcon = Icons.Default.Language
+                    projectTypeIcon = GitIcons.Default.Language
                     iconTint = Color(0xFFF7DF1E) // JS Yellow
                 } else if (fileNames.contains(".git")) {
-                    projectTypeIcon = Icons.Default.Code
+                    projectTypeIcon = GitIcons.Default.Code
                     iconTint = primaryColor
                 }
 
@@ -387,7 +387,7 @@ fun ProjectIcon(projectDir: File, isMissing: Boolean) {
             )
         } else {
             Icon(
-                imageVector = if (isMissing) Icons.Default.CloudOff else projectTypeIcon,
+                imageVector = if (isMissing) GitIcons.Default.CloudOff else projectTypeIcon,
                 contentDescription = null,
                 tint = if (isMissing) MaterialTheme.colorScheme.onSurfaceVariant else if (iconTint != Color.Unspecified) iconTint else MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(28.dp)

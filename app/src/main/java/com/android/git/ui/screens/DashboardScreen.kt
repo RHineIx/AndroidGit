@@ -1,5 +1,7 @@
 package com.android.git.ui.screens
 
+import com.android.git.ui.components.GitIcons
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -7,9 +9,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.CallSplit
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -81,7 +80,7 @@ fun DashboardScreen(
     if (showForcePushDialog) {
         AlertDialog(
             onDismissRequest = { showForcePushDialog = false },
-            icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            icon = { Icon(GitIcons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
             title = { Text(stringResource(R.string.dashboard_force_push_title)) },
             text = { Text(stringResource(R.string.dashboard_force_push_msg)) },
             confirmButton = {
@@ -117,10 +116,10 @@ fun DashboardScreen(
                 },
                 actions = {
                     IconButton(onClick = onRefresh, enabled = !isLoading) {
-                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh))
+                        Icon(GitIcons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh))
                     }
                     IconButton(onClick = onSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
+                        Icon(GitIcons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -179,7 +178,7 @@ fun DashboardScreen(
                                         enabled = !isLoading,
                                         shape = cardShape
                                     ) {
-                                        Icon(Icons.Default.CloudDownload, contentDescription = null, Modifier.size(20.dp))
+                                        Icon(GitIcons.Default.CloudDownload, contentDescription = null, Modifier.size(20.dp))
                                         Spacer(Modifier.width(8.dp))
                                         Text(stringResource(R.string.dashboard_action_pull))
                                     }
@@ -190,7 +189,7 @@ fun DashboardScreen(
                                         enabled = !isLoading,
                                         shape = cardShape
                                     ) {
-                                        Icon(Icons.Default.CloudUpload, contentDescription = null, Modifier.size(20.dp))
+                                        Icon(GitIcons.Default.CloudUpload, contentDescription = null, Modifier.size(20.dp))
                                         Spacer(Modifier.width(8.dp))
                                         Text(if (isForcePushChecked) stringResource(R.string.dashboard_action_force) else stringResource(R.string.dashboard_action_push))
                                     }
@@ -225,7 +224,7 @@ fun DashboardScreen(
                                 elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
                             ) {
                                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                                    Icon(Icons.AutoMirrored.Filled.CallSplit, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    Icon(GitIcons.Default.CallSplit, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
                                     Spacer(Modifier.height(8.dp))
                                     Text(stringResource(R.string.dashboard_card_branch), style = MaterialTheme.typography.labelMedium)
                                     Text(dashboardState.branch, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, maxLines = 1)
@@ -239,7 +238,7 @@ fun DashboardScreen(
                                 elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
                             ) {
                                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                                    Icon(Icons.Default.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
+                                    Icon(GitIcons.Default.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
                                     Spacer(Modifier.height(8.dp))
                                     Text(stringResource(R.string.dashboard_card_changes), style = MaterialTheme.typography.labelMedium)
                                     Text("${dashboardState.changes} ${stringResource(R.string.dashboard_card_changes_suffix)}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
@@ -256,7 +255,7 @@ fun DashboardScreen(
                             elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
                         ) {
                             Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.History, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                                Icon(GitIcons.Default.History, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                                 Spacer(Modifier.width(16.dp))
                                 Column {
                                     Text(stringResource(R.string.dashboard_card_history), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
@@ -274,7 +273,7 @@ fun DashboardScreen(
                                 elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
                             ) {
                                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Upload, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
+                                    Icon(GitIcons.Default.Upload, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
                                     Spacer(Modifier.width(16.dp))
                                     Text(stringResource(R.string.dashboard_unpushed_commits, dashboardState.unpushedCount), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
                                 }
@@ -291,14 +290,14 @@ fun DashboardScreen(
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             DashboardToolCard(
                                 title = stringResource(R.string.dashboard_tool_stash),
-                                icon = Icons.Default.Archive,
+                                icon = GitIcons.Default.Archive,
                                 modifier = Modifier.weight(1f),
                                 enabled = !isLoading,
                                 onClick = onOpenStash
                             )
                             DashboardToolCard(
                                 title = stringResource(R.string.dashboard_tool_merge),
-                                icon = Icons.Default.Warning,
+                                icon = GitIcons.Default.Warning,
                                 modifier = Modifier.weight(1f),
                                 enabled = !isLoading,
                                 onClick = onMergeConflicts
@@ -310,14 +309,14 @@ fun DashboardScreen(
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             DashboardToolCard(
                                 title = stringResource(R.string.dashboard_tool_gitignore),
-                                icon = Icons.Default.Code,
+                                icon = GitIcons.Default.Code,
                                 modifier = Modifier.weight(1f),
                                 enabled = !isLoading,
                                 onClick = onIgnoreEditor
                             )
                             DashboardToolCard(
                                 title = stringResource(R.string.dashboard_tool_fetch),
-                                icon = Icons.Default.Sync,
+                                icon = GitIcons.Default.Sync,
                                 modifier = Modifier.weight(1f),
                                 enabled = !isLoading,
                                 onClick = { viewModel.fetchAll() }
@@ -329,7 +328,7 @@ fun DashboardScreen(
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             DashboardToolCard(
                                 title = stringResource(R.string.dashboard_tool_workflows),
-                                icon = Icons.Default.PlayCircle,
+                                icon = GitIcons.Default.PlayCircle,
                                 modifier = Modifier.weight(1f),
                                 enabled = !isLoading,
                                 onClick = onOpenWorkflows

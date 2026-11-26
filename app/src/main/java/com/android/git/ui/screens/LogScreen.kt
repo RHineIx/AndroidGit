@@ -1,5 +1,7 @@
 package com.android.git.ui.screens
 
+import com.android.git.ui.components.GitIcons
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -14,10 +16,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -114,7 +112,7 @@ fun LogScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(GitIcons.Default.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 actions = {
@@ -126,7 +124,7 @@ fun LogScreen(
                         )
                     } else {
                         IconButton(onClick = { viewModel.loadLogs(reset = true) }) {
-                            Icon(Icons.Default.Refresh, stringResource(R.string.action_refresh))
+                            Icon(GitIcons.Default.Refresh, stringResource(R.string.action_refresh))
                         }
                     }
                 },
@@ -329,7 +327,7 @@ fun TimelineCommitItem(
                     if (!commit.isPushed) {
                         Spacer(Modifier.width(8.dp))
                         Icon(
-                            imageVector = Icons.Default.CloudOff,
+                            imageVector = GitIcons.Default.CloudOff,
                             contentDescription = stringResource(R.string.log_unpushed),
                             tint = Color(0xFFE65100),
                             modifier = Modifier.size(16.dp)
@@ -386,7 +384,7 @@ fun CommitDetailsSheet(
                     Text(stringResource(R.string.action_cancel))
                 }
             },
-            icon = { Icon(Icons.AutoMirrored.Filled.Undo, null, tint = MaterialTheme.colorScheme.error) }
+            icon = { Icon(GitIcons.Default.Undo, null, tint = MaterialTheme.colorScheme.error) }
         )
     }
 
@@ -448,7 +446,7 @@ fun CommitDetailsSheet(
                     Text(stringResource(R.string.log_reset_mixed))
                 }
             },
-            icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) }
+            icon = { Icon(GitIcons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) }
         )
     }
 
@@ -458,7 +456,7 @@ fun CommitDetailsSheet(
             .verticalScroll(rememberScrollState())
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Commit, null, tint = MaterialTheme.colorScheme.primary)
+            Icon(GitIcons.Default.Commit, null, tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(8.dp))
             Text(
                 stringResource(R.string.log_details_title),
@@ -468,7 +466,7 @@ fun CommitDetailsSheet(
             )
             Spacer(Modifier.weight(1f))
             IconButton(onClick = { onCopy(commit.hash) }) {
-                Icon(Icons.Default.ContentCopy, stringResource(R.string.action_copy))
+                Icon(GitIcons.Default.ContentCopy, stringResource(R.string.action_copy))
             }
         }
 
@@ -492,17 +490,17 @@ fun CommitDetailsSheet(
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(Modifier.fillMaxWidth()) {
                     Column(Modifier.weight(1f)) {
-                        LabelValueItem(stringResource(R.string.log_label_author), commit.author, Icons.Default.Person)
+                        LabelValueItem(stringResource(R.string.log_label_author), commit.author, GitIcons.Default.Person)
                         Spacer(Modifier.height(16.dp))
-                        LabelValueItem(stringResource(R.string.log_label_hash), commit.hash, Icons.Default.Tag)
+                        LabelValueItem(stringResource(R.string.log_label_hash), commit.hash, GitIcons.Default.Tag)
                     }
                     Column(Modifier.weight(1f)) {
-                        LabelValueItem(stringResource(R.string.log_label_date), fullDateFormat.format(commit.date), Icons.Default.CalendarToday)
+                        LabelValueItem(stringResource(R.string.log_label_date), fullDateFormat.format(commit.date), GitIcons.Default.CalendarToday)
                         Spacer(Modifier.height(16.dp))
                         LabelValueItem(
                             stringResource(R.string.log_label_status),
                             if (commit.isPushed) stringResource(R.string.log_status_pushed) else stringResource(R.string.log_status_local),
-                            if (commit.isPushed) Icons.Default.CloudDone else Icons.Default.CloudOff
+                            if (commit.isPushed) GitIcons.Default.CloudDone else GitIcons.Default.CloudOff
                         )
                     }
                 }
@@ -524,7 +522,7 @@ fun CommitDetailsSheet(
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
         ) {
-            Icon(Icons.AutoMirrored.Filled.Undo, null, modifier = Modifier.size(18.dp))
+            Icon(GitIcons.Default.Undo, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.log_btn_revert))
         }
@@ -537,7 +535,7 @@ fun CommitDetailsSheet(
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer)
         ) {
-            Icon(Icons.Default.Restore, null, modifier = Modifier.size(18.dp))
+            Icon(GitIcons.Default.Restore, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.log_btn_reset))
         }
@@ -582,7 +580,7 @@ fun LogErrorState(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
-                imageVector = Icons.Default.Error,
+                imageVector = GitIcons.Default.Error,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onErrorContainer,
                 modifier = Modifier.size(40.dp)
@@ -608,7 +606,7 @@ fun EmptyStateView(modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
-            imageVector = Icons.Default.History,
+            imageVector = GitIcons.Default.History,
             contentDescription = null,
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.surfaceVariant
