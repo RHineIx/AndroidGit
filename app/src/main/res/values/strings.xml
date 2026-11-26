@@ -301,4 +301,6 @@
     <string name="clone_my_repos_empty">No repositories found.</string>
     <string name="repo_settings_err_fetch_repos">Unable to fetch repositories.</string>
 
+    <string name="auth_restore_token">Restore last token</string>
+    <string name="auth_save_failed">Unable to save authentication settings.</string>
 </resources>

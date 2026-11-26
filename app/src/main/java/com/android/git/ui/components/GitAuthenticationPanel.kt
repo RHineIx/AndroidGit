@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,10 +32,16 @@ import androidx.compose.ui.unit.dp
 import com.android.git.R
 import com.android.git.data.GitAuthManager
 import com.android.git.data.GitAuthMode
+import com.android.git.data.GitAuthConfig
+import com.android.git.data.PreferencesManager
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GitAuthenticationPanel(
+private fun GitCredentialFields(
     authManager: GitAuthManager,
     userEmail: String,
     authMode: GitAuthMode,
@@ -51,12 +55,14 @@ fun GitAuthenticationPanel(
     sshPassphrase: String,
     onSshPassphraseChange: (String) -> Unit,
     isBusy: Boolean,
+    onGeneratingChange: (Boolean) -> Unit,
     onClearSshData: () -> Unit,
     modifier: Modifier = Modifier,
     httpsFooter: @Composable () -> Unit = {}
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
+    val scope = rememberCoroutineScope()
     val modernShape = RoundedCornerShape(16.dp)
 
     // Internal states managed entirely by the component
@@ -78,15 +84,13 @@ fun GitAuthenticationPanel(
             onDismissRequest = { showDeleteDialog = false },
             title = { Text(stringResource(R.string.repo_settings_ssh_clear)) },
             text = { Text("Are you sure you want to remove the SSH keys from this device? This action cannot be undone.") },
-            icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            icon = { Icon(GitIcons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
             confirmButton = {
                 Button(
                     onClick = {
                         showDeleteDialog = false
-                        onSshPrivateKeyChange("")
-                        onSshPublicKeyChange("")
-                        onSshPassphraseChange("")
-                        onAuthModeChange(GitAuthMode.HTTPS)
+                        generatedAlgorithm = ""
+                        sshGenerationError = ""
                         onClearSshData()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
@@ -126,7 +130,7 @@ fun GitAuthenticationPanel(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        Icons.Default.Lock,
+                        GitIcons.Default.Lock,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
                         tint = if (httpsSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
@@ -151,7 +155,7 @@ fun GitAuthenticationPanel(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        Icons.Default.Key,
+                        GitIcons.Default.Key,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
                         tint = if (sshSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
@@ -181,11 +185,11 @@ fun GitAuthenticationPanel(
                         value = token,
                         onValueChange = onTokenChange,
                         label = { Text(stringResource(R.string.repo_settings_label_token)) },
-                        leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null) },
+                        leadingIcon = { Icon(GitIcons.Default.VpnKey, contentDescription = null) },
                         trailingIcon = {
-                            val image = if (tokenVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
-                            IconButton(onClick = { tokenVisible = !tokenVisible }) {
-                                Icon(imageVector = image, contentDescription = null)
+                            val image = if (tokenVisible) GitIcons.Default.Visibility else GitIcons.Default.VisibilityOff
+                            IconButton(onClick = { tokenVisible = !tokenVisible }, enabled = !isBusy) {
+                                Icon(imageVector = image, contentDescription = stringResource(if (tokenVisible) R.string.ssh_hide_value else R.string.ssh_show_value))
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -214,7 +218,7 @@ fun GitAuthenticationPanel(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
-                            Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(20.dp))
+                            Icon(GitIcons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(12.dp))
                             Text(
                                 text = stringResource(R.string.ssh_clone_help),
@@ -234,7 +238,7 @@ fun GitAuthenticationPanel(
                             sshGenerationError = ""
                         },
                         label = { Text(stringResource(R.string.ssh_private_key_label)) },
-                        leadingIcon = Icons.Default.Key,
+                        leadingIcon = GitIcons.Default.Key,
                         enabled = !isBusy,
                         isSecret = true,
                         showDescription = stringResource(R.string.ssh_show_value),
@@ -249,7 +253,7 @@ fun GitAuthenticationPanel(
                         value = sshPassphrase,
                         onValueChange = onSshPassphraseChange,
                         label = { Text(stringResource(R.string.ssh_passphrase_label)) },
-                        leadingIcon = Icons.Default.Password,
+                        leadingIcon = GitIcons.Default.Password,
                         enabled = !isBusy,
                         isSecret = true,
                         showDescription = stringResource(R.string.ssh_show_value),
@@ -270,7 +274,7 @@ fun GitAuthenticationPanel(
                                 sshGenerationError = ""
                             },
                             label = { Text(stringResource(R.string.ssh_public_key_label)) },
-                            leadingIcon = Icons.Default.Key,
+                            leadingIcon = GitIcons.Default.Key,
                             enabled = !isBusy,
                             showDescription = stringResource(R.string.ssh_show_value),
                             hideDescription = stringResource(R.string.ssh_hide_value),
@@ -291,7 +295,7 @@ fun GitAuthenticationPanel(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Icon(
-                                Icons.Default.ContentCopy,
+                                GitIcons.Default.ContentCopy,
                                 contentDescription = stringResource(R.string.repo_settings_ssh_copy_public)
                             )
                         }
@@ -301,25 +305,27 @@ fun GitAuthenticationPanel(
 
                     FilledTonalButton(
                         onClick = {
-                            val result = runCatching {
-                                authManager.generateKeyPair(
-                                    passphrase = sshPassphrase,
-                                    email = userEmail
-                                )
-                            }
-                            result.onSuccess { generated ->
-                                onSshPrivateKeyChange(generated.privateKey)
-                                onSshPublicKeyChange(generated.publicKey)
-                                sshGenerationError = ""
-                                generatedAlgorithm = generated.algorithm
-                            }.onFailure { error ->
-                                generatedAlgorithm = ""
-                                sshGenerationError = buildString {
-                                    append(error::class.java.simpleName)
-                                    error.message?.takeIf { it.isNotBlank() }?.let {
-                                        append(": ")
-                                        append(it)
+                            onGeneratingChange(true)
+                            scope.launch {
+                                try {
+                                    val generated = withContext(Dispatchers.IO) {
+                                        authManager.generateKeyPair(
+                                            passphrase = sshPassphrase,
+                                            email = userEmail
+                                        )
                                     }
+                                    onSshPrivateKeyChange(generated.privateKey)
+                                    onSshPublicKeyChange(generated.publicKey)
+                                    sshGenerationError = ""
+                                    generatedAlgorithm = generated.algorithm
+                                } catch (cancelled: CancellationException) {
+                                    throw cancelled
+                                } catch (error: Exception) {
+                                    generatedAlgorithm = ""
+                                    sshGenerationError = error::class.java.simpleName + ": " +
+                                        (error.message ?: "Key generation failed")
+                                } finally {
+                                    onGeneratingChange(false)
                                 }
                             }
                         },
@@ -327,7 +333,7 @@ fun GitAuthenticationPanel(
                         modifier = Modifier.fillMaxWidth().height(50.dp),
                         shape = modernShape
                     ) {
-                        Icon(Icons.Default.AutoFixHigh, contentDescription = null)
+                        Icon(GitIcons.Default.AutoFixHigh, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.ssh_generate_key), fontWeight = FontWeight.Bold)
                     }
@@ -340,7 +346,7 @@ fun GitAuthenticationPanel(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF2E7D32), modifier = Modifier.size(20.dp))
+                                Icon(GitIcons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF2E7D32), modifier = Modifier.size(20.dp))
                                 Spacer(Modifier.width(12.dp))
                                 Text(
                                     text = stringResource(R.string.ssh_generated_fmt, generatedAlgorithm),
@@ -360,7 +366,7 @@ fun GitAuthenticationPanel(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Error, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(20.dp))
+                                Icon(GitIcons.Default.Error, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(20.dp))
                                 Spacer(Modifier.width(12.dp))
                                 Text(
                                     text = sshGenerationError,
@@ -372,7 +378,7 @@ fun GitAuthenticationPanel(
                         }
                     }
 
-                    if (sshPrivateKey.isNotBlank()) {
+                    if (sshPrivateKey.isNotBlank() || sshPublicKey.isNotBlank() || sshPassphrase.isNotBlank()) {
                         Spacer(Modifier.height(16.dp))
                         OutlinedButton(
                             onClick = { showDeleteDialog = true },
@@ -382,12 +388,211 @@ fun GitAuthenticationPanel(
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                             border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
                         ) {
-                            Icon(Icons.Default.DeleteOutline, contentDescription = null)
+                            Icon(GitIcons.Default.DeleteOutline, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
                             Text(stringResource(R.string.repo_settings_ssh_clear), fontWeight = FontWeight.Bold)
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/** A screen-local draft; credentials are never written to a saved-state Bundle. */
+internal data class AuthenticationDraft(
+    val userName: String,
+    val userEmail: String,
+    val mode: GitAuthMode,
+    val token: String,
+    val privateKey: String,
+    val publicKey: String,
+    val passphrase: String,
+    val rememberToken: Boolean
+) {
+    val isValid: Boolean get() = mode == GitAuthMode.HTTPS || privateKey.isNotBlank()
+    fun config() = GitAuthConfig(mode, token, privateKey, passphrase)
+}
+
+@Stable
+internal class AuthenticationFormState(private val prefs: PreferencesManager, rememberTokenDefault: Boolean) {
+    var draft by mutableStateOf(
+        AuthenticationDraft(
+            prefs.getUserName(), prefs.getUserEmail(), prefs.getAuthMode(),
+            prefs.getToken(), prefs.getSshPrivateKey(), prefs.getSshPublicKey(),
+            prefs.getSshPassphrase(), rememberTokenDefault || prefs.getToken().isNotEmpty()
+        )
+    )
+    var generating by mutableStateOf(false)
+    var lastToken by mutableStateOf(prefs.getLastValidToken())
+        private set
+
+    fun save(value: AuthenticationDraft = draft) {
+        prefs.saveAuthentication(
+            value.userName, value.userEmail, value.mode, value.token,
+            value.privateKey, value.publicKey, value.passphrase, value.rememberToken
+        )
+        lastToken = prefs.getLastValidToken()
+    }
+
+    fun removeSshKey() {
+        prefs.clearSshKey()
+        draft = draft.copy(mode = GitAuthMode.HTTPS, privateKey = "", publicKey = "", passphrase = "")
+    }
+}
+
+@Composable
+internal fun rememberAuthenticationForm(
+    prefs: PreferencesManager,
+    rememberTokenDefault: Boolean = true
+): AuthenticationFormState = remember(prefs) { AuthenticationFormState(prefs, rememberTokenDefault) }
+
+/** Shared identity, authentication modes and credential controls for all three screens. */
+@Composable
+internal fun AuthenticationFields(
+    state: AuthenticationFormState,
+    busy: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val manager = remember(context) { GitAuthManager(context.filesDir) }
+    val draft = state.draft
+    val locked = busy || state.generating
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        OutlinedTextField(
+            value = draft.userName,
+            onValueChange = { state.draft = state.draft.copy(userName = it) },
+            label = { Text(stringResource(R.string.settings_auth_user_name)) },
+            leadingIcon = { Icon(GitIcons.Default.Person, null) },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            singleLine = true,
+            enabled = !locked
+        )
+        OutlinedTextField(
+            value = draft.userEmail,
+            onValueChange = { state.draft = state.draft.copy(userEmail = it) },
+            label = { Text(stringResource(R.string.settings_auth_user_email)) },
+            leadingIcon = { Icon(GitIcons.Default.Email, null) },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            enabled = !locked
+        )
+        HorizontalDivider()
+        Text(
+            stringResource(R.string.settings_auth_help),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        GitCredentialFields(
+            authManager = manager,
+            userEmail = draft.userEmail,
+            authMode = draft.mode,
+            onAuthModeChange = { state.draft = state.draft.copy(mode = it) },
+            token = draft.token,
+            onTokenChange = { state.draft = state.draft.copy(token = it) },
+            sshPrivateKey = draft.privateKey,
+            onSshPrivateKeyChange = {
+                state.draft = state.draft.copy(privateKey = it, publicKey = "")
+            },
+            sshPublicKey = draft.publicKey,
+            onSshPublicKeyChange = { state.draft = state.draft.copy(publicKey = it) },
+            sshPassphrase = draft.passphrase,
+            onSshPassphraseChange = { state.draft = state.draft.copy(passphrase = it) },
+            isBusy = locked,
+            onGeneratingChange = { state.generating = it },
+            onClearSshData = state::removeSshKey,
+            httpsFooter = {
+                if (draft.token.isBlank() && state.lastToken.isNotBlank()) {
+                    SuggestionChip(
+                        onClick = { state.draft = state.draft.copy(token = state.lastToken) },
+                        label = { Text(stringResource(R.string.auth_restore_token)) },
+                        enabled = !locked
+                    )
+                }
+                Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Switch(
+                        checked = draft.rememberToken,
+                        onCheckedChange = { state.draft = state.draft.copy(rememberToken = it) },
+                        enabled = !locked
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(stringResource(R.string.clone_remember_token))
+                }
+            }
+        )
+        if (state.generating) {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+        }
+    }
+}
+
+/** Both settings screens use the exact same card, validation and save flow. */
+@Composable
+internal fun AuthenticationSettings(
+    state: AuthenticationFormState,
+    beforeSave: suspend (AuthenticationDraft) -> Unit = {},
+    onSaved: () -> Unit = {}
+) {
+    val scope = rememberCoroutineScope()
+    var saving by remember { mutableStateOf(false) }
+    var saved by remember { mutableStateOf<AuthenticationDraft?>(null) }
+    var error by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth()) {
+        Text(
+            stringResource(R.string.settings_auth_section),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 4.dp, bottom = 12.dp)
+        )
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                AuthenticationFields(state, saving)
+                Button(
+                    onClick = {
+                        val snapshot = state.draft
+                        saving = true
+                        error = false
+                        scope.launch {
+                            try {
+                                beforeSave(snapshot)
+                                state.save(snapshot)
+                                saved = snapshot
+                                onSaved()
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
+                            } catch (_: Exception) {
+                                error = true
+                            } finally {
+                                saving = false
+                            }
+                        }
+                    },
+                    enabled = !saving && !state.generating && state.draft.isValid,
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    if (saving) {
+                        CircularProgressIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                    } else {
+                        Icon(GitIcons.Default.Save, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.action_save), fontWeight = FontWeight.Bold)
+                    }
+                }
+                if (error) Text(stringResource(R.string.auth_save_failed), color = MaterialTheme.colorScheme.error)
+                else if (saved == state.draft) Text(
+                    stringResource(R.string.settings_auth_saved),
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
     }
