@@ -319,4 +319,5 @@
     <string name="clone_auth_https_required">Token authentication requires a secure HTTPS URL.</string>
     <string name="clone_auth_github_only">Saved credentials are for GitHub. Use custom credentials for other hosts.</string>
     <string name="clone_invalid_folder">Enter a single valid folder name.</string>
+    <string name="clone_browse_saved_token_hint">Browsing your GitHub repositories uses your saved account token.</string>
 </resources>

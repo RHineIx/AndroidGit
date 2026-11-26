@@ -285,6 +285,9 @@ fun CloneScreen(
                         Text(stringResource(R.string.clone_browse_repos), fontWeight = FontWeight.Bold)
                     }
 
+                    Text(stringResource(R.string.clone_browse_saved_token_hint), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+
                     Spacer(Modifier.height(16.dp))
 
                     Row(
@@ -359,7 +362,7 @@ fun CloneScreen(
                 error = authResult.error,
                 enabled = !isLoading
             )
-            if (!validFolder && folderName.isNotBlank()) {
+            if (!validFolder && (folderName.isNotBlank() || parsedRemoteUrl != null)) {
                 Text(stringResource(R.string.clone_invalid_folder), color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
             }

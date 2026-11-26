@@ -77,36 +77,13 @@ class PreferencesManager(context: Context) {
         editor.apply()
     }
 
-    fun saveToken(token: String) {
-        val editor = prefs.edit()
-        editor.putString(KEY_TOKEN, token)
-        if (token.isNotEmpty()) {
-            editor.putString(KEY_LAST_VALID_TOKEN, token)
-        }
-        editor.apply()
-    }
-
     fun getToken(): String = prefs.getString(KEY_TOKEN, "") ?: ""
-
-    fun clearToken() = prefs.edit().remove(KEY_TOKEN).apply()
 
     fun getLastValidToken(): String = prefs.getString(KEY_LAST_VALID_TOKEN, "") ?: ""
 
     fun getAuthMode(): GitAuthMode {
         return runCatching { GitAuthMode.valueOf(prefs.getString(KEY_AUTH_MODE, GitAuthMode.HTTPS.name) ?: GitAuthMode.HTTPS.name) }
             .getOrDefault(GitAuthMode.HTTPS)
-    }
-
-    fun setAuthMode(mode: GitAuthMode) {
-        prefs.edit().putString(KEY_AUTH_MODE, mode.name).apply()
-    }
-
-    fun saveSshKey(privateKey: String, publicKey: String, passphrase: String) {
-        prefs.edit()
-            .putString(KEY_SSH_PRIVATE_KEY, privateKey)
-            .putString(KEY_SSH_PUBLIC_KEY, publicKey)
-            .putString(KEY_SSH_PASSPHRASE, passphrase)
-            .apply()
     }
 
     fun getSshPrivateKey(): String = prefs.getString(KEY_SSH_PRIVATE_KEY, "") ?: ""
@@ -121,16 +98,6 @@ class PreferencesManager(context: Context) {
             .putString(KEY_AUTH_MODE, GitAuthMode.HTTPS.name)
             .apply()
     }
-
-    fun saveGitIdentity(name: String, email: String) {
-        prefs.edit()
-            .putString(KEY_USERNAME, name)
-            .putString(KEY_EMAIL, email)
-            .apply()
-    }
-
-    fun setUserName(name: String) = prefs.edit().putString(KEY_USERNAME, name).apply()
-    fun setUserEmail(email: String) = prefs.edit().putString(KEY_EMAIL, email).apply()
 
     fun getUserName(): String = prefs.getString(KEY_USERNAME, "") ?: ""
     fun getUserEmail(): String = prefs.getString(KEY_EMAIL, "") ?: ""

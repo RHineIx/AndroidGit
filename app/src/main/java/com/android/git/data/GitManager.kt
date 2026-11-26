@@ -629,7 +629,12 @@ class GitManager(
                 return@withContext Pair(null, "Error: Invalid destination folder name.")
             }
             val destDir = File(parentDir, name)
-            if (destDir.exists() && (!destDir.isDirectory || destDir.listFiles()?.isNotEmpty() != false)) {
+            val safeDestination = runCatching {
+                destDir.canonicalFile == File(parentDir.canonicalFile, name)
+            }.getOrDefault(false)
+            if (!safeDestination) return@withContext Pair(null, "Error: Unsafe destination folder.")
+            val destinationExisted = destDir.exists()
+            if (destinationExisted && (!destDir.isDirectory || destDir.listFiles()?.isNotEmpty() != false)) {
                 return@withContext Pair(null, "Error: Folder exists.")
             }
 
@@ -683,7 +688,8 @@ class GitManager(
                 cmd.call().close()
                 Pair(destDir, "Cloned!")
             } catch (e: Exception) {
-                if (destDir.exists()) destDir.deleteRecursively()
+                // Do not remove a folder that the user already owned before cloning.
+                if (!destinationExisted && destDir.exists()) destDir.deleteRecursively()
                 val isUserCancelled = isCancelledSignal() || e is org.eclipse.jgit.api.errors.CanceledException
                 if (isUserCancelled) {
                     Pair(null, "Clone cancelled by user.")

@@ -172,11 +172,3 @@ private fun CenteredPageBar(
 fun SectionTitle(title: String, modifier: Modifier = Modifier) {
     Text(title, modifier = modifier.padding(start = 4.dp, end = 4.dp, top = 12.dp, bottom = 4.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
 }
-
-@Composable
-fun SectionCard(
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Card(modifier = modifier.fillMaxWidth(), content = content)
-}
