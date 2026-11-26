@@ -142,8 +142,8 @@ private fun GitCredentialFields(
                         leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null) },
                         trailingIcon = {
                             val image = if (tokenVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
-                            IconButton(onClick = { tokenVisible = !tokenVisible }) {
-                                Icon(imageVector = image, contentDescription = null)
+                            IconButton(onClick = { tokenVisible = !tokenVisible }, enabled = !isBusy) {
+                                Icon(imageVector = image, contentDescription = stringResource(if (tokenVisible) R.string.ssh_hide_value else R.string.ssh_show_value))
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),

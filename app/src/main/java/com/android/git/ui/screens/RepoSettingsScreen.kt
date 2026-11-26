@@ -1,26 +1,15 @@
 package com.android.git.ui.screens
 
-import com.android.git.ui.components.CircularProgressIndicator
-
-import com.android.git.ui.components.GitIcons as Icons
-
 import com.android.git.ui.components.OplusScaffold
-import com.android.git.ui.components.OplusSectionTitle
-import com.android.git.ui.components.OplusPreferenceGroup
-import com.android.git.ui.components.Button
-import com.android.git.ui.components.OutlinedTextField
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.android.git.R
 import com.android.git.data.GitManager
@@ -28,9 +17,6 @@ import com.android.git.data.PreferencesManager
 import com.android.git.ui.components.AuthenticationSettings
 import com.android.git.ui.components.rememberAuthenticationForm
 import com.android.git.utils.isGitFailureMessage
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

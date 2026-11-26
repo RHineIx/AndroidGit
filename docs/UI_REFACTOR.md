@@ -51,3 +51,13 @@ Use a full JDK and Android SDK 37:
 Release builds use code and resource shrinking. Signing and publishing are configured through the manually triggered GitHub Actions workflow; local signing credentials and SDK paths are kept outside version control.
 
 COUI 2.1.0 changes color and text style slots and component motion. Release compilation, lint and visual review on a device are required for this upgrade.
+
+## Dependency upgrade policy
+
+- All direct dependency versions are pinned in `gradle/libs.versions.toml`.
+- Kotlin/Compose compiler 2.4.21, AGP 9.3.1 and Gradle 9.7.0 follow the documented fully supported Kotlin compatibility range; AGP 9.3 also supports API 37.
+- Activity Compose 1.13.0 is retained as the current stable release. The legacy Gemini Android client remains at 0.9.0 pending a separate migration; security-crypto 1.1.0 is retained pending a separate credential-storage migration.
+- JGit and its SSH module share one version; Apache SSHD stays on stable 2.x. Test SSH clone, fetch, pull and push on Android before merging.
+- Authentication uses one shared COUI card and state holder for Settings, Repository Settings and Clone. The settings screens share Save; Clone retains its Clone action.
+
+References: [COUI upgrade guide](https://github.com/suqi8/coui/blob/v2.1.0/docs/guide/upgrading.md), [Kotlin compatibility](https://kotlinlang.org/docs/gradle-configure-project.html), [Haze changelog](https://github.com/chrisbanes/haze/blob/2.1.0/CHANGELOG.md).

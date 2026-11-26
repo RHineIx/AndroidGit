@@ -600,6 +600,9 @@ fun DropdownMenu(
         minWidth = minOf(168.dp, panelWidth),
         maxHeight = panelHeight,
         preciseClickState = preciseClickState,
+        // This app supplies the Haze layer inside the popup; do not blur twice.
+        materialBlur = false,
+        materialEffect = false,
         onDismissRequest = onDismissRequest,
     ) {
         Column(
