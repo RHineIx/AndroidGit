@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.android.git.R
+import com.android.git.ui.theme.LocalAndroidGitDarkTheme
+import com.android.git.ui.theme.LocalAndroidGitUsesSystemColors
 import dev.chrisbanes.haze.HazeInput
 import dev.chrisbanes.haze.HazeProgressive
 import dev.chrisbanes.haze.HazeState
@@ -74,7 +76,8 @@ private fun CenteredPageBar(
     hazeState: HazeState,
     actions: @Composable RowScope.() -> Unit
 ) {
-    val page = MaterialTheme.colorScheme.background
+    val page = if (LocalAndroidGitDarkTheme.current && !LocalAndroidGitUsesSystemColors.current)
+        MaterialTheme.colorScheme.surfaceContainerLowest else MaterialTheme.colorScheme.background
     val supportsBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val fontScale = LocalDensity.current.fontScale

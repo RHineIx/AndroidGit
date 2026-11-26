@@ -41,6 +41,9 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.PopupProperties
+import com.android.git.ui.theme.GitHubDarkButtonBlue
+import com.android.git.ui.theme.LocalAndroidGitDarkTheme
+import com.android.git.ui.theme.LocalAndroidGitUsesSystemColors
 
 @Composable
 fun Card(
@@ -86,13 +89,20 @@ fun OutlinedCard(
     content: @Composable ColumnScope.() -> Unit,
 ) = androidx.compose.material3.OutlinedCard(modifier = modifier, shape = shape, colors = colors, elevation = elevation, border = border ?: BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), content = content)
 
+/** Solid GitHub actions use the button token, not the link token. */
+@Composable
+fun gitPrimaryButtonColors(): ButtonColors =
+    if (LocalAndroidGitDarkTheme.current && !LocalAndroidGitUsesSystemColors.current) {
+        ButtonDefaults.buttonColors(containerColor = GitHubDarkButtonBlue, contentColor = Color.White)
+    } else ButtonDefaults.buttonColors()
+
 @Composable
 fun Button(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     shape: Shape = MaterialTheme.shapes.large,
-    colors: ButtonColors = ButtonDefaults.buttonColors(),
+    colors: ButtonColors = gitPrimaryButtonColors(),
     elevation: ButtonElevation? = null,
     border: BorderStroke? = null,
     contentPadding: PaddingValues = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
@@ -414,6 +424,10 @@ fun SegmentedTabs(
     )
     val shape = androidx.compose.foundation.shape.CircleShape
     val scheme = MaterialTheme.colorScheme
+    val useSystem = LocalAndroidGitUsesSystemColors.current
+    val selectedColor = if (useSystem) scheme.primaryContainer
+        else if (LocalAndroidGitDarkTheme.current) GitHubDarkButtonBlue else scheme.primary
+    val selectedText = if (useSystem) scheme.onPrimaryContainer else Color.White
 
     // Draw exactly one pill behind the labels. No per-tab press/ripple layer
     // can remain visible while the indicator travels to its next position.
@@ -427,7 +441,7 @@ fun SegmentedTabs(
                     tabs.lastIndex - position else position
                 val pillHeight = (size.height - 2f * inset).coerceAtLeast(0f)
                 drawRoundRect(
-                    color = scheme.primaryContainer.copy(alpha = if (enabled) 1f else 0.38f),
+                    color = selectedColor.copy(alpha = if (enabled) 1f else 0.38f),
                     topLeft = Offset(cell * visualPosition + inset, inset),
                     size = Size((cell - 2f * inset).coerceAtLeast(0f), pillHeight),
                     cornerRadius = CornerRadius(pillHeight / 2f)
@@ -440,7 +454,7 @@ fun SegmentedTabs(
             val interaction = remember { MutableInteractionSource() }
             val focused by interaction.collectIsFocusedAsState()
             val coverage = (1f - abs(position - index)).coerceIn(0f, 1f)
-            val textColor = lerp(scheme.onSurfaceVariant, scheme.onPrimaryContainer, coverage)
+            val textColor = lerp(scheme.onSurfaceVariant, selectedText, coverage)
                 .copy(alpha = if (enabled) 1f else 0.38f)
             Box(
                 Modifier.weight(1f).fillMaxHeight().heightIn(min = 48.dp).clip(shape)

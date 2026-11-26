@@ -28,24 +28,25 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 
 val LocalAndroidGitDarkTheme = staticCompositionLocalOf { false }
+val LocalAndroidGitUsesSystemColors = staticCompositionLocalOf { false }
 
-// Dark UI tokens: moelzanaty3/github-dark-tritanopia (theme JSON blob 1ffaf3f).
-// Light UI tokens: Primer primitives v10.0.0, Light Tritanopia.
-// Translucent selection colors are composited over their intended surface;
-// retain stronger outlines for interactive controls on mobile.
+// Dark palette calibrated against GitHub web Tritanopia screenshots.
+// JPEG samples are normalized to the nearest matching UI color tokens.
+// Links and solid buttons intentionally use different blues for contrast.
+val GitHubDarkButtonBlue = Color(0xFF1F6FEB)
 private val DarkColorScheme = darkColorScheme(
     primary = Color(0xFF4493F8), onPrimary = Color(0xFF0D1117),
-    primaryContainer = Color(0xFF1E334E), onPrimaryContainer = Color(0xFFF0F6FC),
-    secondary = Color(0xFFB1BAC4), onSecondary = Color(0xFF0D1117),
-    secondaryContainer = Color(0xFF252B34), onSecondaryContainer = Color(0xFFF0F6FC),
-    tertiary = Color(0xFFFF7B72), onTertiary = Color(0xFF401216),
-    tertiaryContainer = Color(0xFF27171C), onTertiaryContainer = Color(0xFFFFA198),
+    primaryContainer = Color(0xFF121D2F), onPrimaryContainer = Color(0xFFF0F6FC),
+    secondary = Color(0xFF9198A1), onSecondary = Color(0xFF0D1117),
+    secondaryContainer = Color(0xFF212830), onSecondaryContainer = Color(0xFFF0F6FC),
+    tertiary = Color(0xFFF78166), onTertiary = Color(0xFF0D1117),
+    tertiaryContainer = Color(0xFF3D221D), onTertiaryContainer = Color(0xFFFFB4A2),
     background = Color(0xFF0D1117), onBackground = Color(0xFFF0F6FC),
     surface = Color(0xFF0D1117), onSurface = Color(0xFFF0F6FC),
     surfaceVariant = Color(0xFF151B23), onSurfaceVariant = Color(0xFF9198A1),
-    surfaceDim = Color(0xFF010409), surfaceBright = Color(0xFF2F3742),
-    surfaceContainerLowest = Color(0xFF010409), surfaceContainerLow = Color(0xFF010409),
-    surfaceContainer = Color(0xFF0D1117), surfaceContainerHigh = Color(0xFF151B23),
+    surfaceDim = Color(0xFF010409), surfaceBright = Color(0xFF30363D),
+    surfaceContainerLowest = Color(0xFF010409), surfaceContainerLow = Color(0xFF151B23),
+    surfaceContainer = Color(0xFF151B23), surfaceContainerHigh = Color(0xFF212830),
     surfaceContainerHighest = Color(0xFF252B34),
     outline = Color(0xFF656C76), outlineVariant = Color(0xFF3D444D),
     error = Color(0xFFF85149), onError = Color(0xFF0D1117),
@@ -54,6 +55,8 @@ private val DarkColorScheme = darkColorScheme(
     inversePrimary = Color(0xFF0969DA), surfaceTint = Color(0xFF4493F8),
     scrim = Color.Black
 )
+// Light is not sampled: the supplied screenshots only show dark mode.
+// Keep the corresponding existing Primer-based light palette.
 private val LightColorScheme = lightColorScheme(
     primary = Color(0xFF0969DA), onPrimary = Color.White,
     primaryContainer = Color(0xFFDDF4FF), onPrimaryContainer = Color(0xFF0550AE),
@@ -114,7 +117,10 @@ fun AndroidGitTheme(
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) window.isNavigationBarContrastEnforced = false
         }
     }
-    CompositionLocalProvider(LocalAndroidGitDarkTheme provides darkTheme) {
+    CompositionLocalProvider(
+        LocalAndroidGitDarkTheme provides darkTheme,
+        LocalAndroidGitUsesSystemColors provides (system != null)
+    ) {
         MaterialTheme(colorScheme = materialColors, typography = Typography, shapes = AndroidGitShapes, content = content)
     }
 }

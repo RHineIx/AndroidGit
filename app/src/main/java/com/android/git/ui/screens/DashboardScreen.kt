@@ -10,6 +10,7 @@ import com.android.git.ui.components.GitScaffold
 import com.android.git.ui.components.ActionTile
 import com.android.git.ui.components.AlertDialog
 import com.android.git.ui.components.Button
+import com.android.git.ui.components.gitPrimaryButtonColors
 import com.android.git.ui.components.Card
 import com.android.git.ui.components.IconButton
 import com.android.git.ui.components.TextButton
@@ -160,7 +161,7 @@ fun DashboardScreen(
                                         modifier = Modifier.weight(1f), enabled = !isLoading, shape = cardShape,
                                         colors = if (isForcePushChecked) ButtonDefaults.buttonColors(
                                             containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError
-                                        ) else ButtonDefaults.buttonColors()
+                                        ) else gitPrimaryButtonColors()
                                     ) {
                                         Icon(Icons.Default.CloudUpload, null, Modifier.size(20.dp))
                                         Spacer(Modifier.width(6.dp))

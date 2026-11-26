@@ -116,7 +116,7 @@ fun CloneScreen(
 
     val textFieldShape = RoundedCornerShape(16.dp)
     val textFieldColors = TextFieldDefaults.colors(
-        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
         focusedIndicatorColor = Color.Transparent,
         unfocusedIndicatorColor = Color.Transparent
