@@ -1,5 +1,7 @@
 package com.android.git.ui.screens
 
+import com.android.git.ui.components.GitIcons
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,14 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
@@ -79,12 +73,12 @@ fun WorkflowsScreen(
                 title = { Text(stringResource(R.string.workflow_title), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(GitIcons.Default.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.loadWorkflowsForCurrentRepository() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh))
+                        Icon(GitIcons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -150,7 +144,7 @@ fun WorkflowsScreen(
                                 enabled = !viewModel.isWorkflowsLoading && workflow.state.equals("active", ignoreCase = true),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
-                                Icon(Icons.Default.Settings, contentDescription = null)
+                                Icon(GitIcons.Default.Settings, contentDescription = null)
                                 Spacer(Modifier.padding(horizontal = 2.dp))
                                 Text(stringResource(R.string.workflow_configure_run))
                             }
@@ -263,7 +257,7 @@ private fun WorkflowRunDialog(
                                         trailingIcon = {
                                             if (ref == branchName) {
                                                 Icon(
-                                                    imageVector = Icons.Default.Check,
+                                                    imageVector = GitIcons.Default.Check,
                                                     contentDescription = null,
                                                     tint = MaterialTheme.colorScheme.primary
                                                 )
@@ -309,7 +303,7 @@ private fun WorkflowRunDialog(
             ) {
                 if (viewModel.isWorkflowRunning) CircularProgressIndicator(modifier = Modifier.height(18.dp), strokeWidth = 2.dp)
                 else {
-                    Icon(Icons.Default.PlayArrow, contentDescription = null)
+                    Icon(GitIcons.Default.PlayArrow, contentDescription = null)
                     Spacer(Modifier.padding(horizontal = 2.dp))
                     Text(stringResource(R.string.workflow_execute))
                 }
@@ -372,9 +366,9 @@ private fun WorkflowInputField(
 @Composable
 private fun WorkflowRunCard(run: GitHubWorkflowRun) {
     val icon = when {
-        run.conclusion.equals("success", ignoreCase = true) -> Icons.Default.CheckCircle
-        run.conclusion.equals("failure", ignoreCase = true) -> Icons.Default.Error
-        else -> Icons.Default.Refresh
+        run.conclusion.equals("success", ignoreCase = true) -> GitIcons.Default.CheckCircle
+        run.conclusion.equals("failure", ignoreCase = true) -> GitIcons.Default.Error
+        else -> GitIcons.Default.Refresh
     }
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),

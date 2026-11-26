@@ -84,7 +84,6 @@ dependencies {
     implementation("io.github.lyxnx.compose.ui:tabler-icons-android:3.49.0")
 
     implementation(libs.androidx.navigation.compose)
-    implementation(libs.androidx.material.icons.extended)
     // JGit & Required Crypto Dependencies for modern SSH support
     implementation(libs.jgit)
     implementation(libs.jgit.ssh)

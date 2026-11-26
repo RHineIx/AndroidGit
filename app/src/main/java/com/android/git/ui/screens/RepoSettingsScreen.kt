@@ -16,6 +16,7 @@ import com.android.git.data.PreferencesManager
 import com.android.git.ui.components.AuthenticationSettings
 import com.android.git.ui.components.GitIcons
 import com.android.git.ui.components.rememberAuthenticationForm
+import com.android.git.utils.isGitFailureMessage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,7 +43,10 @@ fun RepoSettingsScreen(gitManager: GitManager?, onBack: () -> Unit) {
         ) {
             AuthenticationSettings(
                 state = authForm,
-                beforeSave = { draft -> gitManager?.configureUser(draft.userName, draft.userEmail) },
+                beforeSave = { draft ->
+                    val result = gitManager?.configureUser(draft.userName, draft.userEmail)
+                    check(result == null || !isGitFailureMessage(result))
+                },
                 onSaved = onBack
             )
         }

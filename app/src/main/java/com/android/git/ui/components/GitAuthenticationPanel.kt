@@ -70,6 +70,7 @@ private fun GitCredentialFields(
     var generatedAlgorithm by remember { mutableStateOf("") }
     var sshGenerationError by remember { mutableStateOf("") }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    LaunchedEffect(authMode) { tokenVisible = false }
 
     val textFieldColors = TextFieldDefaults.colors(
         focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -529,17 +530,13 @@ internal fun AuthenticationFields(
     }
 }
 
-/** Both settings screens use the exact same card, validation and save flow. */
+/** One card layout shared by Settings, Repository Settings and Clone. */
 @Composable
-internal fun AuthenticationSettings(
+internal fun AuthenticationCard(
     state: AuthenticationFormState,
-    beforeSave: suspend (AuthenticationDraft) -> Unit = {},
-    onSaved: () -> Unit = {}
+    busy: Boolean,
+    content: @Composable ColumnScope.() -> Unit = {}
 ) {
-    val scope = rememberCoroutineScope()
-    var saving by remember { mutableStateOf(false) }
-    var saved by remember { mutableStateOf<AuthenticationDraft?>(null) }
-    var error by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth()) {
         Text(
             stringResource(R.string.settings_auth_section),
@@ -554,46 +551,62 @@ internal fun AuthenticationSettings(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                AuthenticationFields(state, saving)
-                Button(
-                    onClick = {
-                        val snapshot = state.draft
-                        saving = true
-                        error = false
-                        scope.launch {
-                            try {
-                                beforeSave(snapshot)
-                                state.save(snapshot)
-                                saved = snapshot
-                                onSaved()
-                            } catch (cancelled: CancellationException) {
-                                throw cancelled
-                            } catch (_: Exception) {
-                                error = true
-                            } finally {
-                                saving = false
-                            }
-                        }
-                    },
-                    enabled = !saving && !state.generating && state.draft.isValid,
-                    modifier = Modifier.fillMaxWidth().height(50.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    if (saving) {
-                        CircularProgressIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                    } else {
-                        Icon(GitIcons.Default.Save, null)
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.action_save), fontWeight = FontWeight.Bold)
-                    }
-                }
-                if (error) Text(stringResource(R.string.auth_save_failed), color = MaterialTheme.colorScheme.error)
-                else if (saved == state.draft) Text(
-                    stringResource(R.string.settings_auth_saved),
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.bodySmall
-                )
+                AuthenticationFields(state, busy)
+                content()
             }
         }
+    }
+}
+
+/** Both settings screens use the exact same card, validation and save flow. */
+@Composable
+internal fun AuthenticationSettings(
+    state: AuthenticationFormState,
+    beforeSave: suspend (AuthenticationDraft) -> Unit = {},
+    onSaved: () -> Unit = {}
+) {
+    val scope = rememberCoroutineScope()
+    var saving by remember { mutableStateOf(false) }
+    var saved by remember { mutableStateOf<AuthenticationDraft?>(null) }
+    var error by remember { mutableStateOf(false) }
+    AuthenticationCard(state, saving) {
+        Button(
+            onClick = {
+                val snapshot = state.draft
+                saving = true
+                error = false
+                scope.launch {
+                    try {
+                        beforeSave(snapshot)
+                        state.save(snapshot)
+                        saved = snapshot
+                        onSaved()
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        error = true
+                    } finally {
+                        saving = false
+                    }
+                }
+            },
+            enabled = !saving && !state.generating && state.draft.isValid,
+            modifier = Modifier.fillMaxWidth().height(50.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            if (saving) {
+                CircularProgressIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+            } else {
+                Icon(GitIcons.Default.Save, null)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.action_save), fontWeight = FontWeight.Bold)
+            }
+        }
+        if (error) Text(stringResource(R.string.auth_save_failed), color = MaterialTheme.colorScheme.error)
+        else if (saved == state.draft) Text(
+            stringResource(R.string.settings_auth_saved),
+            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.bodySmall
+        )
     }
 }

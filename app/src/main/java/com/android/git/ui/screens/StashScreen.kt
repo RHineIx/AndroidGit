@@ -1,14 +1,11 @@
 package com.android.git.ui.screens
 
+import com.android.git.ui.components.GitIcons
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Archive
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -142,7 +139,7 @@ fun StashScreen(
                     enabled = !isActionRunning
                 ) { Text(stringResource(R.string.stash_btn_apply)) }
             },
-            icon = { Icon(Icons.Default.Archive, null) }
+            icon = { Icon(GitIcons.Default.Archive, null) }
         )
     }
 
@@ -174,7 +171,7 @@ fun StashScreen(
                     Text(stringResource(R.string.action_cancel))
                 }
             },
-            icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
+            icon = { Icon(GitIcons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
         )
     }
 
@@ -184,7 +181,7 @@ fun StashScreen(
                 title = { Text(stringResource(R.string.stash_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(GitIcons.Default.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -192,7 +189,7 @@ fun StashScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { if (!isLoading && !isActionRunning) showCreateDialog = true }) {
-                Icon(Icons.Default.Add, null)
+                Icon(GitIcons.Default.Add, null)
             }
         }
     ) { padding ->
@@ -205,7 +202,7 @@ fun StashScreen(
                         modifier = Modifier.align(Alignment.Center),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(Icons.Default.Archive, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.surfaceVariant)
+                        Icon(GitIcons.Default.Archive, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.surfaceVariant)
                         Spacer(Modifier.height(16.dp))
                         Text(stringResource(R.string.stash_empty), color = MaterialTheme.colorScheme.secondary)
                     }
@@ -273,7 +270,7 @@ fun StashItemView(
         }
 
         IconButton(onClick = onDrop) {
-            Icon(Icons.Default.Delete, stringResource(R.string.action_delete), tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
+            Icon(GitIcons.Default.Delete, stringResource(R.string.action_delete), tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
         }
     }
 }

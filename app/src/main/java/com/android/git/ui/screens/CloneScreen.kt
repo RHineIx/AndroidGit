@@ -45,7 +45,7 @@ import com.android.git.R
 import com.android.git.data.GitAuthMode
 import com.android.git.data.GitRemoteUrl
 import com.android.git.data.PreferencesManager
-import com.android.git.ui.components.AuthenticationFields
+import com.android.git.ui.components.AuthenticationCard
 import com.android.git.ui.components.rememberAuthenticationForm
 import com.android.git.ui.components.SnackbarType
 import com.android.git.ui.components.GitHubRepoBottomSheet
@@ -326,18 +326,11 @@ fun CloneScreen(
                         maxLines = 2
                     )
 
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp), color = MaterialTheme.colorScheme.outlineVariant)
-
-                    Text(
-                        text = stringResource(R.string.repo_settings_section_auth),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
-
-                    AuthenticationFields(authForm, isLoading)
                 }
             }
+
+            Spacer(Modifier.height(24.dp))
+            AuthenticationCard(authForm, isLoading)
 
             Spacer(Modifier.height(32.dp))
 
