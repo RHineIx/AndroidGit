@@ -66,7 +66,7 @@ private fun GitCredentialFields(
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
-    val modernShape = RoundedCornerShape(12.dp)
+    val modernShape = RoundedCornerShape(16.dp)
 
     // Internal states managed entirely by the component
     var tokenVisible by remember { mutableStateOf(false) }
@@ -117,11 +117,12 @@ private fun GitCredentialFields(
             stringResource(R.string.auth_mode_https),
             stringResource(R.string.auth_mode_ssh)
         )
-        io.github.suqi8.coui.kmp.basic.TabRowWithContour(
+        SegmentedTabs(
             tabs = authTabs,
             selectedTabIndex = if (authMode == GitAuthMode.HTTPS) 0 else 1,
             onTabSelected = { if (!isBusy) onAuthModeChange(if (it == 0) GitAuthMode.HTTPS else GitAuthMode.SSH) },
-            modifier = Modifier.fillMaxWidth().then(if (isBusy) Modifier.alpha(0.4f) else Modifier)
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isBusy
         )
 
         Spacer(Modifier.height(16.dp))
@@ -168,7 +169,7 @@ private fun GitCredentialFields(
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Surface(
                         color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(16.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
@@ -283,7 +284,7 @@ private fun GitCredentialFields(
                             }
                         },
                         enabled = !isBusy,
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                         shape = modernShape
                     ) {
                         Icon(Icons.Default.AutoFixHigh, contentDescription = null)
@@ -295,7 +296,7 @@ private fun GitCredentialFields(
                         Spacer(Modifier.height(12.dp))
                         Surface(
                             color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(16.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -315,7 +316,7 @@ private fun GitCredentialFields(
                         Spacer(Modifier.height(12.dp))
                         Surface(
                             color = MaterialTheme.colorScheme.errorContainer,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(16.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -336,7 +337,7 @@ private fun GitCredentialFields(
                         OutlinedButton(
                             onClick = { showDeleteDialog = true },
                             enabled = !isBusy,
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                             shape = modernShape,
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                             border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
@@ -418,7 +419,7 @@ internal fun AuthenticationFields(
             label = { Text(stringResource(R.string.settings_auth_user_name)) },
             leadingIcon = { Icon(Icons.Default.Person, null) },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
             singleLine = true,
             enabled = !locked
         )
@@ -428,7 +429,7 @@ internal fun AuthenticationFields(
             label = { Text(stringResource(R.string.settings_auth_user_email)) },
             leadingIcon = { Icon(Icons.Default.Email, null) },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             enabled = !locked
@@ -490,9 +491,9 @@ internal fun AuthenticationCard(
     content: @Composable ColumnScope.() -> Unit = {}
 ) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OplusSectionTitle(stringResource(R.string.settings_auth_section))
-        OplusPreferenceGroup {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        SectionTitle(stringResource(R.string.settings_auth_section))
+        PreferenceGroup {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 AuthenticationFields(state, busy)
                 content()
             }
@@ -533,8 +534,8 @@ internal fun AuthenticationSettings(
                 }
             },
             enabled = !saving && !state.generating && state.draft.isValid,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
-            shape = RoundedCornerShape(12.dp)
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+            shape = RoundedCornerShape(16.dp)
         ) {
             if (saving) {
                 CircularProgressIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)

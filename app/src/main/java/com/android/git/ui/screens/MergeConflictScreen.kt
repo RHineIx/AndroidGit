@@ -22,7 +22,7 @@ import com.android.git.ui.components.Button
 import com.android.git.ui.components.Card
 import com.android.git.ui.components.CircularProgressIndicator
 import com.android.git.ui.components.GitIcons as Icons
-import com.android.git.ui.components.OplusScaffold
+import com.android.git.ui.components.GitScaffold
 import com.android.git.ui.components.SnackbarType
 import kotlinx.coroutines.launch
 
@@ -70,7 +70,7 @@ fun MergeConflictScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    OplusScaffold(
+    GitScaffold(
         title = stringResource(R.string.conflict_title),
         onBack = onBack,
 
@@ -96,7 +96,7 @@ fun MergeConflictScreen(
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
-                            start = 12.dp, end = 12.dp,
+                            start = 16.dp, end = 16.dp,
                             top = padding.calculateTopPadding() + 8.dp,
                             bottom = padding.calculateBottomPadding() + 32.dp
                         ),
@@ -131,7 +131,7 @@ fun ConflictItem(filePath: String, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(16.dp)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),

@@ -50,8 +50,8 @@ import com.android.git.ui.components.IconButton
 import com.android.git.ui.components.OutlinedButton
 import com.android.git.ui.components.Switch
 import com.android.git.ui.components.TextField
-import com.android.git.ui.components.OplusScaffold
-import com.android.git.ui.components.OplusSectionTitle
+import com.android.git.ui.components.GitScaffold
+import com.android.git.ui.components.SectionTitle
 import com.android.git.data.GitAuthMode
 import com.android.git.data.GitRemoteUrl
 import com.android.git.data.PreferencesManager
@@ -114,7 +114,7 @@ fun CloneScreen(
     val cloneTaskName = viewModel.cloneTaskName
     val cloneTaskDetails = viewModel.cloneTaskDetails
 
-    val textFieldShape = RoundedCornerShape(12.dp)
+    val textFieldShape = RoundedCornerShape(16.dp)
     val textFieldColors = TextFieldDefaults.colors(
         focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -161,7 +161,7 @@ fun CloneScreen(
         )
     }
 
-    OplusScaffold(
+    GitScaffold(
         title = stringResource(R.string.clone_title),
         onBack = onBack,
         backEnabled = !isLoading
@@ -171,12 +171,12 @@ fun CloneScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(padding)
-                .padding(horizontal = 12.dp),
+                .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            OplusSectionTitle(stringResource(R.string.repo_settings_section_remote), Modifier.fillMaxWidth())
+            SectionTitle(stringResource(R.string.repo_settings_section_remote), Modifier.fillMaxWidth())
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.large,
@@ -259,8 +259,8 @@ fun CloneScreen(
                             viewModel.fetchMyRepositories()
                             showMyReposSheet = true
                         },
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                        shape = RoundedCornerShape(16.dp),
                         enabled = !isLoading
                     ) {
                         Icon(Icons.Default.Source, contentDescription = null)
@@ -342,8 +342,8 @@ fun CloneScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
-                shape = RoundedCornerShape(12.dp),
+                    .heightIn(min = 52.dp),
+                shape = RoundedCornerShape(16.dp),
                 enabled = !isLoading && parsedRemoteUrl != null &&
                         !authForm.generating && authForm.draft.isValid
             ) {
@@ -386,7 +386,7 @@ fun CloneScreen(
 
                 Surface(
                     color = containerColor,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
@@ -438,7 +438,7 @@ fun CloneScreen(
 
                             OutlinedButton(
                                 onClick = { viewModel.cancelClone() },
-                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
                             ) {

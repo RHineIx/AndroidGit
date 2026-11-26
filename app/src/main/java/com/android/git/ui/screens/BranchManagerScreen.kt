@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,8 +45,7 @@ import androidx.compose.ui.unit.sp
 import com.android.git.R
 import com.android.git.ui.components.CircularProgressIndicator
 import com.android.git.ui.components.DropdownMenu
-import io.github.suqi8.coui.kmp.basic.FloatingActionButton
-import io.github.suqi8.coui.kmp.basic.TabRowWithContour
+import com.android.git.ui.components.SegmentedTabs
 import com.android.git.ui.components.AlertDialog
 import com.android.git.ui.components.Button
 import com.android.git.ui.components.Card
@@ -54,7 +54,7 @@ import com.android.git.ui.components.ElevatedCard
 import com.android.git.ui.components.IconButton
 import com.android.git.ui.components.OutlinedTextField
 import com.android.git.ui.components.TextButton
-import com.android.git.ui.components.OplusScaffold
+import com.android.git.ui.components.GitScaffold
 import com.android.git.model.BranchModel
 import com.android.git.model.BranchType
 import com.android.git.model.DashboardState
@@ -137,7 +137,7 @@ fun BranchManagerScreen(
         )
     }
 
-    OplusScaffold(
+    GitScaffold(
         title = stringResource(R.string.branch_title),
         onBack = onBack,
         backEnabled = !isLoading,
@@ -400,8 +400,8 @@ private fun BranchListContent(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(
-            start = 12.dp,
-            end = 12.dp,
+            start = 16.dp,
+            end = 16.dp,
             top = padding.calculateTopPadding() + 8.dp,
             bottom = padding.calculateBottomPadding() + 96.dp
         )
@@ -421,13 +421,13 @@ private fun BranchListContent(
                         }
                     }
                 },
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(16.dp),
                 singleLine = true,
                 enabled = !isLoading
             )
         }
         item(key = "branch-tabs") {
-            TabRowWithContour(
+            SegmentedTabs(
                 tabs = listOf(stringResource(R.string.branch_tab_local), stringResource(R.string.branch_tab_remote)),
                 selectedTabIndex = selectedTab,
                 onTabSelected = onTabChange,
@@ -481,7 +481,7 @@ fun BranchItemRich(
             contentColor = MaterialTheme.colorScheme.onSurface
         ),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(16.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
@@ -595,7 +595,7 @@ private fun BranchActionMenu(
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {

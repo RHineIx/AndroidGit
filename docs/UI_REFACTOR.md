@@ -1,46 +1,19 @@
 # AndroidGit UI implementation
 
-AndroidGit uses COUI, Haze, and Tabler Icons to provide a consistent ColorOS 17 interface across its Git tools and settings.
+AndroidGit uses native Jetpack Compose Material 3, Haze 2.1.0 and Tabler Icons 3.50.0. The UI redesign restores the original Material card-based dashboard and keeps current Git operations, authentication, settings and release automation.
 
-## UI libraries
+## Shared design system
 
-| Library | Version | Purpose |
-| --- | --- | --- |
-| COUI UI | `2.1.0` | Themes, headers, cards, preference rows, buttons, fields, dialogs, menus, and bottom sheets |
-| Haze and Haze Blur | `2.1.0` | Frosted surfaces on Android 12 and later, with solid backgrounds on older versions |
-| Tabler Icons | `3.50.0` | Outline icons shared through `GitIcons` |
+- `GitPage.kt`: fixed, centered toolbar with progressive 32dp backdrop blur and gradient scrim. The header respects system insets, RTL and increased font size; older Android versions use a scrim fallback.
+- `MaterialComponents.kt`: native Material controls with shared sizing, rounded cards, segmented tabs, menus and dialogs. Primary actions target a 52dp minimum, icon actions a 48dp touch target, and text fields a 56dp minimum.
+- `PreferenceComponents.kt`: grouped cards, 64dp minimum preference rows, consistent spacing and accessible native click handling.
+- `ActionTile.kt`: 116dp minimum quick-action tiles with clear icon and label hierarchy.
+- `GitAuthenticationPanel.kt`: common form state and credential controls for Settings, Repository Settings and Clone.
+- `AppearancePreferences.kt`: System/Light/Dark modes, default Material palette, Android system dynamic colors (API 31+), custom accent and standard/AMOLED dark surfaces. Selection persists without restarting.
 
-Jetpack Compose, AndroidX Navigation, and the existing ViewModel architecture continue to support the screens and their behavior.
+The app uses the original Material-inspired palette, 16dp page margins, 18dp medium corners, 24dp large corners, and accessible typography. Dynamic colors fall back to the default palette on older devices.
 
-## Shared components
-
-- `ui/theme` configures COUI themes and matching Material colors for specialized Git controls.
-- `OplusPage.kt` provides the page layout, fixed centered header, and shared blur source.
-- `OplusPreference.kt` provides grouped cards, preference rows, and dividers.
-- `OplusActionCard.kt` provides standalone icon-and-label cards for repository entry points and quick actions.
-- `OplusWidgets.kt` adapts the screen components to COUI controls while preserving callbacks and validation.
-- `GitIcons.kt` maps icon names to Tabler outline icons.
-
-These components cover repository selection, cloning, the dashboard, changes, branches, history, stashes, conflicts, the gitignore editor, GitHub Actions, and settings. Git operations, authentication, SSH, Gemini, and confirmation flows retain their existing behavior.
-
-## Appearance
-
-The app uses the COUI 17 color scheme and typography, with corresponding Material colors for specialized Git controls. The Appearance section lets the user independently select System / Light / Dark brightness, Default COUI / Android dynamic system colors / Custom accent, and Standard / AMOLED dark surfaces. Choices persist and apply immediately. Dynamic system colors require Android 12 or later; older devices fall back to COUI. The custom accent supports presets and any six-digit RGB hex value, with contrast adjustment.
-
-Shared layout and interaction details:
-
-- Cards use a 12dp corner radius, with 12dp page margins and thin inset dividers.
-- Clone Repo and Open Local use equal-width cards in one row. Dashboard Pull and Push use the same compact layout: 84dp minimum height, 24dp icons, 12dp padding and corners, and an 8dp gap between cards. Labels wrap and cards grow for larger font sizes; the force-push switch remains in its own card and retains its confirmation dialog.
-- Preference rows use 22dp leading icons and an 8dp gap before the text.
-- Headers remain fixed and center their title and optional subtitle in the available safe width, reserving symmetric space for navigation and action buttons. A 32dp Haze progressive blur fades from the status bar through the bottom edge; Android versions below API 31 use a gradient scrim instead. Titles and controls are rendered separately from the blur.
-- Frosted dialogs and menus use 24dp blur and 94% opaque surfaces. Dialogs use stronger field outlines and clearer secondary text.
-- Dropdown panels have bounded dimensions, while their outside-tap area covers the full window. Theme and Gemini menus dismiss when tapping outside.
-- Indeterminate loading indicators are capped at 26dp and shrink to fit smaller controls.
-- Editable field text explicitly uses the current surface text color, including inside workflow dialogs.
-- The app root applies and consumes IME padding once, so all pages resize above the keyboard, including SSH forms, the gitignore editor, and the full-screen commit editor. The commit bar uses this same viewport without adding another keyboard inset. Focused SSH fields also request visibility after their expansion animation. COUI dialogs and bottom sheets keep their independent window-level IME handling.
-- Commit details use full-width rows to accommodate long hashes and dates.
-
-## Build and review
+## Build and release
 
 Use a full JDK and Android SDK 37:
 
@@ -48,16 +21,8 @@ Use a full JDK and Android SDK 37:
 ./gradlew :app:assembleRelease :app:lintRelease
 ```
 
-Release builds use code and resource shrinking. Official releases are triggered by version tags on main; manual workflow runs produce internal artifacts only. The version fields are derived from the tag without modifying repository files; local signing credentials and SDK paths are kept outside version control.
+Official releases are triggered by version tags on main; manual workflow dispatch builds signed internal artifacts only. Version fields are derived from the tag without modifying repository files. Release builds retain code/resource shrinking, signing and arm64 verification.
 
-COUI 2.1.0 changes color and text style slots and component motion. Release compilation, lint and visual review on a device are required for this upgrade.
+## Verification
 
-## Dependency upgrade policy
-
-- All direct dependency versions are pinned in `gradle/libs.versions.toml`.
-- Kotlin/Compose compiler 2.4.10 and AGP 9.3.1 match COUI 2.1.0's upstream build catalog. Gradle stays at 9.7.0. Kotlin 2.4.21 could not be resolved during a fresh CI build (run 45838406624); use the upstream baseline until clean dependency resolution and APK compilation are verified. AGP 9.3 supports API 37.
-- Activity Compose 1.13.0 is retained as the current stable release. The legacy Gemini Android client remains at 0.9.0 pending a separate migration; security-crypto 1.1.0 is retained pending a separate credential-storage migration.
-- JGit and its SSH module share one version; Apache SSHD stays on stable 2.x. Test SSH clone, fetch, pull and push on Android before merging.
-- Authentication uses one shared COUI card and state holder for Settings, Repository Settings and Clone. The settings screens share Save; Clone retains its Clone action.
-
-References: [COUI upgrade guide](https://github.com/suqi8/coui/blob/v2.1.0/docs/guide/upgrading.md), [Kotlin compatibility](https://kotlinlang.org/docs/gradle-configure-project.html), [Haze changelog](https://github.com/chrisbanes/haze/blob/2.1.0/CHANGELOG.md).
+The preceding build at cd8f163 passed CI. This UI redesign requires a fresh compilation and on-device visual verification of scrolling, dialogs, keyboard, theme changes and authentication.

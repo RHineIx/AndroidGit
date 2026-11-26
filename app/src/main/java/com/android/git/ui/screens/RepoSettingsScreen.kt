@@ -1,6 +1,6 @@
 package com.android.git.ui.screens
 
-import com.android.git.ui.components.OplusScaffold
+import com.android.git.ui.components.GitScaffold
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -28,7 +28,7 @@ fun RepoSettingsScreen(
     val prefs = remember { PreferencesManager(context) }
     val authForm = rememberAuthenticationForm(prefs)
 
-    OplusScaffold(
+    GitScaffold(
         title = stringResource(R.string.repo_settings_title),
         onBack = onBack
     ) { padding ->
@@ -37,7 +37,7 @@ fun RepoSettingsScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(padding)
-                .padding(horizontal = 12.dp)
+                .padding(horizontal = 16.dp)
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 

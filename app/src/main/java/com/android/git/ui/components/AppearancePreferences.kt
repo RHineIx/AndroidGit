@@ -28,8 +28,6 @@ import com.android.git.data.AppearanceSettings
 import com.android.git.data.DarkSurface
 import com.android.git.data.ThemeMode
 import com.android.git.data.ThemePalette
-import io.github.suqi8.coui.kmp.basic.PreciseClickState
-import io.github.suqi8.coui.kmp.basic.preciseClickAnchor
 import java.util.Locale
 
 private val accentPresets = listOf(
@@ -45,8 +43,8 @@ internal fun AppearancePreferences(
     onAppearanceChange: (AppearanceSettings) -> Unit
 ) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OplusSectionTitle(stringResource(R.string.appearance_section))
-        OplusPreferenceGroup {
+        SectionTitle(stringResource(R.string.appearance_section))
+        PreferenceGroup {
             AppearanceChoice(
                 title = stringResource(R.string.settings_theme_title),
                 choices = ThemeMode.entries,
@@ -60,7 +58,7 @@ internal fun AppearancePreferences(
                 },
                 onSelect = onModeChange
             )
-            OplusPreferenceDivider()
+            PreferenceDivider()
             AppearanceChoice(
                 title = stringResource(R.string.appearance_palette),
                 choices = ThemePalette.entries,
@@ -82,7 +80,7 @@ internal fun AppearancePreferences(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            OplusPreferenceDivider()
+            PreferenceDivider()
             AppearanceChoice(
                 title = stringResource(R.string.appearance_dark_surface),
                 choices = DarkSurface.entries,
@@ -102,17 +100,17 @@ internal fun AppearancePreferences(
                 style = MaterialTheme.typography.bodySmall
             )
             if (appearance.palette == ThemePalette.CUSTOM) {
-                OplusPreferenceDivider()
+                PreferenceDivider()
                 AccentEditor(appearance.customAccent) {
                     onAppearanceChange(appearance.copy(customAccent = it))
                 }
             }
         }
-        OplusPreferenceGroup {
+        PreferenceGroup {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(stringResource(R.string.appearance_preview), style = MaterialTheme.typography.titleMedium)
                 Row(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
                         .background(MaterialTheme.colorScheme.background).padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -143,20 +141,17 @@ private fun <T> AppearanceChoice(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val summary = label(selected)
-    val anchor = remember { PreciseClickState() }
     Box {
-        OplusPreferenceRow(
+        PreferenceRow(
             title = title,
             summary = summary,
-            modifier = Modifier.preciseClickAnchor(anchor),
             onClick = { expanded = true },
             trailing = { Icon(GitIcons.Default.ArrowDropDown, null) }
         )
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            width = 252.dp,
-            preciseClickState = anchor
+            width = 252.dp
         ) {
             choices.forEachIndexed { index, choice ->
                 DropdownMenuItem(

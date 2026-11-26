@@ -17,7 +17,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.git.R
 import com.android.git.ui.components.CircularProgressIndicator
-import io.github.suqi8.coui.kmp.basic.FloatingActionButton
 import com.android.git.ui.components.AlertDialog
 import com.android.git.ui.components.Button
 import com.android.git.ui.components.Card
@@ -25,7 +24,7 @@ import com.android.git.ui.components.IconButton
 import com.android.git.ui.components.OutlinedButton
 import com.android.git.ui.components.OutlinedTextField
 import com.android.git.ui.components.TextButton
-import com.android.git.ui.components.OplusScaffold
+import com.android.git.ui.components.GitScaffold
 import com.android.git.data.GitManager
 import com.android.git.model.StashItem
 import com.android.git.ui.components.AppSnackbar
@@ -185,7 +184,7 @@ fun StashScreen(
         )
     }
 
-    OplusScaffold(
+    GitScaffold(
         title = stringResource(R.string.stash_title),
         onBack = onBack,
         floatingActionButton = {
@@ -210,7 +209,7 @@ fun StashScreen(
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = padding.calculateTopPadding() + 8.dp, bottom = padding.calculateBottomPadding() + 96.dp),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = padding.calculateTopPadding() + 8.dp, bottom = padding.calculateBottomPadding() + 96.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(stashes) { stash ->

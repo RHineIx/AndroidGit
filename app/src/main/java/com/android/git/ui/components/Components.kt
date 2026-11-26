@@ -56,34 +56,38 @@ fun AppSnackbar(
     type: SnackbarType = SnackbarType.INFO,
     onDismiss: () -> Unit
 ) {
-    val state = remember { io.github.suqi8.coui.kmp.basic.SnackbarHostState() }
     val dismiss by rememberUpdatedState(onDismiss)
     LaunchedEffect(message, type) {
         if (message.isNotEmpty()) {
-            state.showSnackbar(
-                message = message,
-                withDismissAction = true,
-                duration = io.github.suqi8.coui.kmp.basic.SnackbarDuration.Custom(
-                    if (type == SnackbarType.ERROR) 4000L else 2500L
-                )
-            )
+            delay(if (type == SnackbarType.ERROR) 4000L else 2500L)
             dismiss()
         }
     }
-    val (tint, icon) = when (type) {
-        SnackbarType.SUCCESS -> MaterialTheme.colorScheme.primary to Icons.Default.CheckCircle
-        SnackbarType.ERROR -> MaterialTheme.colorScheme.error to Icons.Default.Error
-        SnackbarType.WARNING -> MaterialTheme.colorScheme.error to Icons.Default.Warning
-        SnackbarType.INFO -> MaterialTheme.colorScheme.onSurfaceVariant to Icons.Default.Info
-    }
-    io.github.suqi8.coui.kmp.basic.SnackbarHost(
-        state = state,
-        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp).fillMaxWidth()
-    ) { data ->
-        io.github.suqi8.coui.kmp.basic.Snackbar(
-            data = data,
-            icon = { Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp)) }
-        )
+    AnimatedVisibility(message.isNotEmpty(), enter = fadeIn() + slideInVertically { it / 2 },
+        exit = fadeOut() + slideOutVertically { it / 2 }) {
+        val (tint, icon) = when (type) {
+            SnackbarType.SUCCESS -> Color(0xFF39A96B) to Icons.Default.CheckCircle
+            SnackbarType.ERROR -> MaterialTheme.colorScheme.error to Icons.Default.Error
+            SnackbarType.WARNING -> Color(0xFFD69A35) to Icons.Default.Warning
+            SnackbarType.INFO -> MaterialTheme.colorScheme.primary to Icons.Default.Info
+        }
+        Surface(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            shape = MaterialTheme.shapes.medium,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            tonalElevation = 4.dp,
+            shadowElevation = 4.dp
+        ) {
+            Row(Modifier.padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Icon(icon, null, Modifier.size(22.dp), tint = tint)
+                Spacer(Modifier.width(12.dp))
+                Text(message, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                IconButton(onClick = dismiss) {
+                    Icon(Icons.Default.Close, stringResource(R.string.action_close))
+                }
+            }
+        }
     }
 }
 
@@ -117,7 +121,7 @@ fun UpdateBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp)
+                .padding(horizontal = 16.dp)
                 .padding(bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -212,7 +216,7 @@ fun UpdateBottomSheet(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(50.dp)
+                            .heightIn(min = 52.dp)
                             .pointerInput(Unit) {
                                 detectDragGestures { change, _ -> change.consume() }
                             },

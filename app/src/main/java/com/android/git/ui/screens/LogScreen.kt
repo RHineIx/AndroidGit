@@ -42,11 +42,11 @@ import com.android.git.ui.components.ElevatedCard
 import com.android.git.ui.components.GitIcons as Icons
 import com.android.git.ui.components.IconButton
 import com.android.git.ui.components.ModalBottomSheet
-import com.android.git.ui.components.OplusPreferenceGroup
-import com.android.git.ui.components.OplusPreferenceRow
-import com.android.git.ui.components.OplusPreferenceDivider
-import com.android.git.ui.components.OplusSectionTitle
-import com.android.git.ui.components.OplusScaffold
+import com.android.git.ui.components.PreferenceGroup
+import com.android.git.ui.components.PreferenceRow
+import com.android.git.ui.components.PreferenceDivider
+import com.android.git.ui.components.SectionTitle
+import com.android.git.ui.components.GitScaffold
 import com.android.git.ui.components.OutlinedButton
 import com.android.git.ui.components.SnackbarType
 import com.android.git.ui.components.TextButton
@@ -114,7 +114,7 @@ fun LogScreen(
         statusType = SnackbarType.SUCCESS
     }
 
-    OplusScaffold(
+    GitScaffold(
         title = stringResource(R.string.log_title),
         onBack = onBack,
         subtitle = stringResource(R.string.log_subtitle, commits.size),
@@ -225,14 +225,14 @@ fun TimelineCommitItem(
     onClick: () -> Unit
 ) {
     val authorColor = remember(commit.author) { generateColorFromString(commit.author) }
-    val cardShape = RoundedCornerShape(12.dp)
+    val cardShape = RoundedCornerShape(16.dp)
     val timelineBackground = MaterialTheme.colorScheme.background
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.Top
     ) {
         Column(
@@ -466,7 +466,7 @@ fun CommitDetailsSheet(
     Column(
         modifier = Modifier
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp)
+            .padding(horizontal = 16.dp)
             .navigationBarsPadding()
             .padding(bottom = 24.dp)
     ) {
@@ -477,37 +477,37 @@ fun CommitDetailsSheet(
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface
         )
-        OplusPreferenceGroup {
-            OplusPreferenceRow(stringResource(R.string.log_label_author), commit.author, Icons.Default.Person)
-            OplusPreferenceDivider()
-            OplusPreferenceRow(stringResource(R.string.log_label_date), fullDateFormat.format(commit.date), Icons.Default.CalendarToday)
-            OplusPreferenceDivider()
-            OplusPreferenceRow(
+        PreferenceGroup {
+            PreferenceRow(stringResource(R.string.log_label_author), commit.author, Icons.Default.Person)
+            PreferenceDivider()
+            PreferenceRow(stringResource(R.string.log_label_date), fullDateFormat.format(commit.date), Icons.Default.CalendarToday)
+            PreferenceDivider()
+            PreferenceRow(
                 title = stringResource(R.string.log_label_hash),
                 summary = commit.hash,
                 icon = Icons.Default.Tag,
                 onClick = { onCopy(commit.hash) },
                 trailing = { Icon(Icons.Default.ContentCopy, stringResource(R.string.action_copy), Modifier.size(22.dp)) }
             )
-            OplusPreferenceDivider()
-            OplusPreferenceRow(
+            PreferenceDivider()
+            PreferenceRow(
                 stringResource(R.string.log_label_status),
                 if (commit.isPushed) stringResource(R.string.log_status_pushed) else stringResource(R.string.log_status_local),
                 if (commit.isPushed) Icons.Default.CloudDone else Icons.Default.CloudOff
             )
         }
         Spacer(Modifier.height(8.dp))
-        OplusSectionTitle(stringResource(R.string.log_danger_zone))
-        OplusPreferenceGroup {
-            OplusPreferenceRow(
+        SectionTitle(stringResource(R.string.log_danger_zone))
+        PreferenceGroup {
+            PreferenceRow(
                 title = stringResource(R.string.log_btn_revert),
                 icon = Icons.AutoMirrored.Filled.Undo,
                 enabled = !isActionRunning,
                 danger = true,
                 onClick = { showRevertDialog = true }
             )
-            OplusPreferenceDivider()
-            OplusPreferenceRow(
+            PreferenceDivider()
+            PreferenceRow(
                 title = stringResource(R.string.log_btn_reset),
                 icon = Icons.Default.Restore,
                 enabled = !isActionRunning,
@@ -546,7 +546,7 @@ fun LogErrorState(
 ) {
     ElevatedCard(
         modifier = modifier.padding(24.dp),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
     ) {
         Column(

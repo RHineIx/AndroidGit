@@ -30,18 +30,15 @@ import com.android.git.data.ThemePalette
 import com.android.git.data.DarkSurface
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
-import io.github.suqi8.coui.kmp.theme.COUITheme
-import io.github.suqi8.coui.kmp.theme.darkColorScheme as couiDarkColorScheme
-import io.github.suqi8.coui.kmp.theme.lightColorScheme as couiLightColorScheme
 
 val LocalAndroidGitDarkTheme = staticCompositionLocalOf { false }
 
 private val AndroidGitShapes = Shapes(
-    extraSmall = RoundedCornerShape(4.dp),
-    small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(12.dp),
-    large = RoundedCornerShape(12.dp),
-    extraLarge = RoundedCornerShape(20.dp)
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(14.dp),
+    medium = RoundedCornerShape(18.dp),
+    large = RoundedCornerShape(24.dp),
+    extraLarge = RoundedCornerShape(28.dp)
 )
 
 @Composable
@@ -58,135 +55,39 @@ fun AndroidGitTheme(
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         } else null
     }
-    val coui = remember(darkTheme, appearance, system) {
-        val base = if (darkTheme) couiDarkColorScheme() else couiLightColorScheme()
-        val amoled = darkTheme && appearance.darkSurface == DarkSurface.AMOLED
-        val page = when {
-            amoled -> Color.Black
-            system != null -> if (darkTheme) system.surface else system.surfaceContainerLow
-            darkTheme -> Color(0xFF121212)
-            else -> base.backgroundWithCard
-        }
-        val card = when {
-            amoled -> Color(0xFF1A1A1A)
-            system != null -> if (darkTheme) system.surfaceContainer else system.surface
-            darkTheme -> Color(0xFF202020)
-            else -> base.cardBackground
-        }
-        val raised = when {
-            amoled -> Color(0xFF292929)
-            system != null -> system.surfaceContainerHigh
-            darkTheme -> Color(0xFF303030)
-            else -> base.cardPressed
-        }
-        val foreground = system?.onSurface ?: base.labelPrimary
-        val accent = when (appearance.palette) {
-            ThemePalette.CUSTOM -> readableAccent(Color(appearance.customAccent), page)
-            ThemePalette.SYSTEM -> system?.primary ?: base.primary
-            ThemePalette.DEFAULT -> base.primary
-        }
-        val onAccent = if (system != null) system.onPrimary else bestOnAccent(accent)
-        val textAccent = readableAccent(accent, page)
-        val tinted = accent.copy(alpha = if (darkTheme) 0.25f else 0.15f)
-        base.copy(
-            primary = accent, onPrimary = onAccent, labelOnColor = onAccent,
-            primaryText = textAccent, primaryTextOnPopup = readableAccent(accent, card),
-            labelTheme = textAccent, link = textAccent, tips = textAccent,
-            additional = accent, secondary = tinted, containerTheme = accent,
-            containerThemeHalftone = tinted, textColorHighlight = tinted,
-            disable = accent.copy(alpha = 0.30f), focusOutline = accent.copy(alpha = 0.4f),
-            disabledOnPrimaryButton = onAccent.copy(alpha = 0.45f),
-            background = page, backgroundElevated = card, backgroundElevatedWithCard = page,
-            backgroundWithCard = page, surface = card, surfaceWithCard = page,
-            surfaceTop = card, backgroundTop = card, bar = card, bottomBar = card,
-            card = card, cardBackground = card, cardPressed = raised, surfaceContainerHighest = raised,
-            labelPrimary = foreground,
-            labelSecondary = system?.onSurfaceVariant ?: base.labelSecondary,
-            labelSecondaryVariant = system?.onSurfaceVariant ?: base.labelSecondaryVariant,
-            outline = system?.outline ?: base.outline,
-            divider = system?.outlineVariant ?: base.divider
-        )
-    }
-    val materialColors = remember(coui, darkTheme) {
-        val page = coui.backgroundWithCard
-        val card = coui.cardBackground.compositeOver(page)
-        val raised = coui.cardPressed.compositeOver(page)
-        // Keep specialized Git controls on the same neutral surfaces as COUI preferences.
-        if (darkTheme) darkColorScheme(
-            primary = coui.primary,
-            onPrimary = coui.onPrimary,
-            primaryContainer = coui.containerThemeHalftone.compositeOver(page),
-            onPrimaryContainer = coui.primaryText,
-            secondary = coui.primary,
-            onSecondary = coui.onPrimary,
-            secondaryContainer = raised,
-            onSecondaryContainer = coui.labelPrimary,
-            tertiary = coui.primary,
-            onTertiary = coui.onPrimary,
-            tertiaryContainer = coui.containerThemeHalftone.compositeOver(page),
-            onTertiaryContainer = coui.primaryText,
-            background = page,
-            onBackground = coui.labelPrimary,
-            surface = page,
-            onSurface = coui.labelPrimary,
-            surfaceVariant = raised,
-            onSurfaceVariant = coui.labelSecondaryVariant,
-            surfaceTint = Color.Transparent,
-            surfaceDim = page,
-            surfaceBright = raised,
-            surfaceContainerLowest = page,
-            surfaceContainerLow = card,
-            surfaceContainer = card,
-            surfaceContainerHigh = raised,
-            surfaceContainerHighest = raised,
-            outline = coui.outline,
-            outlineVariant = coui.divider,
-            error = coui.error,
-            onError = coui.onError,
-            errorContainer = coui.containerRed.compositeOver(page),
-            onErrorContainer = coui.error,
-            inverseSurface = OplusCardLight,
-            inverseOnSurface = Color(0xE6000000),
-            inversePrimary = coui.primaryText,
-            scrim = Color.Black
+    val materialColors = remember(darkTheme, appearance, system) {
+        val base = system ?: if (darkTheme) darkColorScheme(
+            primary = Color(0xFFD0BCFF), secondary = Color(0xFFCCC2DC), tertiary = Color(0xFFEFB8C8),
+            background = Color(0xFF121318), surface = Color(0xFF121318),
+            surfaceContainerLowest = Color(0xFF0D0E12), surfaceContainerLow = Color(0xFF1B1C22),
+            surfaceContainer = Color(0xFF202128), surfaceContainerHigh = Color(0xFF292A32),
+            surfaceContainerHighest = Color(0xFF34353D)
         ) else lightColorScheme(
-            primary = coui.primary,
-            onPrimary = coui.onPrimary,
-            primaryContainer = coui.containerThemeHalftone.compositeOver(page),
-            onPrimaryContainer = coui.primaryText,
-            secondary = coui.primary,
-            onSecondary = coui.onPrimary,
-            secondaryContainer = raised,
-            onSecondaryContainer = coui.labelPrimary,
-            tertiary = coui.primary,
-            onTertiary = coui.onPrimary,
-            tertiaryContainer = coui.containerThemeHalftone.compositeOver(page),
-            onTertiaryContainer = coui.primaryText,
-            background = page,
-            onBackground = coui.labelPrimary,
-            surface = page,
-            onSurface = coui.labelPrimary,
-            surfaceVariant = raised,
-            onSurfaceVariant = coui.labelSecondaryVariant,
-            surfaceTint = Color.Transparent,
-            surfaceDim = page,
-            surfaceBright = card,
-            surfaceContainerLowest = page,
-            surfaceContainerLow = card,
-            surfaceContainer = card,
-            surfaceContainerHigh = raised,
-            surfaceContainerHighest = raised,
-            outline = coui.outline,
-            outlineVariant = coui.divider,
-            error = coui.error,
-            onError = coui.onError,
-            errorContainer = coui.containerRed.compositeOver(page),
-            onErrorContainer = coui.error,
-            inverseSurface = OplusCardDark,
-            inverseOnSurface = Color(0xE6FFFFFF),
-            inversePrimary = coui.primaryText,
-            scrim = Color.Black
+            primary = Color(0xFF6650A4), secondary = Color(0xFF625B71), tertiary = Color(0xFF7D5260),
+            background = Color(0xFFF7F7FC), surface = Color(0xFFF7F7FC),
+            surfaceContainerLowest = Color.White, surfaceContainerLow = Color(0xFFF1F0F7),
+            surfaceContainer = Color(0xFFECEBF3), surfaceContainerHigh = Color(0xFFE5E4EE),
+            surfaceContainerHighest = Color(0xFFDEDEE8)
         )
+        val surfaces = if (darkTheme && appearance.darkSurface == DarkSurface.AMOLED) base.copy(
+            background = Color.Black, surface = Color.Black, surfaceDim = Color.Black,
+            surfaceBright = Color(0xFF24242A), surfaceContainerLowest = Color.Black,
+            surfaceContainerLow = Color(0xFF101014), surfaceContainer = Color(0xFF18181E),
+            surfaceContainerHigh = Color(0xFF212127), surfaceContainerHighest = Color(0xFF2B2B32)
+        ) else base
+        if (appearance.palette != ThemePalette.CUSTOM) surfaces else {
+            val accent = readableAccent(Color(appearance.customAccent), surfaces.background)
+            val container = accent.copy(alpha = if (darkTheme) 0.22f else 0.13f).compositeOver(surfaces.surface)
+            val secondary = lerp(accent, surfaces.onSurface, 0.30f)
+            surfaces.copy(
+                primary = accent, onPrimary = bestOnAccent(accent),
+                primaryContainer = container, onPrimaryContainer = readableAccent(accent, container),
+                secondary = secondary, onSecondary = bestOnAccent(secondary),
+                secondaryContainer = secondary.copy(alpha = 0.15f).compositeOver(surfaces.surface),
+                onSecondaryContainer = surfaces.onSurface, inversePrimary = accent,
+                surfaceTint = accent
+            )
+        }
     }
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -204,9 +105,7 @@ fun AndroidGitTheme(
         }
     }
     CompositionLocalProvider(LocalAndroidGitDarkTheme provides darkTheme) {
-        COUITheme(colors = coui) {
-            MaterialTheme(colorScheme = materialColors, typography = Typography, shapes = AndroidGitShapes, content = content)
-        }
+        MaterialTheme(colorScheme = materialColors, typography = Typography, shapes = AndroidGitShapes, content = content)
     }
 }
 

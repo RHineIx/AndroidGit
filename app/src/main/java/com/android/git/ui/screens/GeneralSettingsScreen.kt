@@ -6,11 +6,11 @@ import com.android.git.ui.components.CircularProgressIndicator
 
 import com.android.git.ui.components.GitIcons as Icons
 
-import com.android.git.ui.components.OplusScaffold
-import com.android.git.ui.components.OplusSectionTitle
-import com.android.git.ui.components.OplusPreferenceGroup
-import com.android.git.ui.components.OplusPreferenceRow
-import com.android.git.ui.components.OplusPreferenceDivider
+import com.android.git.ui.components.GitScaffold
+import com.android.git.ui.components.SectionTitle
+import com.android.git.ui.components.PreferenceGroup
+import com.android.git.ui.components.PreferenceRow
+import com.android.git.ui.components.PreferenceDivider
 import com.android.git.ui.components.Button
 import com.android.git.ui.components.DropdownMenuItem
 import com.android.git.ui.components.IconButton
@@ -89,7 +89,7 @@ fun GeneralSettingsScreen(
         "gemma-3-27b-it"
     )
 
-    OplusScaffold(
+    GitScaffold(
         title = stringResource(R.string.settings_title),
         onBack = onBack
     ) { padding ->
@@ -99,7 +99,7 @@ fun GeneralSettingsScreen(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(padding)
-                    .padding(horizontal = 12.dp)
+                    .padding(horizontal = 16.dp)
                     .padding(top = 8.dp, bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -112,7 +112,7 @@ fun GeneralSettingsScreen(
                 )
 
                 SettingsSection(title = stringResource(R.string.settings_section_app), padded = false) {
-                    OplusPreferenceRow(
+                    PreferenceRow(
                         title = stringResource(R.string.settings_auto_open),
                         summary = stringResource(R.string.settings_auto_open_desc),
                         icon = Icons.Default.FolderOpen,
@@ -149,16 +149,16 @@ fun GeneralSettingsScreen(
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(16.dp),
                             visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                             singleLine = true
                         )
 
                     }
-                    OplusPreferenceDivider()
+                    PreferenceDivider()
                     Box {
-                        OplusPreferenceRow(
+                        PreferenceRow(
                             title = stringResource(R.string.settings_ai_model),
                             summary = geminiModel,
                             icon = Icons.Default.AutoAwesome,
@@ -184,7 +184,7 @@ fun GeneralSettingsScreen(
                         }
                     }
 
-                    OplusPreferenceDivider()
+                    PreferenceDivider()
                     Column(Modifier.padding(16.dp)) {
                         OutlinedTextField(
                             value = geminiPrompt,
@@ -192,7 +192,7 @@ fun GeneralSettingsScreen(
                             label = { Text(stringResource(R.string.settings_custom_prompt)) },
                             placeholder = { Text(stringResource(R.string.settings_custom_prompt_hint)) },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(16.dp),
                             minLines = 3,
                             maxLines = 6
                         )
@@ -200,8 +200,8 @@ fun GeneralSettingsScreen(
                         Spacer(modifier = Modifier.height(20.dp))
                         Button(
                             onClick = { focusManager.clearFocus(); viewModel.verifyGeminiSettings(geminiApiKey, geminiModel, geminiPrompt) },
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
-                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                            shape = RoundedCornerShape(16.dp),
                             enabled = !isLoading
                         ) {
                             if (isLoading) {
@@ -258,7 +258,7 @@ fun AppVersionFooter(
         packageInfo?.versionCode ?: 0
     }
 
-    OplusPreferenceRow(
+    PreferenceRow(
         title = stringResource(R.string.settings_version_fmt, versionName, versionCode),
         summary = stringResource(R.string.settings_check_updates_hint),
         icon = TablerIcons.Outline.Versions,
@@ -285,19 +285,19 @@ fun DeveloperSection(context: Context, onCheckUpdate: () -> Unit) {
                 Text("@RHineix", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        OplusPreferenceDivider()
-        OplusPreferenceRow(
+        PreferenceDivider()
+        PreferenceRow(
             title = stringResource(R.string.settings_social_github),
             icon = Icons.Default.Source,
             onClick = { openUrl(context, "https://github.com/RHineix") }
         )
-        OplusPreferenceDivider()
-        OplusPreferenceRow(
+        PreferenceDivider()
+        PreferenceRow(
             title = stringResource(R.string.settings_social_telegram),
             icon = TablerIcons.Outline.BrandTelegram,
             onClick = { openUrl(context, "https://t.me/RHineix") }
         )
-        OplusPreferenceDivider()
+        PreferenceDivider()
         AppVersionFooter(context = context, onCheckUpdate = onCheckUpdate)
     }
 }
@@ -318,8 +318,8 @@ fun SettingsSection(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        OplusSectionTitle(title = title)
-        OplusPreferenceGroup {
+        SectionTitle(title = title)
+        PreferenceGroup {
             if (padded) Column(Modifier.padding(16.dp), content = content)
             else content()
         }

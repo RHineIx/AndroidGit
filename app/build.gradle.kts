@@ -99,8 +99,7 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
 
-    // ColorOS 17 interface powered by COUI, Haze, and Tabler Icons.
-    implementation(libs.coui.ui)
+    // Material 3 interface, progressive Haze blur and Tabler Icons.
     implementation(libs.haze.core)
     implementation(libs.haze.blur)
     implementation(libs.tabler.icons)

@@ -2,7 +2,7 @@ package com.android.git.ui.screens
 
 import com.android.git.ui.components.GitIcons as Icons
 
-import com.android.git.ui.components.OplusScaffold
+import com.android.git.ui.components.GitScaffold
 import com.android.git.ui.components.Button
 import com.android.git.ui.components.Card
 
@@ -18,9 +18,9 @@ import androidx.compose.foundation.verticalScroll
 
 @Composable
 fun PermissionScreen(onRequest: () -> Unit) {
-    OplusScaffold(title = stringResource(R.string.perm_title)) { padding ->
+    GitScaffold(title = stringResource(R.string.perm_title)) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding).padding(horizontal = 12.dp).padding(top = 8.dp, bottom = 32.dp),
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding).padding(horizontal = 16.dp).padding(top = 8.dp, bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Card(modifier = Modifier.fillMaxWidth()) {
@@ -39,7 +39,7 @@ fun PermissionScreen(onRequest: () -> Unit) {
                 )
             }
             Spacer(Modifier.height(8.dp))
-            Button(onClick = onRequest, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+            Button(onClick = onRequest, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                 Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.perm_btn_grant))

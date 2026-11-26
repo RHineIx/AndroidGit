@@ -4,33 +4,23 @@ import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.sp
 
-private fun oplusText(size: Float, height: Float, weight: FontWeight = FontWeight.Normal) = TextStyle(
-    fontFamily = FontFamily.SansSerif,
-    fontWeight = weight,
-    fontSize = size.sp,
-    lineHeight = height.sp,
-    letterSpacing = 0.sp,
-    lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Top, LineHeightStyle.Trim.None)
+private fun type(size: Int, line: Int, weight: FontWeight = FontWeight.Normal) = TextStyle(
+    fontFamily = FontFamily.Default, fontSize = size.sp, lineHeight = line.sp, fontWeight = weight
 )
 
-/** COUI's system-font metrics also apply to the Git-specific Material content. */
 val Typography = Typography(
-    displayLarge = oplusText(32f, 39.43f, FontWeight.SemiBold),
-    displayMedium = oplusText(32f, 39.43f, FontWeight.SemiBold),
-    displaySmall = oplusText(24f, 28.8f, FontWeight.Medium),
-    headlineLarge = oplusText(32f, 39.43f, FontWeight.SemiBold),
-    headlineMedium = oplusText(24f, 28.8f, FontWeight.Medium),
-    headlineSmall = oplusText(20f, 23.66f, FontWeight.Medium),
-    titleLarge = oplusText(18f, 22.29f, FontWeight.Medium),
-    titleMedium = oplusText(16f, 18.53f, FontWeight.Medium),
-    titleSmall = oplusText(14f, 17.14f, FontWeight.Medium),
-    bodyLarge = oplusText(16f, 18.53f),
-    bodyMedium = oplusText(14f, 17.14f),
-    bodySmall = oplusText(13f, 15.92f),
-    labelLarge = oplusText(16f, 20.21f, FontWeight.Medium),
-    labelMedium = oplusText(12f, 14.69f, FontWeight.Medium),
-    labelSmall = oplusText(11f, 12.57f)
+    headlineLarge = type(32, 40, FontWeight.SemiBold),
+    headlineMedium = type(28, 36, FontWeight.SemiBold),
+    headlineSmall = type(24, 32, FontWeight.SemiBold),
+    titleLarge = type(22, 28, FontWeight.SemiBold),
+    titleMedium = type(16, 24, FontWeight.SemiBold),
+    titleSmall = type(14, 20, FontWeight.Medium),
+    bodyLarge = type(16, 24),
+    bodyMedium = type(14, 20),
+    bodySmall = type(12, 18),
+    labelLarge = type(14, 20, FontWeight.Medium),
+    labelMedium = type(12, 16, FontWeight.Medium),
+    labelSmall = type(11, 16, FontWeight.Medium)
 )

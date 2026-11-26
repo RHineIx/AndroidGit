@@ -16,7 +16,7 @@ import com.android.git.R
 import com.android.git.data.GitManager
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.components.Button
-import com.android.git.ui.components.OplusScaffold
+import com.android.git.ui.components.GitScaffold
 import com.android.git.ui.components.SnackbarType
 import com.android.git.utils.isGitFailureMessage
 import kotlinx.coroutines.launch
@@ -41,7 +41,7 @@ fun ConflictResolverScreen(
         fileContent = gitManager.readFileContent(filePath)
     }
 
-    OplusScaffold(
+    GitScaffold(
         title = stringResource(R.string.conflict_resolver_title),
         onBack = onBack,
         subtitle = filePath,
@@ -109,7 +109,7 @@ fun ConflictResolverScreen(
             // Info Header
             Surface(
                 color = MaterialTheme.colorScheme.surfaceContainerLow,
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Text(
@@ -125,8 +125,8 @@ fun ConflictResolverScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp)
-                    .background(MaterialTheme.colorScheme.surfaceContainerLow, androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                    .padding(horizontal = 16.dp)
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow, androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp)
             ) {

@@ -5,6 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -34,18 +38,12 @@ import dev.chrisbanes.haze.blur.HazeBlurStyle
 import dev.chrisbanes.haze.blur.hazeBlur
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
-import io.github.suqi8.coui.kmp.basic.Card
-import io.github.suqi8.coui.kmp.basic.Icon
-import io.github.suqi8.coui.kmp.basic.IconButton
-import io.github.suqi8.coui.kmp.basic.Scaffold
-import io.github.suqi8.coui.kmp.basic.SmallTitle
-import io.github.suqi8.coui.kmp.theme.COUITheme
 
-val LocalOplusHazeState = staticCompositionLocalOf<HazeState?> { null }
+val LocalPageHazeState = staticCompositionLocalOf<HazeState?> { null }
 
 /** All Git pages share one fixed, centered, edge-to-edge toolbar. */
 @Composable
-fun OplusScaffold(
+fun GitScaffold(
     title: String,
     onBack: (() -> Unit)? = null,
     subtitle: String = "",
@@ -57,11 +55,11 @@ fun OplusScaffold(
     content: @Composable (PaddingValues) -> Unit
 ) {
     val localHazeState = rememberHazeState()
-    val hazeState = LocalOplusHazeState.current ?: localHazeState
-    CompositionLocalProvider(LocalOplusHazeState provides hazeState) {
+    val hazeState = LocalPageHazeState.current ?: localHazeState
+    CompositionLocalProvider(LocalPageHazeState provides hazeState) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            containerColor = COUITheme.colorScheme.backgroundWithCard,
+            containerColor = MaterialTheme.colorScheme.background,
             topBar = {
                 CenteredPageBar(title, subtitle, onBack, backEnabled, hazeState, actions)
             },
@@ -83,11 +81,11 @@ private fun CenteredPageBar(
     hazeState: HazeState,
     actions: @Composable RowScope.() -> Unit
 ) {
-    val page = COUITheme.colorScheme.backgroundWithCard
+    val page = MaterialTheme.colorScheme.background
     val supportsBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val fontScale = LocalDensity.current.fontScale
-    val toolbarHeight = ((if (subtitle.isBlank()) 58f else 68f) * maxOf(1f, fontScale / 1.25f)).dp
+    val toolbarHeight = ((if (subtitle.isBlank()) 60f else 72f) * maxOf(1f, fontScale / 1.25f)).dp
     val blurStyle = remember {
         HazeBlurStyle {
             blurRadius(32.dp)
@@ -119,17 +117,14 @@ private fun CenteredPageBar(
                     Box(contentAlignment = Alignment.Center) {
                         if (onBack != null) {
                             Box(
-                                Modifier.size(44.dp).clip(CircleShape)
-                                    .background(COUITheme.colorScheme.cardBackground.copy(alpha = 0.86f)),
+                                Modifier.size(48.dp).clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.86f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 IconButton(
                                     onClick = onBack,
                                     enabled = backEnabled,
-                                    minWidth = 44.dp,
-                                    minHeight = 44.dp,
-                                    cornerRadius = 22.dp,
-                                    material = false
+                                    modifier = Modifier.size(48.dp)
                                 ) {
                                     Icon(
                                         GitIcons.Default.ArrowBack,
@@ -178,12 +173,12 @@ private fun CenteredPageBar(
 }
 
 @Composable
-fun OplusSectionTitle(title: String, modifier: Modifier = Modifier) {
-    SmallTitle(text = title, modifier = modifier, insideMargin = PaddingValues(horizontal = 20.dp, vertical = 8.dp))
+fun SectionTitle(title: String, modifier: Modifier = Modifier) {
+    Text(title, modifier = modifier.padding(start = 4.dp, end = 4.dp, top = 12.dp, bottom = 4.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
 }
 
 @Composable
-fun OplusCard(
+fun SectionCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit
 ) {

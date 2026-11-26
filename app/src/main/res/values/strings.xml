@@ -305,7 +305,7 @@
     <string name="auth_save_failed">Unable to save authentication settings.</string>
     <string name="appearance_section">Appearance</string>
     <string name="appearance_palette">Color palette</string>
-    <string name="appearance_default">Default (COUI)</string>
+    <string name="appearance_default">Default (Material)</string>
     <string name="appearance_system_colors">System colors (Material You)</string>
     <string name="appearance_custom">Custom accent</string>
     <string name="appearance_dark_surface">Dark background</string>

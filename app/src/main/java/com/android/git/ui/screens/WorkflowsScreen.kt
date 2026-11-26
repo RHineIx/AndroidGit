@@ -37,14 +37,14 @@ import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.components.Button
 import com.android.git.ui.components.CircularProgressIndicator
 import com.android.git.ui.components.DropdownMenu
-import com.android.git.ui.components.OplusPreferenceRow
+import com.android.git.ui.components.PreferenceRow
 import com.android.git.ui.components.DropdownMenuItem
 import com.android.git.ui.components.ElevatedCard
 import com.android.git.ui.components.GitIcons as Icons
 import com.android.git.ui.components.IconButton
 import com.android.git.ui.components.LinearProgressIndicator
-import com.android.git.ui.components.OplusScaffold
-import com.android.git.ui.components.OplusSectionTitle
+import com.android.git.ui.components.GitScaffold
+import com.android.git.ui.components.SectionTitle
 import com.android.git.ui.components.OutlinedTextField
 import com.android.git.ui.components.Switch
 import com.android.git.ui.components.TextButton
@@ -65,7 +65,7 @@ fun WorkflowsScreen(
         viewModel.loadWorkflowsForCurrentRepository()
     }
 
-    OplusScaffold(
+    GitScaffold(
         title = stringResource(R.string.workflow_title),
         onBack = onBack,
         actions = {
@@ -79,7 +79,7 @@ fun WorkflowsScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                    start = 12.dp, end = 12.dp,
+                    start = 16.dp, end = 16.dp,
                     top = padding.calculateTopPadding() + 8.dp,
                     bottom = padding.calculateBottomPadding() + 32.dp
                 ),
@@ -117,7 +117,7 @@ fun WorkflowsScreen(
                 items(viewModel.githubWorkflows, key = { it.id }) { workflow ->
                     ElevatedCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
                     ) {
                         Row(
@@ -147,7 +147,7 @@ fun WorkflowsScreen(
                 }
 
                 item {
-                    OplusSectionTitle(
+                    SectionTitle(
                         title = stringResource(R.string.workflow_runs),
                         modifier = Modifier.padding(top = 8.dp)
                     )
@@ -332,7 +332,7 @@ private fun WorkflowInputField(
         input.type.equals("choice", ignoreCase = true) && input.options.isNotEmpty() -> {
             var expanded by remember(input.name) { mutableStateOf(false) }
             Box {
-                OplusPreferenceRow(
+                PreferenceRow(
                     title = label,
                     summary = value,
                     onClick = { expanded = true },
@@ -380,7 +380,7 @@ private fun WorkflowRunCard(run: GitHubWorkflowRun) {
     }
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
     ) {
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
