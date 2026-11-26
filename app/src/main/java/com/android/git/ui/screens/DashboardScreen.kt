@@ -224,7 +224,7 @@ fun DashboardScreen(
                                 Modifier.weight(1f).fillMaxHeight(), enabled = !isLoading)
                         }
                         ActionTile(stringResource(R.string.dashboard_tool_workflows), Icons.Default.PlayCircle, onOpenWorkflows,
-                            Modifier.fillMaxWidth(), enabled = !isLoading)
+                            Modifier.fillMaxWidth(), enabled = !isLoading, horizontal = true)
                     }
                     is DashboardState.Error -> {
                         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer), modifier = Modifier.fillMaxWidth()) {

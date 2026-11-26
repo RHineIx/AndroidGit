@@ -26,3 +26,7 @@ Official releases are triggered by version tags on main; manual workflow dispatc
 ## Verification
 
 The preceding build at cd8f163 passed CI. This UI redesign requires a fresh compilation and on-device visual verification of scrolling, dialogs, keyboard, theme changes and authentication.
+
+### Compact layout and selection controls
+
+Repository status cards share the primary container color and 8dp spacing. Action tiles use an 84dp minimum height, with a 60dp full-width Workflow action. Theme brightness uses a segmented control and dynamic colors use a switch. Selection menus anchor to the trailing button; page-local Haze sources prevent cross-destination sampling during short fade transitions.

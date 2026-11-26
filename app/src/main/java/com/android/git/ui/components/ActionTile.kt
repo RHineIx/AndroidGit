@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun ActionTile(title: String, icon: ImageVector, onClick: () -> Unit, modifier: Modifier = Modifier,
-    enabled: Boolean = true, danger: Boolean = false) {
+    enabled: Boolean = true, danger: Boolean = false, horizontal: Boolean = false) {
     val colors = MaterialTheme.colorScheme
     val accent = if (danger) colors.error else colors.primary
     androidx.compose.material3.ElevatedCard(
@@ -24,16 +24,32 @@ fun ActionTile(title: String, icon: ImageVector, onClick: () -> Unit, modifier: 
         colors = CardDefaults.elevatedCardColors(containerColor = colors.surfaceContainerLow),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
     ) {
-        Column(
-            Modifier.fillMaxWidth().heightIn(min = 84.dp).padding(horizontal = 8.dp, vertical = 10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterVertically)
-        ) {
-            Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(accent.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center) {
-                Icon(icon, null, Modifier.size(22.dp), tint = accent.copy(alpha = if (enabled) 1f else 0.38f))
+        if (horizontal) {
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TileIcon(icon, accent, enabled)
+                Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium)
             }
-            Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
+        } else {
+            Column(
+                Modifier.fillMaxWidth().heightIn(min = 84.dp).padding(horizontal = 8.dp, vertical = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterVertically)
+            ) {
+                TileIcon(icon, accent, enabled)
+                Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
+            }
         }
+    }
+}
+
+@Composable
+private fun TileIcon(icon: ImageVector, accent: androidx.compose.ui.graphics.Color, enabled: Boolean) {
+    Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(accent.copy(alpha = 0.12f)),
+        contentAlignment = Alignment.Center) {
+        Icon(icon, null, Modifier.size(22.dp), tint = accent.copy(alpha = if (enabled) 1f else 0.38f))
     }
 }

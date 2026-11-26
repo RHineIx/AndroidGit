@@ -492,25 +492,27 @@ fun FileChangeItem(
             }
         }
 
-        DropdownMenu(
-            expanded = showMenu,
-            onDismissRequest = { showMenu = false },
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.changes_action_ignore)) },
-                onClick = {
-                    showMenu = false
-                    onIgnore()
-                }
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.changes_action_discard), color = MaterialTheme.colorScheme.error) },
-                onClick = {
-                    showMenu = false
-                    onDiscard()
-                }
-            )
+        Box(Modifier.align(Alignment.CenterEnd)) {
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false },
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.changes_action_ignore)) },
+                    onClick = {
+                        showMenu = false
+                        onIgnore()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.changes_action_discard), color = MaterialTheme.colorScheme.error) },
+                    onClick = {
+                        showMenu = false
+                        onDiscard()
+                    }
+                )
+            }
         }
     }
 }

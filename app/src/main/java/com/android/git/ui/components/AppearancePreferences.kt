@@ -2,6 +2,8 @@ package com.android.git.ui.components
 
 import android.os.Build
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -47,7 +49,7 @@ internal fun AppearancePreferences(
             title = stringResource(R.string.appearance_system_colors),
             summary = stringResource(if (dynamicSupported) R.string.appearance_system_colors_hint else R.string.appearance_dynamic_fallback),
             enabled = dynamicSupported,
-            onClick = { toggle(!dynamic) },
+            modifier = Modifier.toggleable(value = dynamic && dynamicSupported, enabled = dynamicSupported, role = Role.Switch, onValueChange = toggle),
             trailing = { Switch(checked = dynamic && dynamicSupported, onCheckedChange = null, enabled = dynamicSupported) }
         )
     }
