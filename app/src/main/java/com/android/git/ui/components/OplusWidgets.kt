@@ -174,7 +174,7 @@ fun Button(
 ) {
     val dialogAction = LocalDialogAction.current
     val actionContentColor = if (dialogAction && colors.containerColor.alpha > 0f) colors.containerColor else colors.contentColor
-    val disabledActionColor = if (dialogAction) COUITheme.colorScheme.disabledOnSurface else colors.disabledContentColor
+    val disabledActionColor = if (dialogAction) COUITheme.colorScheme.disabledNeutral else colors.disabledContentColor
     CouiButton(
         onClick = onClick,
         modifier = if (dialogAction) modifier.fillMaxWidth() else modifier,
@@ -194,7 +194,7 @@ fun Button(
         CompositionLocalProvider(
             LocalContentColor provides if (enabled) actionContentColor else disabledActionColor,
         ) {
-            ProvideTextStyle(COUITheme.textStyles.button) { content() }
+            ProvideTextStyle(COUITheme.textStyles.buttonL) { content() }
         }
     }
 }
@@ -594,6 +594,7 @@ fun DropdownMenu(
     val panelHeight = minOf(maxHeight, (windowSize.height - 48.dp).coerceAtLeast(1.dp))
     WindowListPopup(
         show = expanded,
+        materialBlur = false,
         // The library applies popupModifier to its full-window outside-tap
         // detector. Constrain only the panel below, so the detector stays full size.
         popupModifier = Modifier,

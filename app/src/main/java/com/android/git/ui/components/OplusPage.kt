@@ -62,7 +62,7 @@ fun OplusScaffold(
     val localHazeState = rememberHazeState()
     val hazeState = LocalOplusHazeState.current ?: localHazeState
     val blurStyle = remember { HazeBlurStyle { blurRadius(24.dp); noiseFactor(0f) } }
-    val surface = COUITheme.colorScheme.surface
+    val surface = COUITheme.colorScheme.backgroundWithCard
     val supportsBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val collapsed by remember { derivedStateOf { scrollBehavior.state.collapsedFraction >= 0.99f } }
@@ -78,7 +78,7 @@ fun OplusScaffold(
     }
     val baseTextStyles = COUITheme.textStyles
     val headerTextStyles = remember(baseTextStyles, titleFamily) {
-        baseTextStyles.copy(main = baseTextStyles.main.copy(fontFamily = titleFamily))
+        baseTextStyles.copy(displayS = baseTextStyles.displayS.copy(fontFamily = titleFamily), headlineS = baseTextStyles.headlineS.copy(fontFamily = titleFamily))
     }
     CompositionLocalProvider(LocalOplusHazeState provides hazeState) {
         Scaffold(

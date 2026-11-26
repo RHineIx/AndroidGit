@@ -1,14 +1,14 @@
 # AndroidGit UI implementation
 
-AndroidGit uses COUI, Haze, and Tabler Icons to provide a consistent ColorOS 16 interface across its Git tools and settings.
+AndroidGit uses COUI, Haze, and Tabler Icons to provide a consistent ColorOS 17 interface across its Git tools and settings.
 
 ## UI libraries
 
 | Library | Version | Purpose |
 | --- | --- | --- |
-| COUI UI | `1.1.0` | Themes, headers, cards, preference rows, buttons, fields, dialogs, menus, and bottom sheets |
-| Haze and Haze Blur | `2.0.1` | Frosted surfaces on Android 12 and later, with solid backgrounds on older versions |
-| Tabler Icons | `3.49.0` | Outline icons shared through `GitIcons` |
+| COUI UI | `2.1.0` | Themes, headers, cards, preference rows, buttons, fields, dialogs, menus, and bottom sheets |
+| Haze and Haze Blur | `2.1.0` | Frosted surfaces on Android 12 and later, with solid backgrounds on older versions |
+| Tabler Icons | `3.50.0` | Outline icons shared through `GitIcons` |
 
 Jetpack Compose, AndroidX Navigation, and the existing ViewModel architecture continue to support the screens and their behavior.
 
@@ -59,4 +59,4 @@ Use a full JDK and Android SDK 37:
 
 Release builds use code and resource shrinking. Signing and publishing are configured through the manually triggered GitHub Actions workflow; local signing credentials and SDK paths are kept outside version control.
 
-The UI changes passed Release compilation and lint with no errors and 109 warnings. Final visual review is performed on the project owner's device. Private screenshots and account details are not included in the repository.
+The COUI 17 dependency migration requires fresh Release compilation and lint. Final visual review is performed on the project owner's device. Private screenshots and account details are not included in the repository.

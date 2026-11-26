@@ -47,7 +47,7 @@ fun OplusPreferenceRow(
     trailing: (@Composable () -> Unit)? = null,
     danger: Boolean = false
 ) {
-    val tint = if (!enabled) COUITheme.colorScheme.disabledOnSurface else if (danger) COUITheme.colorScheme.error else COUITheme.colorScheme.onSurface
+    val tint = if (!enabled) COUITheme.colorScheme.disabledNeutral else if (danger) COUITheme.colorScheme.error else COUITheme.colorScheme.labelPrimary
     CompositionLocalProvider(LocalContentColor provides tint) {
         BasicComponent(
             modifier = modifier.fillMaxWidth(),
@@ -71,7 +71,7 @@ fun OplusPreferenceRow(
                         GitIcons.Default.ChevronRight,
                         null,
                         Modifier.size(24.dp),
-                        tint = COUITheme.colorScheme.onSurfaceVariantSummary
+                        tint = COUITheme.colorScheme.labelSecondaryVariant
                     )
                 }
             } else null
@@ -84,6 +84,6 @@ fun OplusPreferenceDivider(modifier: Modifier = Modifier) {
     HorizontalDivider(
         modifier = modifier.padding(horizontal = 16.dp),
         thickness = 0.33.dp,
-        color = COUITheme.colorScheme.dividerLine
+        color = COUITheme.colorScheme.divider
     )
 }
