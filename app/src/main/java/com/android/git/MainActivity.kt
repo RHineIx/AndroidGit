@@ -107,7 +107,7 @@ fun MainAppContent(
     }
 
     // Apply the Theme dynamically
-    AndroidGitTheme(darkTheme = isDarkTheme) {
+    AndroidGitTheme(darkTheme = isDarkTheme, appearance = viewModel.appearance) {
         // Dialogs are often siblings of the page scaffold; share its blur samples.
         CompositionLocalProvider(LocalOplusHazeState provides rememberHazeState()) {
             Surface(

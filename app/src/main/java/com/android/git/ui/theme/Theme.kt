@@ -8,6 +8,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -17,8 +19,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
+import com.android.git.data.AppearanceSettings
+import com.android.git.data.ThemePalette
+import com.android.git.data.DarkSurface
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import io.github.suqi8.coui.kmp.theme.COUITheme
@@ -38,9 +47,66 @@ private val AndroidGitShapes = Shapes(
 @Composable
 fun AndroidGitTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    appearance: AppearanceSettings = AppearanceSettings(),
     content: @Composable () -> Unit
 ) {
-    val coui = remember(darkTheme) { if (darkTheme) couiDarkColorScheme() else couiLightColorScheme() }
+    val context = LocalContext.current
+    // Read configuration so wallpaper/theme configuration changes invalidate the palette.
+    val configuration = LocalConfiguration.current
+    val system = remember(context, configuration, darkTheme, appearance.palette) {
+        if (appearance.palette == ThemePalette.SYSTEM && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        } else null
+    }
+    val coui = remember(darkTheme, appearance, system) {
+        val base = if (darkTheme) couiDarkColorScheme() else couiLightColorScheme()
+        val amoled = darkTheme && appearance.darkSurface == DarkSurface.AMOLED
+        val page = when {
+            amoled -> Color.Black
+            system != null -> if (darkTheme) system.surface else system.surfaceContainerLow
+            darkTheme -> Color(0xFF121212)
+            else -> base.backgroundWithCard
+        }
+        val card = when {
+            amoled -> Color(0xFF1A1A1A)
+            system != null -> if (darkTheme) system.surfaceContainer else system.surface
+            darkTheme -> Color(0xFF202020)
+            else -> base.cardBackground
+        }
+        val raised = when {
+            amoled -> Color(0xFF292929)
+            system != null -> system.surfaceContainerHigh
+            darkTheme -> Color(0xFF303030)
+            else -> base.cardPressed
+        }
+        val foreground = system?.onSurface ?: base.labelPrimary
+        val accent = when (appearance.palette) {
+            ThemePalette.CUSTOM -> readableAccent(Color(appearance.customAccent), page)
+            ThemePalette.SYSTEM -> system?.primary ?: base.primary
+            ThemePalette.DEFAULT -> base.primary
+        }
+        val onAccent = if (system != null) system.onPrimary else bestOnAccent(accent)
+        val textAccent = readableAccent(accent, page)
+        val tinted = accent.copy(alpha = if (darkTheme) 0.25f else 0.15f)
+        base.copy(
+            primary = accent, onPrimary = onAccent, labelOnColor = onAccent,
+            primaryText = textAccent, primaryTextOnPopup = readableAccent(accent, card),
+            labelTheme = textAccent, link = textAccent, tips = textAccent,
+            additional = accent, secondary = tinted, containerTheme = accent,
+            containerThemeHalftone = tinted, textColorHighlight = tinted,
+            disable = accent.copy(alpha = 0.30f), focusOutline = accent.copy(alpha = 0.4f),
+            disabledOnPrimaryButton = onAccent.copy(alpha = 0.45f),
+            background = page, backgroundElevated = card, backgroundElevatedWithCard = page,
+            backgroundWithCard = page, surface = card, surfaceWithCard = page,
+            surfaceTop = card, backgroundTop = card, bar = card, bottomBar = card,
+            card = card, cardBackground = card, cardPressed = raised, surfaceContainerHighest = raised,
+            labelPrimary = foreground,
+            labelSecondary = system?.onSurfaceVariant ?: base.labelSecondary,
+            labelSecondaryVariant = system?.onSurfaceVariant ?: base.labelSecondaryVariant,
+            outline = system?.outline ?: base.outline,
+            divider = system?.outlineVariant ?: base.divider
+        )
+    }
     val materialColors = remember(coui, darkTheme) {
         val page = coui.backgroundWithCard
         val card = coui.cardBackground.compositeOver(page)
@@ -81,7 +147,7 @@ fun AndroidGitTheme(
             onErrorContainer = coui.error,
             inverseSurface = OplusCardLight,
             inverseOnSurface = Color(0xE6000000),
-            inversePrimary = OplusBlue,
+            inversePrimary = coui.primaryText,
             scrim = Color.Black
         ) else lightColorScheme(
             primary = coui.primary,
@@ -118,7 +184,7 @@ fun AndroidGitTheme(
             onErrorContainer = coui.error,
             inverseSurface = OplusCardDark,
             inverseOnSurface = Color(0xE6FFFFFF),
-            inversePrimary = OplusBlueDark,
+            inversePrimary = coui.primaryText,
             scrim = Color.Black
         )
     }
@@ -142,6 +208,26 @@ fun AndroidGitTheme(
             MaterialTheme(colorScheme = materialColors, typography = Typography, shapes = AndroidGitShapes, content = content)
         }
     }
+}
+
+private fun contrast(first: Color, second: Color): Float {
+    val a = first.luminance()
+    val b = second.luminance()
+    return (maxOf(a, b) + 0.05f) / (minOf(a, b) + 0.05f)
+}
+
+private fun bestOnAccent(accent: Color): Color =
+    if (contrast(Color.White, accent) >= contrast(Color.Black, accent)) Color.White else Color.Black
+
+/** Keep custom accent text legible against the selected page background. */
+private fun readableAccent(accent: Color, background: Color): Color {
+    if (contrast(accent, background) >= 4.5f) return accent
+    val target = bestOnAccent(background)
+    for (step in 1..20) {
+        val candidate = lerp(accent, target, step / 20f)
+        if (contrast(candidate, background) >= 4.5f) return candidate
+    }
+    return target
 }
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {

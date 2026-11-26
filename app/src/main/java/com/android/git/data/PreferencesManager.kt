@@ -6,6 +6,14 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
+enum class ThemePalette { DEFAULT, SYSTEM, CUSTOM }
+enum class DarkSurface { STANDARD, AMOLED }
+
+data class AppearanceSettings(
+    val palette: ThemePalette = ThemePalette.DEFAULT,
+    val darkSurface: DarkSurface = DarkSurface.STANDARD,
+    val customAccent: Int = 0xFF0080FF.toInt()
+)
 
 class PreferencesManager(context: Context) {
 
@@ -37,6 +45,9 @@ class PreferencesManager(context: Context) {
         private const val KEY_RECENT_PROJECTS = "recent_projects_list"
 
         private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_THEME_PALETTE = "theme_palette"
+        private const val KEY_DARK_SURFACE = "dark_surface"
+        private const val KEY_CUSTOM_ACCENT = "custom_accent"
 
         private const val KEY_GEMINI_API_KEY = "gemini_api_key"
         private const val KEY_GEMINI_MODEL = "gemini_model"
@@ -174,6 +185,24 @@ class PreferencesManager(context: Context) {
 
     fun setThemeMode(mode: ThemeMode) {
         prefs.edit().putInt(KEY_THEME_MODE, mode.ordinal).apply()
+    }
+
+    fun getAppearance(): AppearanceSettings = AppearanceSettings(
+        palette = runCatching {
+            ThemePalette.valueOf(prefs.getString(KEY_THEME_PALETTE, ThemePalette.DEFAULT.name)!!)
+        }.getOrDefault(ThemePalette.DEFAULT),
+        darkSurface = runCatching {
+            DarkSurface.valueOf(prefs.getString(KEY_DARK_SURFACE, DarkSurface.STANDARD.name)!!)
+        }.getOrDefault(DarkSurface.STANDARD),
+        customAccent = prefs.getInt(KEY_CUSTOM_ACCENT, 0xFF0080FF.toInt()) or 0xFF000000.toInt()
+    )
+
+    fun setAppearance(appearance: AppearanceSettings) {
+        prefs.edit()
+            .putString(KEY_THEME_PALETTE, appearance.palette.name)
+            .putString(KEY_DARK_SURFACE, appearance.darkSurface.name)
+            .putInt(KEY_CUSTOM_ACCENT, appearance.customAccent or 0xFF000000.toInt())
+            .apply()
     }
 
     fun getGeminiApiKey(): String = prefs.getString(KEY_GEMINI_API_KEY, "") ?: ""

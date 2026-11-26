@@ -1,50 +1,48 @@
 package com.android.git.ui.components
 
 import android.os.Build
-import android.graphics.Typeface
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.text.font.FontFamily
-import com.android.git.R
 import androidx.compose.ui.unit.dp
+import com.android.git.R
 import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.HazeProgressive
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.blur.HazeBlurStyle
 import dev.chrisbanes.haze.blur.hazeBlur
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
-import io.github.suqi8.coui.kmp.basic.COUIScrollBehavior
 import io.github.suqi8.coui.kmp.basic.Card
 import io.github.suqi8.coui.kmp.basic.Icon
 import io.github.suqi8.coui.kmp.basic.IconButton
 import io.github.suqi8.coui.kmp.basic.Scaffold
 import io.github.suqi8.coui.kmp.basic.SmallTitle
-import io.github.suqi8.coui.kmp.basic.TopAppBar
 import io.github.suqi8.coui.kmp.theme.COUITheme
-import io.github.lyxnx.compose.ui.tablericons.TablerIcons
-import io.github.lyxnx.compose.ui.tablericons.outline.ArrowLeft
 
 val LocalOplusHazeState = staticCompositionLocalOf<HazeState?> { null }
 
-/** One page owns its scrolling chrome, blur sample, and COUI popup host. */
+/** All Git pages share one fixed, centered, edge-to-edge toolbar. */
 @Composable
 fun OplusScaffold(
     title: String,
@@ -58,66 +56,14 @@ fun OplusScaffold(
     snackbarHost: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit
 ) {
-    val scrollBehavior = COUIScrollBehavior(canScroll = { collapsible })
     val localHazeState = rememberHazeState()
     val hazeState = LocalOplusHazeState.current ?: localHazeState
-    val blurStyle = remember { HazeBlurStyle { blurRadius(24.dp); noiseFactor(0f) } }
-    val surface = COUITheme.colorScheme.backgroundWithCard
-    val supportsBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
-    val collapsed by remember { derivedStateOf { scrollBehavior.state.collapsedFraction >= 0.99f } }
-    // ColorOS may resolve the app and Settings host's default font differently.
-    // Resolve an explicit weighted system face for the title only. Subtitle and
-    // preference fonts continue to use their own regular/medium COUI styles.
-    val titleFamily = remember(collapsed) {
-        FontFamily(
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                Typeface.create(Typeface.SANS_SERIF, if (collapsed) 500 else 600, false)
-            } else Typeface.create("sans-serif", if (collapsed) Typeface.NORMAL else Typeface.BOLD)
-        )
-    }
-    val baseTextStyles = COUITheme.textStyles
-    val headerTextStyles = remember(baseTextStyles, titleFamily) {
-        baseTextStyles.copy(bodyXL = baseTextStyles.bodyXL.copy(fontFamily = titleFamily), headlineS = baseTextStyles.headlineS.copy(fontFamily = titleFamily), displayS = baseTextStyles.displayS.copy(fontFamily = titleFamily))
-    }
     CompositionLocalProvider(LocalOplusHazeState provides hazeState) {
         Scaffold(
-            modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
-            containerColor = surface,
+            modifier = Modifier.fillMaxSize(),
+            containerColor = COUITheme.colorScheme.backgroundWithCard,
             topBar = {
-                COUITheme(textStyles = headerTextStyles) {
-                TopAppBar(
-                    title = title,
-                    subtitle = subtitle,
-                    hideSubtitleOnCollapse = false,
-                    scrollBehavior = scrollBehavior,
-                    color = surface.copy(alpha = surface.alpha * if (supportsBlur) 0.96f else 1f),
-                    modifier = Modifier.clipToBounds().then(
-                        if (supportsBlur) Modifier.hazeBlur(input = HazeInput.Sources(hazeState), style = blurStyle) else Modifier
-                    ),
-                    navigationIconPadding = 16.dp,
-                    actionIconPadding = 24.dp,
-                    navigationIcon = {
-                        if (onBack != null) {
-                            IconButton(
-                                onClick = onBack,
-                                modifier = Modifier.padding(start = 8.dp),
-                                enabled = backEnabled,
-                                minWidth = 40.dp,
-                                minHeight = 40.dp,
-                                cornerRadius = 20.dp
-                            ) {
-                                Icon(
-                                    TablerIcons.Outline.ArrowLeft,
-                                    contentDescription = stringResource(R.string.action_back),
-                                    modifier = Modifier.graphicsLayer { scaleX = if (isRtl) -1f else 1f }
-                                )
-                            }
-                        }
-                    },
-                    actions = actions
-                )
-                }
+                CenteredPageBar(title, subtitle, onBack, backEnabled, hazeState, actions)
             },
             floatingActionButton = floatingActionButton,
             bottomBar = bottomBar,
@@ -129,8 +75,108 @@ fun OplusScaffold(
 }
 
 @Composable
+private fun CenteredPageBar(
+    title: String,
+    subtitle: String,
+    onBack: (() -> Unit)?,
+    backEnabled: Boolean,
+    hazeState: HazeState,
+    actions: @Composable RowScope.() -> Unit
+) {
+    val page = COUITheme.colorScheme.backgroundWithCard
+    val supportsBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val blurStyle = remember {
+        HazeBlurStyle {
+            blurRadius(32.dp)
+            noiseFactor(0f)
+            progressive(HazeProgressive.verticalGradient(startIntensity = 1f, endIntensity = 0f))
+            mask(Brush.verticalGradient(0f to Color.Black, 0.72f to Color.Black, 1f to Color.Transparent))
+        }
+    }
+    val veil = remember(page, supportsBlur) {
+        Brush.verticalGradient(
+            0f to page.copy(alpha = if (supportsBlur) 0.84f else 1f),
+            0.70f to page.copy(alpha = if (supportsBlur) 0.62f else 0.96f),
+            1f to page.copy(alpha = 0f)
+        )
+    }
+    Box(Modifier.fillMaxWidth()) {
+        Box(
+            Modifier.matchParentSize()
+                .then(if (supportsBlur) Modifier.hazeBlur(HazeInput.Sources(hazeState), style = blurStyle) else Modifier)
+                .background(veil)
+        )
+        // The blur layer is a sibling, so neither the title nor toolbar icons are blurred.
+        Column(Modifier.fillMaxWidth().statusBarsPadding()) {
+            Layout(
+                modifier = Modifier.fillMaxWidth()
+                    .height(if (subtitle.isBlank()) 58.dp else 68.dp)
+                    .padding(horizontal = 8.dp),
+                content = {
+                    Box(contentAlignment = Alignment.Center) {
+                        if (onBack != null) {
+                            Box(
+                                Modifier.size(44.dp).clip(CircleShape)
+                                    .background(COUITheme.colorScheme.cardBackground.copy(alpha = 0.86f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                IconButton(
+                                    onClick = onBack,
+                                    enabled = backEnabled,
+                                    minWidth = 44.dp,
+                                    minHeight = 44.dp,
+                                    cornerRadius = 22.dp,
+                                    material = false
+                                ) {
+                                    Icon(
+                                        GitIcons.Default.ArrowBack,
+                                        contentDescription = stringResource(R.string.action_back),
+                                        modifier = Modifier.size(24.dp).graphicsLayer { scaleX = if (isRtl) -1f else 1f },
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            title, style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis
+                        )
+                        if (subtitle.isNotBlank()) Text(
+                            subtitle, style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, content = actions)
+                }
+            ) { measurables, constraints ->
+                val width = constraints.maxWidth
+                val height = constraints.maxHeight
+                val gap = 6.dp.roundToPx()
+                val sideConstraints = Constraints(maxWidth = (width * 0.42f).toInt(), maxHeight = height)
+                val start = measurables[0].measure(sideConstraints)
+                val end = measurables[2].measure(sideConstraints)
+                val reserve = maxOf(start.width, end.width) + gap
+                val center = measurables[1].measure(
+                    Constraints(maxWidth = (width - reserve * 2).coerceAtLeast(0), maxHeight = height)
+                )
+                layout(width, height) {
+                    start.placeRelative(0, (height - start.height) / 2)
+                    center.placeRelative((width - center.width) / 2, (height - center.height) / 2)
+                    end.placeRelative(width - end.width, (height - end.height) / 2)
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+    }
+}
+
+@Composable
 fun OplusSectionTitle(title: String, modifier: Modifier = Modifier) {
-    // Pages already supply the 12dp side margin; category text starts at 32dp.
     SmallTitle(text = title, modifier = modifier, insideMargin = PaddingValues(horizontal = 20.dp, vertical = 8.dp))
 }
 
