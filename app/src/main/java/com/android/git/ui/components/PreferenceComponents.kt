@@ -5,13 +5,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 
 @Composable
 fun PreferenceGroup(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
@@ -65,4 +66,51 @@ fun PreferenceRow(
 @Composable
 fun PreferenceDivider(modifier: Modifier = Modifier) {
     HorizontalDivider(modifier = modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
+}
+
+
+/** Anchor selection menus to the trailing control, not to the entire preference row. */
+@Composable
+fun PreferenceMenu(
+    title: String,
+    value: String,
+    options: List<String>,
+    onSelect: (String) -> Unit,
+    icon: ImageVector? = null,
+    enabled: Boolean = true,
+    width: Dp = 272.dp
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val canSelect = enabled && options.isNotEmpty()
+    PreferenceRow(
+        title = title, summary = value, icon = icon, enabled = canSelect,
+        onClick = { expanded = true },
+        trailing = {
+            Box {
+                IconButton(onClick = { expanded = true }, enabled = canSelect) {
+                    Icon(GitIcons.Default.ArrowDropDown, contentDescription = title)
+                }
+                DropdownMenu(
+                    expanded = expanded && canSelect,
+                    onDismissRequest = { expanded = false },
+                    width = width
+                ) {
+                    options.forEach { option ->
+                        val selected = option == value
+                        DropdownMenuItem(
+                            text = { Text(option, color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface) },
+                            leadingIcon = {
+                                if (selected) Icon(GitIcons.Default.Check, null, tint = MaterialTheme.colorScheme.primary)
+                                else Spacer(Modifier.size(24.dp))
+                            },
+                            onClick = {
+                                expanded = false
+                                onSelect(option)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    )
 }

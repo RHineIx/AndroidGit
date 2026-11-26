@@ -291,11 +291,11 @@ fun DropdownMenu(
     properties: PopupProperties = PopupProperties(focusable = true),
     shape: Shape = MaterialTheme.shapes.medium,
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
-    width: Dp = 192.dp,
+    width: Dp = 240.dp,
     maxHeight: Dp = 360.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) = androidx.compose.material3.DropdownMenu(
-    expanded = expanded, onDismissRequest = onDismissRequest, modifier = modifier.widthIn(max = width).heightIn(max = maxHeight),
+    expanded = expanded, onDismissRequest = onDismissRequest, modifier = modifier.widthIn(min = minOf(160.dp, width), max = width).heightIn(max = maxHeight),
     offset = offset, properties = properties, shape = shape, containerColor = containerColor, content = content
 )
 
@@ -308,11 +308,11 @@ fun DropdownMenuItem(
     trailingIcon: (@Composable () -> Unit)? = null,
     enabled: Boolean = true,
     colors: MenuItemColors = MenuDefaults.itemColors(),
-    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+    contentPadding: PaddingValues = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
     interactionSource: MutableInteractionSource? = null,
     showDivider: Boolean = false,
 ) {
-    if (showDivider) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+    if (showDivider) HorizontalDivider(Modifier.padding(horizontal = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     androidx.compose.material3.DropdownMenuItem(text = text, onClick = onClick, modifier = modifier.heightIn(min = 48.dp),
         leadingIcon = leadingIcon, trailingIcon = trailingIcon, enabled = enabled,
         colors = colors, contentPadding = contentPadding, interactionSource = interactionSource)

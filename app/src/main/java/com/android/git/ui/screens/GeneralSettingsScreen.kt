@@ -1,6 +1,5 @@
 package com.android.git.ui.screens
 
-import com.android.git.ui.components.DropdownMenu
 
 import com.android.git.ui.components.CircularProgressIndicator
 
@@ -10,9 +9,9 @@ import com.android.git.ui.components.GitScaffold
 import com.android.git.ui.components.SectionTitle
 import com.android.git.ui.components.PreferenceGroup
 import com.android.git.ui.components.PreferenceRow
+import com.android.git.ui.components.PreferenceMenu
 import com.android.git.ui.components.PreferenceDivider
 import com.android.git.ui.components.Button
-import com.android.git.ui.components.DropdownMenuItem
 import com.android.git.ui.components.IconButton
 import com.android.git.ui.components.OutlinedTextField
 import com.android.git.ui.components.Switch
@@ -77,7 +76,6 @@ fun GeneralSettingsScreen(
     var geminiApiKey by remember { mutableStateOf(prefs.getGeminiApiKey()) }
     var geminiModel by remember { mutableStateOf(prefs.getGeminiModel()) }
     var geminiPrompt by remember { mutableStateOf(prefs.getGeminiPrompt()) }
-    var aiModelExpanded by remember { mutableStateOf(false) }
 
     var apiKeyVisible by remember { mutableStateOf(false) }
 
@@ -157,32 +155,13 @@ fun GeneralSettingsScreen(
 
                     }
                     PreferenceDivider()
-                    Box {
-                        PreferenceRow(
-                            title = stringResource(R.string.settings_ai_model),
-                            summary = geminiModel,
-                            icon = Icons.Default.AutoAwesome,
-                            onClick = { aiModelExpanded = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            trailing = {
-                                Icon(TablerIcons.Outline.Selector, contentDescription = null,
-                                    modifier = Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        )
-                        DropdownMenu(expanded = aiModelExpanded, onDismissRequest = { aiModelExpanded = false }, width = 272.dp) {
-                            aiModels.forEach { model ->
-                                val selected = geminiModel == model
-                                DropdownMenuItem(
-                                    text = { Text(model, color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface) },
-                                    onClick = { geminiModel = model; aiModelExpanded = false },
-                                    leadingIcon = {
-                                        if (selected) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                        else Spacer(Modifier.size(22.dp))
-                                    }
-                                )
-                            }
-                        }
-                    }
+                    PreferenceMenu(
+                        title = stringResource(R.string.settings_ai_model),
+                        value = geminiModel,
+                        options = aiModels,
+                        icon = Icons.Default.AutoAwesome,
+                        onSelect = { geminiModel = it }
+                    )
 
                     PreferenceDivider()
                     Column(Modifier.padding(16.dp)) {

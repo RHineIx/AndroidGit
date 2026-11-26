@@ -10,9 +10,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,8 +36,6 @@ import dev.chrisbanes.haze.blur.hazeBlur
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 
-val LocalPageHazeState = staticCompositionLocalOf<HazeState?> { null }
-
 /** All Git pages share one fixed, centered, edge-to-edge toolbar. */
 @Composable
 fun GitScaffold(
@@ -53,9 +49,8 @@ fun GitScaffold(
     snackbarHost: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit
 ) {
-    val localHazeState = rememberHazeState()
-    val hazeState = LocalPageHazeState.current ?: localHazeState
-    CompositionLocalProvider(LocalPageHazeState provides hazeState) {
+    // Each destination owns its source to avoid sampling the outgoing page during transitions.
+    val hazeState = rememberHazeState()
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = MaterialTheme.colorScheme.background,
@@ -68,7 +63,6 @@ fun GitScaffold(
         ) { padding ->
             Box(Modifier.fillMaxSize().hazeSource(hazeState)) { content(padding) }
         }
-    }
 }
 
 @Composable

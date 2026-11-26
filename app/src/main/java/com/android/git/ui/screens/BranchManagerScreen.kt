@@ -556,17 +556,18 @@ fun BranchItemRich(
                 }
             }
 
-            IconButton(onClick = { if (enabled) showMenu = true }, enabled = enabled) {
-                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.branch_actions))
+            Box {
+                IconButton(onClick = { if (enabled) showMenu = true }, enabled = enabled) {
+                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.branch_actions))
+                }
+                BranchActionMenu(
+                    expanded = showMenu && enabled,
+                    branch = branch,
+                    isRemote = isRemote,
+                    onDismiss = { showMenu = false },
+                    onAction = onAction
+                )
             }
-
-            BranchActionMenu(
-                expanded = showMenu && enabled,
-                branch = branch,
-                isRemote = isRemote,
-                onDismiss = { showMenu = false },
-                onAction = onAction
-            )
         }
     }
 }

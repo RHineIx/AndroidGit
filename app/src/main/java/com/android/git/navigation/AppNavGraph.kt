@@ -1,15 +1,13 @@
 package com.android.git.navigation
 
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -28,7 +26,6 @@ fun AppNavGraph(
     startDestination: String = Screen.Selection.route
 ) {
     val manager = viewModel.gitManager
-    val slideDirection = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1 else 1
 
     // State-driven routing: Navigate automatically based on repository state
     LaunchedEffect(viewModel.currentRepoFile) {
@@ -54,30 +51,10 @@ fun AppNavGraph(
     NavHost(
         navController = navController,
         startDestination = startDestination,
-        enterTransition = {
-            slideInHorizontally(
-                initialOffsetX = { it * slideDirection },
-                animationSpec = tween(350)
-            )
-        },
-        exitTransition = {
-            slideOutHorizontally(
-                targetOffsetX = { -it * slideDirection / 4 },
-                animationSpec = tween(350)
-            )
-        },
-        popEnterTransition = {
-            slideInHorizontally(
-                initialOffsetX = { -it * slideDirection / 4 },
-                animationSpec = tween(350)
-            )
-        },
-        popExitTransition = {
-            slideOutHorizontally(
-                targetOffsetX = { it * slideDirection },
-                animationSpec = tween(350)
-            )
-        }
+        enterTransition = { fadeIn(tween(160)) },
+        exitTransition = { fadeOut(tween(160)) },
+        popEnterTransition = { fadeIn(tween(160)) },
+        popExitTransition = { fadeOut(tween(160)) }
     ) {
         
         composable(Screen.Selection.route) {

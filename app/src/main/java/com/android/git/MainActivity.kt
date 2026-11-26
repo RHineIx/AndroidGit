@@ -29,12 +29,10 @@ import com.android.git.data.PreferencesManager
 import com.android.git.data.ThemeMode
 import com.android.git.navigation.AppNavGraph
 import com.android.git.ui.components.UpdateBottomSheet
-import com.android.git.ui.components.LocalPageHazeState
 import com.android.git.ui.screens.PermissionScreen
 import com.android.git.ui.theme.AndroidGitTheme
 import com.android.git.ui.viewmodel.MainViewModel
 import java.io.File
-import dev.chrisbanes.haze.rememberHazeState
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -108,8 +106,6 @@ fun MainAppContent(
 
     // Apply the Theme dynamically
     AndroidGitTheme(darkTheme = isDarkTheme, appearance = viewModel.appearance) {
-        // Dialogs are often siblings of the page scaffold; share its blur samples.
-        CompositionLocalProvider(LocalPageHazeState provides rememberHazeState()) {
             Surface(
                 modifier = Modifier
                     .fillMaxSize()
@@ -137,6 +133,5 @@ fun MainAppContent(
                     }
                 }
             }
-        }
     }
 }
