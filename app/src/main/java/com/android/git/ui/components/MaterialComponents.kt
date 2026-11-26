@@ -2,14 +2,15 @@
 
 package com.android.git.ui.components
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardActions
@@ -17,11 +18,17 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.IntOffset
-import kotlin.math.roundToInt
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.unit.LayoutDirection
+import kotlin.math.abs
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.Role
@@ -402,42 +409,59 @@ fun SegmentedTabs(
     val selectedIndex = selectedTabIndex.coerceIn(tabs.indices)
     val position by animateFloatAsState(
         targetValue = selectedIndex.toFloat(),
-        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
+        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
         label = "Segment indicator"
     )
     val shape = androidx.compose.foundation.shape.CircleShape
     val scheme = MaterialTheme.colorScheme
-    BoxWithConstraints(
-        modifier = modifier.clip(shape).background(scheme.surfaceContainerHigh)
-            .selectableGroup().padding(4.dp)
-    ) {
-        val cellWidth = maxWidth / tabs.size
-        Box(
-            Modifier.matchParentSize()
-        ) {
-            Box(
-                Modifier.offset { IntOffset((cellWidth.toPx() * position).roundToInt(), 0) }
-                    .width(cellWidth).fillMaxHeight().clip(shape)
-                    .background(scheme.primaryContainer.copy(alpha = if (enabled) 1f else 0.38f))
-            )
-        }
-        Row(Modifier.fillMaxWidth()) {
-            tabs.forEachIndexed { index, title ->
-                val selected = index == selectedIndex
-                val textColor by animateColorAsState(
-                    targetValue = (if (selected) scheme.onPrimaryContainer else scheme.onSurfaceVariant)
-                        .copy(alpha = if (enabled) 1f else 0.38f),
-                    label = "Segment text"
+
+    // Draw exactly one pill behind the labels. No per-tab press/ripple layer
+    // can remain visible while the indicator travels to its next position.
+    Row(
+        modifier = modifier.fillMaxWidth().clip(shape)
+            .background(scheme.surfaceContainerHigh)
+            .drawBehind {
+                val cell = size.width / tabs.size
+                val inset = 4.dp.toPx().coerceAtMost(cell / 4f)
+                val visualPosition = if (layoutDirection == LayoutDirection.Rtl)
+                    tabs.lastIndex - position else position
+                val pillHeight = (size.height - 2f * inset).coerceAtLeast(0f)
+                drawRoundRect(
+                    color = scheme.primaryContainer.copy(alpha = if (enabled) 1f else 0.38f),
+                    topLeft = Offset(cell * visualPosition + inset, inset),
+                    size = Size((cell - 2f * inset).coerceAtLeast(0f), pillHeight),
+                    cornerRadius = CornerRadius(pillHeight / 2f)
                 )
-                Box(
-                    Modifier.weight(1f).clip(shape)
-                        .selectable(selected = selected, enabled = enabled, role = Role.Tab, onClick = { onTabSelected(index) })
-                        .heightIn(min = 48.dp).padding(horizontal = 8.dp, vertical = 10.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(title, style = MaterialTheme.typography.labelLarge,
-                        textAlign = TextAlign.Center, fontWeight = FontWeight.Medium, color = textColor)
-                }
+            }
+            .selectableGroup().height(IntrinsicSize.Min)
+    ) {
+        tabs.forEachIndexed { index, title ->
+            val selected = index == selectedIndex
+            val interaction = remember { MutableInteractionSource() }
+            val focused by interaction.collectIsFocusedAsState()
+            val coverage = (1f - abs(position - index)).coerceIn(0f, 1f)
+            val textColor = lerp(scheme.onSurfaceVariant, scheme.onPrimaryContainer, coverage)
+                .copy(alpha = if (enabled) 1f else 0.38f)
+            Box(
+                Modifier.weight(1f).fillMaxHeight().heightIn(min = 48.dp).clip(shape)
+                    .selectable(
+                        selected = selected,
+                        enabled = enabled,
+                        role = Role.Tab,
+                        interactionSource = interaction,
+                        indication = null,
+                        onClick = { if (!selected) onTabSelected(index) }
+                    )
+                    // Retain a keyboard/D-pad focus affordance without a tap ripple.
+                    .then(if (focused && enabled) Modifier.padding(3.dp)
+                        .border(1.dp, scheme.primary, shape) else Modifier.padding(3.dp))
+                    .padding(horizontal = 5.dp, vertical = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    title, style = MaterialTheme.typography.labelLarge,
+                    textAlign = TextAlign.Center, fontWeight = FontWeight.Medium, color = textColor
+                )
             }
         }
     }

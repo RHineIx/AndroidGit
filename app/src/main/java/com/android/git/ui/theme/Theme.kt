@@ -29,32 +29,34 @@ import androidx.core.view.WindowCompat
 
 val LocalAndroidGitDarkTheme = staticCompositionLocalOf { false }
 
-// GitHub Primer Tritanopia-inspired palettes. Map neutral/blue/red tokens to
-// Material roles explicitly, so no default purple or green surfaces leak into the UI.
+// Dark UI tokens: moelzanaty3/github-dark-tritanopia (theme JSON blob 1ffaf3f).
+// Light UI tokens: Primer primitives v10.0.0, Light Tritanopia.
+// Translucent selection colors are composited over their intended surface;
+// retain stronger outlines for interactive controls on mobile.
 private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFF58A6FF), onPrimary = Color(0xFF0D1117),
-    primaryContainer = Color(0xFF18385C), onPrimaryContainer = Color(0xFFCAEAFF),
+    primary = Color(0xFF4493F8), onPrimary = Color(0xFF0D1117),
+    primaryContainer = Color(0xFF1E334E), onPrimaryContainer = Color(0xFFF0F6FC),
     secondary = Color(0xFFB1BAC4), onSecondary = Color(0xFF0D1117),
-    secondaryContainer = Color(0xFF212830), onSecondaryContainer = Color(0xFFF0F6FC),
-    tertiary = Color(0xFFFFA198), onTertiary = Color(0xFF401216),
-    tertiaryContainer = Color(0xFF512126), onTertiaryContainer = Color(0xFFFFDAD6),
+    secondaryContainer = Color(0xFF252B34), onSecondaryContainer = Color(0xFFF0F6FC),
+    tertiary = Color(0xFFFF7B72), onTertiary = Color(0xFF401216),
+    tertiaryContainer = Color(0xFF27171C), onTertiaryContainer = Color(0xFFFFA198),
     background = Color(0xFF0D1117), onBackground = Color(0xFFF0F6FC),
     surface = Color(0xFF0D1117), onSurface = Color(0xFFF0F6FC),
-    surfaceVariant = Color(0xFF212830), onSurfaceVariant = Color(0xFF9198A1),
-    surfaceDim = Color(0xFF0D1117), surfaceBright = Color(0xFF2F3742),
-    surfaceContainerLowest = Color(0xFF010409), surfaceContainerLow = Color(0xFF151B23),
-    surfaceContainer = Color(0xFF212830), surfaceContainerHigh = Color(0xFF262C36),
-    surfaceContainerHighest = Color(0xFF2F3742),
+    surfaceVariant = Color(0xFF151B23), onSurfaceVariant = Color(0xFF9198A1),
+    surfaceDim = Color(0xFF010409), surfaceBright = Color(0xFF2F3742),
+    surfaceContainerLowest = Color(0xFF010409), surfaceContainerLow = Color(0xFF010409),
+    surfaceContainer = Color(0xFF0D1117), surfaceContainerHigh = Color(0xFF151B23),
+    surfaceContainerHighest = Color(0xFF252B34),
     outline = Color(0xFF656C76), outlineVariant = Color(0xFF3D444D),
     error = Color(0xFFF85149), onError = Color(0xFF0D1117),
-    errorContainer = Color(0xFF512126), onErrorContainer = Color(0xFFFFDAD6),
+    errorContainer = Color(0xFF27171C), onErrorContainer = Color(0xFFFFA198),
     inverseSurface = Color(0xFFF0F6FC), inverseOnSurface = Color(0xFF1F2328),
-    inversePrimary = Color(0xFF0969DA), surfaceTint = Color(0xFF58A6FF),
+    inversePrimary = Color(0xFF0969DA), surfaceTint = Color(0xFF4493F8),
     scrim = Color.Black
 )
 private val LightColorScheme = lightColorScheme(
     primary = Color(0xFF0969DA), onPrimary = Color.White,
-    primaryContainer = Color(0xFFDDF4FF), onPrimaryContainer = Color(0xFF054DA8),
+    primaryContainer = Color(0xFFDDF4FF), onPrimaryContainer = Color(0xFF0550AE),
     secondary = Color(0xFF59636E), onSecondary = Color.White,
     secondaryContainer = Color(0xFFE6EAEF), onSecondaryContainer = Color(0xFF1F2328),
     tertiary = Color(0xFFCF222E), onTertiary = Color.White,
@@ -70,7 +72,7 @@ private val LightColorScheme = lightColorScheme(
     error = Color(0xFFCF222E), onError = Color.White,
     errorContainer = Color(0xFFFFEBE9), onErrorContainer = Color(0xFF82071E),
     inverseSurface = Color(0xFF24292F), inverseOnSurface = Color(0xFFF6F8FA),
-    inversePrimary = Color(0xFF58A6FF), surfaceTint = Color(0xFF0969DA),
+    inversePrimary = Color(0xFF4493F8), surfaceTint = Color(0xFF0969DA),
     scrim = Color.Black
 )
 

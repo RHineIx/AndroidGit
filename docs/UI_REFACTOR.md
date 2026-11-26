@@ -34,3 +34,9 @@ Repository status cards share the primary container color and 8dp spacing. Actio
 ### Visual polish
 
 The default palette maps GitHub Primer Tritanopia neutral, blue and red colors to Material 3 roles. Android dynamic colors remain an independent switch. Filled text fields use the native filled Material component, avoiding the outlined label cutout over a colored container. Segmented controls animate one RTL-aware selection pill. Navigation Compose 2.10 overrides both regular and predictive pop transitions with full-size fade/slide transitions, without scaling destinations or disabling predictive back. Source: https://github.com/primer/primitives/tree/v10.0.0/src/tokens/functional/color.
+
+### Compact segmented controls and refined Tritanopia palette
+
+SegmentedTabs draws a single animated pill with a 220ms non-overshooting transition. The track is at least 48dp high (40dp visible pill at default size), retains 48dp touch targets and expands for large text. Per-segment ripple is intentionally disabled; keyboard focus retains a border, and label colors follow indicator position. RTL, disabled state and accessibility selection semantics remain supported.
+
+Dark colors use the UI tokens from [GitHub Dark Tritanopia for VS Code](https://github.com/moelzanaty3/github-dark-tritanopia/blob/main/themes/github-dark-tritanopia-color-theme.json) (blob 1ffaf3fd098f090c353b3b0c42f81f854d91e2e3): #0D1117 editor, #010409 panel, #4493F8 accent, #F0F6FC text, #9198A1 muted text, #3D444D divider and #F85149 error. The translucent blue/neutral selection colors are composited over #151B23 for mobile surfaces. Light mode retains official Primer light tokens; the reference extension contains no light theme. System colors remain optional. Stronger interactive outlines are retained for readability.
