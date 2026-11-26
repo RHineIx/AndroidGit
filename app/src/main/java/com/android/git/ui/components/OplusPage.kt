@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -49,7 +50,6 @@ fun OplusScaffold(
     onBack: (() -> Unit)? = null,
     subtitle: String = "",
     backEnabled: Boolean = true,
-    collapsible: Boolean = true,
     actions: @Composable RowScope.() -> Unit = {},
     floatingActionButton: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
@@ -86,6 +86,8 @@ private fun CenteredPageBar(
     val page = COUITheme.colorScheme.backgroundWithCard
     val supportsBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val fontScale = LocalDensity.current.fontScale
+    val toolbarHeight = ((if (subtitle.isBlank()) 58f else 68f) * maxOf(1f, fontScale / 1.25f)).dp
     val blurStyle = remember {
         HazeBlurStyle {
             blurRadius(32.dp)
@@ -111,7 +113,7 @@ private fun CenteredPageBar(
         Column(Modifier.fillMaxWidth().statusBarsPadding()) {
             Layout(
                 modifier = Modifier.fillMaxWidth()
-                    .height(if (subtitle.isBlank()) 58.dp else 68.dp)
+                    .height(toolbarHeight)
                     .padding(horizontal = 8.dp),
                 content = {
                     Box(contentAlignment = Alignment.Center) {

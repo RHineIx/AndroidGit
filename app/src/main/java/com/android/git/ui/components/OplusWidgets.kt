@@ -461,7 +461,7 @@ fun AlertDialog(
     title: (@Composable () -> Unit)? = null,
     text: (@Composable () -> Unit)? = null,
     shape: Shape = MaterialTheme.shapes.extraLarge,
-    containerColor: Color = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) Color(0xFF3D3D3D) else Color.White,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     iconContentColor: Color = MaterialTheme.colorScheme.primary,
     titleContentColor: Color = MaterialTheme.colorScheme.onSurface,
     textContentColor: Color = MaterialTheme.colorScheme.onSurface,
@@ -586,7 +586,7 @@ fun DropdownMenu(
     val hazeState = LocalOplusHazeState.current
     val frosted = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && hazeState != null
     val blurStyle = remember { HazeBlurStyle { blurRadius(24.dp); noiseFactor(0f) } }
-    val popupSurface = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) Color(0xFF3D3D3D) else Color.White
+    val popupSurface = MaterialTheme.colorScheme.surfaceContainerHigh
     val windowSize = LocalWindowInfo.current.containerDpSize
     // Bound before applying caller modifiers: a weighted menu row must never
     // expand into the full dialog window or cross a narrow screen's edges.

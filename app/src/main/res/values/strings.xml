@@ -318,4 +318,5 @@
     <string name="appearance_contrast_hint">The accent is adjusted when needed to keep text readable.</string>
     <string name="appearance_preview">Live preview</string>
     <string name="appearance_preview_title">Primary color</string>
+    <string name="appearance_dark_surface_hint">Applies when the app is in dark mode.</string>
 </resources>

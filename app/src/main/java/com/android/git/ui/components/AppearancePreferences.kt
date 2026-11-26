@@ -3,7 +3,6 @@ package com.android.git.ui.components
 import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -29,6 +28,8 @@ import com.android.git.data.AppearanceSettings
 import com.android.git.data.DarkSurface
 import com.android.git.data.ThemeMode
 import com.android.git.data.ThemePalette
+import io.github.suqi8.coui.kmp.basic.PreciseClickState
+import io.github.suqi8.coui.kmp.basic.preciseClickAnchor
 import java.util.Locale
 
 private val accentPresets = listOf(
@@ -94,6 +95,12 @@ internal fun AppearancePreferences(
                 },
                 onSelect = { onAppearanceChange(appearance.copy(darkSurface = it)) }
             )
+            Text(
+                stringResource(R.string.appearance_dark_surface_hint),
+                Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall
+            )
             if (appearance.palette == ThemePalette.CUSTOM) {
                 OplusPreferenceDivider()
                 AccentEditor(appearance.customAccent) {
@@ -136,17 +143,20 @@ private fun <T> AppearanceChoice(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val summary = label(selected)
+    val anchor = remember { PreciseClickState() }
     Box {
         OplusPreferenceRow(
             title = title,
             summary = summary,
+            modifier = Modifier.preciseClickAnchor(anchor),
             onClick = { expanded = true },
             trailing = { Icon(GitIcons.Default.ArrowDropDown, null) }
         )
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            width = 252.dp
+            width = 252.dp,
+            preciseClickState = anchor
         ) {
             choices.forEachIndexed { index, choice ->
                 DropdownMenuItem(

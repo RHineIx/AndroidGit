@@ -15,7 +15,7 @@ Jetpack Compose, AndroidX Navigation, and the existing ViewModel architecture co
 ## Shared components
 
 - `ui/theme` configures COUI themes and matching Material colors for specialized Git controls.
-- `OplusPage.kt` provides the page layout, collapsing header, and shared blur source.
+- `OplusPage.kt` provides the page layout, fixed centered header, and shared blur source.
 - `OplusPreference.kt` provides grouped cards, preference rows, and dividers.
 - `OplusActionCard.kt` provides standalone icon-and-label cards for repository entry points and quick actions.
 - `OplusWidgets.kt` adapts the screen components to COUI controls while preserving callbacks and validation.
@@ -25,14 +25,14 @@ These components cover repository selection, cloning, the dashboard, changes, br
 
 ## Appearance
 
-The app uses the COUI 17 color scheme and typography, with corresponding Material colors for specialized Git controls. Supports light, dark and system themes.
+The app uses the COUI 17 color scheme and typography, with corresponding Material colors for specialized Git controls. The Appearance section lets the user independently select System / Light / Dark brightness, Default COUI / Android dynamic system colors / Custom accent, and Standard / AMOLED dark surfaces. Choices persist and apply immediately. Dynamic system colors require Android 12 or later; older devices fall back to COUI. The custom accent supports presets and any six-digit RGB hex value, with contrast adjustment.
 
 Shared layout and interaction details:
 
 - Cards use a 12dp corner radius, with 12dp page margins and thin inset dividers.
 - Clone Repo and Open Local use equal-width cards in one row. Dashboard Pull and Push use the same compact layout: 84dp minimum height, 24dp icons, 12dp padding and corners, and an 8dp gap between cards. Labels wrap and cards grow for larger font sizes; the force-push switch remains in its own card and retains its confirmation dialog.
 - Preference rows use 22dp leading icons and an 8dp gap before the text.
-- Headers collapse while scrolling and use a 96% opaque surface to keep content legible.
+- Headers remain fixed and center their title and optional subtitle in the available safe width, reserving symmetric space for navigation and action buttons. A 32dp Haze progressive blur fades from the status bar through the bottom edge; Android versions below API 31 use a gradient scrim instead. Titles and controls are rendered separately from the blur.
 - Frosted dialogs and menus use 24dp blur and 94% opaque surfaces. Dialogs use stronger field outlines and clearer secondary text.
 - Dropdown panels have bounded dimensions, while their outside-tap area covers the full window. Theme and Gemini menus dismiss when tapping outside.
 - Indeterminate loading indicators are capped at 26dp and shrink to fit smaller controls.
