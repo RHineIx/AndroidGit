@@ -303,4 +303,19 @@
 
     <string name="auth_restore_token">Restore last token</string>
     <string name="auth_save_failed">Unable to save authentication settings.</string>
+    <string name="appearance_section">Appearance</string>
+    <string name="appearance_palette">Color palette</string>
+    <string name="appearance_default">Default (COUI)</string>
+    <string name="appearance_system_colors">System colors (Material You)</string>
+    <string name="appearance_custom">Custom accent</string>
+    <string name="appearance_dark_surface">Dark background</string>
+    <string name="appearance_standard">Standard dark</string>
+    <string name="appearance_amoled">AMOLED black</string>
+    <string name="appearance_dynamic_fallback">Dynamic colors require Android 12 or later. Default colors are used on older devices.</string>
+    <string name="appearance_primary_color">Primary color</string>
+    <string name="appearance_hex">HEX color (#RRGGBB)</string>
+    <string name="appearance_apply_color">Apply color</string>
+    <string name="appearance_contrast_hint">The accent is adjusted when needed to keep text readable.</string>
+    <string name="appearance_preview">Live preview</string>
+    <string name="appearance_preview_title">Primary color</string>
 </resources>

@@ -30,8 +30,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import io.github.suqi8.coui.kmp.basic.PreciseClickState
-import io.github.suqi8.coui.kmp.basic.preciseClickAnchor
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,17 +45,14 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.android.git.R
 import com.android.git.data.PreferencesManager
-import com.android.git.data.ThemeMode
 import com.android.git.ui.components.AppSnackbar
 import com.android.git.ui.components.AuthenticationSettings
+import com.android.git.ui.components.AppearancePreferences
 import com.android.git.ui.components.rememberAuthenticationForm
 import com.android.git.ui.viewmodel.MainViewModel
 import io.github.lyxnx.compose.ui.tablericons.TablerIcons
-import io.github.lyxnx.compose.ui.tablericons.outline.BrightnessAuto
 import io.github.lyxnx.compose.ui.tablericons.outline.BrandTelegram
-import io.github.lyxnx.compose.ui.tablericons.outline.Moon
 import io.github.lyxnx.compose.ui.tablericons.outline.Selector
-import io.github.lyxnx.compose.ui.tablericons.outline.Sun
 import io.github.lyxnx.compose.ui.tablericons.outline.Versions
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -76,8 +71,6 @@ fun GeneralSettingsScreen(
     val isLoading = viewModel.isLoading
 
     var autoOpen by remember { mutableStateOf(prefs.isAutoOpenEnabled()) }
-    var themeExpanded by remember { mutableStateOf(false) }
-    val themeAnchor = remember { PreciseClickState() }
 
     val authForm = rememberAuthenticationForm(prefs)
 
@@ -111,63 +104,14 @@ fun GeneralSettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
 
+                AppearancePreferences(
+                    mode = viewModel.themeMode,
+                    appearance = viewModel.appearance,
+                    onModeChange = viewModel::updateThemeMode,
+                    onAppearanceChange = viewModel::updateAppearance
+                )
+
                 SettingsSection(title = stringResource(R.string.settings_section_app), padded = false) {
-                    val themeNames = listOf(
-                        stringResource(R.string.settings_theme_system),
-                        stringResource(R.string.settings_theme_light),
-                        stringResource(R.string.settings_theme_dark)
-                    )
-                    val currentThemeName = when (viewModel.themeMode) {
-                        ThemeMode.SYSTEM -> themeNames[0]
-                        ThemeMode.LIGHT -> themeNames[1]
-                        ThemeMode.DARK -> themeNames[2]
-                    }
-                    val themeIcons = listOf(
-                        TablerIcons.Outline.BrightnessAuto,
-                        TablerIcons.Outline.Sun,
-                        TablerIcons.Outline.Moon
-                    )
-                    Box {
-                        OplusPreferenceRow(
-                            title = stringResource(R.string.settings_theme_title),
-                            modifier = Modifier.preciseClickAnchor(themeAnchor),
-                            summary = currentThemeName,
-                            icon = TablerIcons.Outline.BrightnessAuto,
-                            onClick = { themeExpanded = true },
-                            trailing = {
-                                Icon(TablerIcons.Outline.Selector, contentDescription = null,
-                                    modifier = Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        )
-                        DropdownMenu(
-                            expanded = themeExpanded,
-                            width = 176.dp,
-                            preciseClickState = themeAnchor,
-                            onDismissRequest = { themeExpanded = false }
-                        ) {
-                            ThemeMode.entries.forEachIndexed { index, mode ->
-                                val selected = viewModel.themeMode == mode
-                                DropdownMenuItem(
-                                    showDivider = index > 0,
-                                    text = {
-                                        Text(themeNames[index], color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            if (selected) Icons.Default.Check else themeIcons[index],
-                                            contentDescription = null,
-                                            tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                                        )
-                                    },
-                                    onClick = {
-                                        viewModel.updateThemeMode(mode)
-                                        themeExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                    OplusPreferenceDivider()
                     OplusPreferenceRow(
                         title = stringResource(R.string.settings_auto_open),
                         summary = stringResource(R.string.settings_auto_open_desc),
